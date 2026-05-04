@@ -9,6 +9,7 @@ import (
 
 	"repoctl/internal/config"
 	gitwrap "repoctl/internal/git"
+	"repoctl/internal/plan"
 	"repoctl/internal/status"
 )
 
@@ -42,6 +43,14 @@ type repoResult struct {
 	err    error
 }
 
+type checkSummary struct {
+	results     []status.Result
+	ok          []bool
+	firstErr    error
+	failedCount int
+	failureCode int
+}
+
 var statusCheck = func(repo config.Repo) (status.Result, error) {
 	return status.Check(repo, gitwrap.Client{})
 }
@@ -51,17 +60,19 @@ func main() {
 }
 
 func run(args []string) int {
-	flags := flag.NewFlagSet("repoctl status", flag.ContinueOnError)
+	if len(args) == 0 || (args[0] != "status" && args[0] != "plan") {
+		fmt.Fprintln(os.Stderr, "usage: repoctl <status|plan> -f repora.yaml [--json] [--parallel N] [--continue-on-error]")
+		return 1
+	}
+
+	command := args[0]
+	flags := flag.NewFlagSet("repoctl "+command, flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	configPath := flags.String("f", "repora.yaml", "path to SCHEMA-0001 YAML config")
 	jsonFlag := flags.Bool("json", false, "print JSON")
 	parallelFlag := flags.Int("parallel", 5, "max number of concurrent repository checks")
 	continueOnError := flags.Bool("continue-on-error", false, "continue processing repos after an error")
 
-	if len(args) == 0 || args[0] != "status" {
-		fmt.Fprintln(os.Stderr, "usage: repoctl status -f repora.yaml [--json] [--parallel N] [--continue-on-error]")
-		return 1
-	}
 	if err := flags.Parse(args[1:]); err != nil {
 		return 1
 	}
@@ -77,6 +88,23 @@ func run(args []string) int {
 		parallel = 1
 	}
 
+	summary := checkRepos(spec, parallel)
+	if summary.firstErr != nil && !*continueOnError {
+		fmt.Fprintf(os.Stderr, "repoctl: %v\n", summary.firstErr)
+		return 1
+	}
+
+	switch command {
+	case "status":
+		return runStatus(spec, summary, *jsonFlag)
+	case "plan":
+		return runPlan(spec, summary, *jsonFlag)
+	default:
+		panic("unreachable command validation")
+	}
+}
+
+func checkRepos(spec config.Spec, parallel int) checkSummary {
 	sem := make(chan struct{}, parallel)
 	resultsCh := make(chan repoResult, len(spec.Repos))
 	var wg sync.WaitGroup
@@ -100,41 +128,38 @@ func run(args []string) int {
 		close(resultsCh)
 	}()
 
-	results := make([]status.Result, len(spec.Repos))
-	ok := make([]bool, len(spec.Repos))
-	var firstErr error
-	failureCode := 0
-	failedCount := 0
+	summary := checkSummary{
+		results: make([]status.Result, len(spec.Repos)),
+		ok:      make([]bool, len(spec.Repos)),
+	}
 
 	for rr := range resultsCh {
 		if rr.err != nil {
-			failedCount++
-			if firstErr == nil {
-				firstErr = rr.err
+			summary.failedCount++
+			if summary.firstErr == nil {
+				summary.firstErr = rr.err
 			}
 			continue
 		}
-		results[rr.index] = rr.result
-		ok[rr.index] = true
+		summary.results[rr.index] = rr.result
+		summary.ok[rr.index] = true
 		if rr.result.State == status.StateAhead || rr.result.State == status.StateDiverged {
-			failureCode = 2
+			summary.failureCode = 2
 		}
 	}
+	return summary
+}
 
-	if firstErr != nil && !*continueOnError {
-		fmt.Fprintf(os.Stderr, "repoctl: %v\n", firstErr)
-		return 1
-	}
-
-	orderedResults := make([]status.Result, 0, len(spec.Repos)-failedCount)
-	for i, result := range results {
-		if ok[i] {
+func runStatus(spec config.Spec, summary checkSummary, jsonFlag bool) int {
+	orderedResults := make([]status.Result, 0, len(spec.Repos)-summary.failedCount)
+	for i, result := range summary.results {
+		if summary.ok[i] {
 			orderedResults = append(orderedResults, result)
 		}
 	}
 
-	if *jsonFlag {
-		if err := json.NewEncoder(os.Stdout).Encode(newJSONOutput(spec, results, ok)); err != nil {
+	if jsonFlag {
+		if err := json.NewEncoder(os.Stdout).Encode(newJSONOutput(spec, summary.results, summary.ok)); err != nil {
 			fmt.Fprintf(os.Stderr, "repoctl: write json: %v\n", err)
 			return 1
 		}
@@ -144,15 +169,37 @@ func run(args []string) int {
 		}
 	}
 
-	if firstErr != nil {
-		fmt.Fprintf(os.Stderr, "repoctl: %d repos failed; continuing due to --continue-on-error\n", failedCount)
-		if failureCode == 2 {
+	if summary.firstErr != nil {
+		fmt.Fprintf(os.Stderr, "repoctl: %d repos failed; continuing due to --continue-on-error\n", summary.failedCount)
+		if summary.failureCode == 2 {
 			return 2
 		}
 		return 1
 	}
 
-	return failureCode
+	return summary.failureCode
+}
+
+func runPlan(spec config.Spec, summary checkSummary, jsonFlag bool) int {
+	planOutput := plan.NewOutput(spec, summary.results, summary.ok)
+	if jsonFlag {
+		if err := json.NewEncoder(os.Stdout).Encode(planOutput); err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: write json: %v\n", err)
+			return 1
+		}
+	} else {
+		printPlan(planOutput)
+	}
+
+	if summary.firstErr != nil {
+		fmt.Fprintf(os.Stderr, "repoctl: %d repos failed; continuing due to --continue-on-error\n", summary.failedCount)
+		if summary.failureCode == 2 {
+			return 2
+		}
+		return 1
+	}
+
+	return summary.failureCode
 }
 
 func newJSONOutput(spec config.Spec, results []status.Result, ok []bool) jsonOutput {
@@ -200,5 +247,18 @@ func printHuman(result status.Result) {
 		fmt.Printf("  state:     %s (behind %d, ahead %d)\n", result.State, result.Behind, result.Ahead)
 	default:
 		fmt.Printf("  state:     %s\n", result.State)
+	}
+}
+
+func printPlan(output plan.Output) {
+	for _, repoPlan := range output.Plan {
+		fmt.Println(repoPlan.ID)
+		if len(repoPlan.Actions) == 0 {
+			fmt.Println("  no changes")
+			continue
+		}
+		for _, action := range repoPlan.Actions {
+			fmt.Printf("  %s %s: behind %d\n", action.Type, action.Target, action.Behind)
+		}
 	}
 }

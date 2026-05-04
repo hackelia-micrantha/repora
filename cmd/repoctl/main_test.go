@@ -163,6 +163,62 @@ func TestStatusJSONMatchesDocumentedShape(t *testing.T) {
 	}
 }
 
+func TestPlanJSONIncludesPushMirrorActionForBehindMirror(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"plan", "-f", configPath, "--json"})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+
+	var got struct {
+		Plan []struct {
+			ID      string `json:"id"`
+			Actions []struct {
+				Type        string `json:"type"`
+				Target      string `json:"target"`
+				Behind      int    `json:"behind"`
+				Destructive bool   `json:"destructive"`
+			} `json:"actions"`
+		} `json:"plan"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal json: %v\n%s", err, stdout.String())
+	}
+	if len(got.Plan) != 1 {
+		t.Fatalf("plan count = %d, want 1", len(got.Plan))
+	}
+	repoPlan := got.Plan[0]
+	if repoPlan.ID != "payments-api" {
+		t.Fatalf("plan id = %q, want payments-api", repoPlan.ID)
+	}
+	if len(repoPlan.Actions) != 1 {
+		t.Fatalf("action count = %d, want 1", len(repoPlan.Actions))
+	}
+	action := repoPlan.Actions[0]
+	if action.Type != "PUSH_MIRROR" || action.Target != "github" || action.Behind != 3 || action.Destructive {
+		t.Fatalf("action = %#v, want non-destructive PUSH_MIRROR to github behind 3", action)
+	}
+}
+
 func writeConfig(t *testing.T, data string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "repora.yaml")
