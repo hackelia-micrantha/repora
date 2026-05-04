@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 
@@ -41,7 +42,9 @@ func Load(path string) (Spec, error) {
 
 func parse(data []byte) (Spec, error) {
 	var spec Spec
-	if err := yaml.Unmarshal(data, &spec); err != nil {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(&spec); err != nil {
 		return Spec{}, fmt.Errorf("parse config: %w", err)
 	}
 	return spec, nil
