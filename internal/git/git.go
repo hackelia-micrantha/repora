@@ -15,6 +15,8 @@ type Client struct{}
 
 const defaultGitTimeout = 30 * time.Second
 
+var gitTimeout = defaultGitTimeout
+
 func MirrorPath(id string) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -103,7 +105,7 @@ func output(repoPath string, args ...string) (string, error) {
 }
 
 func gitCommand(repoPath string, args ...string) (*exec.Cmd, context.CancelFunc) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultGitTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), gitTimeout)
 	if repoPath != "" {
 		args = append([]string{"-C", repoPath}, args...)
 	}
