@@ -55,6 +55,36 @@ func TestLoadRejectsMoreThanOneMirror(t *testing.T) {
 	}
 }
 
+func TestLoadAllowsMultipleRepos(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "repora.yaml")
+	writeFile(t, path, []byte(`repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+    mode: mirror
+  - id: auth-service
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/auth-service.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/auth-service.git
+    mode: mirror
+`))
+
+	spec, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if len(spec.Repos) != 2 {
+		t.Fatalf("repo count = %d, want 2", len(spec.Repos))
+	}
+}
+
 func TestLoadDefaultsModeToMirror(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "repora.yaml")
 	writeFile(t, path, []byte(`repos:

@@ -39,25 +39,32 @@ func run(args []string) int {
 		return 1
 	}
 
-	result, err := status.Check(spec.Repos[0], gitwrap.Client{})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "repoctl: %v\n", err)
-		return 1
+	results := make([]status.Result, 0, len(spec.Repos))
+	code := 0
+	for _, repo := range spec.Repos {
+		result, err := status.Check(repo, gitwrap.Client{})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: %v\n", err)
+			return 1
+		}
+		results = append(results, result)
+		if result.State == status.StateAhead || result.State == status.StateDiverged {
+			code = 2
+		}
 	}
 
 	if *jsonFlag {
-		if err := json.NewEncoder(os.Stdout).Encode(jsonOutput{Repos: []status.Result{result}}); err != nil {
+		if err := json.NewEncoder(os.Stdout).Encode(jsonOutput{Repos: results}); err != nil {
 			fmt.Fprintf(os.Stderr, "repoctl: write json: %v\n", err)
 			return 1
 		}
 	} else {
-		printHuman(result)
+		for _, result := range results {
+			printHuman(result)
+		}
 	}
 
-	if result.State == status.StateAhead || result.State == status.StateDiverged {
-		return 2
-	}
-	return 0
+	return code
 }
 
 func printHuman(result status.Result) {

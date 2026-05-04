@@ -48,28 +48,29 @@ func parse(data []byte) (Spec, error) {
 }
 
 func validate(spec Spec) error {
-	if len(spec.Repos) != 1 {
-		return fmt.Errorf("SCHEMA-0001 requires exactly one repo, got %d", len(spec.Repos))
+	if len(spec.Repos) == 0 {
+		return fmt.Errorf("SCHEMA-0001 requires at least one repo")
 	}
-	repo := spec.Repos[0]
-	if repo.ID == "" {
-		return fmt.Errorf("repo id is required")
+	for i, repo := range spec.Repos {
+		if repo.ID == "" {
+			return fmt.Errorf("repo id is required for repos[%d]", i)
+		}
+		if repo.Canonical.Provider == "" || repo.Canonical.URL == "" {
+			return fmt.Errorf("canonical provider and url are required for repo %q", repo.ID)
+		}
+		if len(repo.Mirrors) != 1 {
+			return fmt.Errorf("SCHEMA-0001 requires exactly one mirror for repo %q, got %d", repo.ID, len(repo.Mirrors))
+		}
+		if repo.Mirrors[0].Provider == "" || repo.Mirrors[0].URL == "" {
+			return fmt.Errorf("mirror provider and url are required for repo %q", repo.ID)
+		}
+		if repo.Mode == "" {
+			repo.Mode = "mirror"
+		}
+		if repo.Mode != "mirror" {
+			return fmt.Errorf("unsupported mode %q for repo %q: only mirror is supported", repo.Mode, repo.ID)
+		}
+		spec.Repos[i] = repo
 	}
-	if repo.Canonical.Provider == "" || repo.Canonical.URL == "" {
-		return fmt.Errorf("canonical provider and url are required")
-	}
-	if len(repo.Mirrors) != 1 {
-		return fmt.Errorf("SCHEMA-0001 requires exactly one mirror, got %d", len(repo.Mirrors))
-	}
-	if repo.Mirrors[0].Provider == "" || repo.Mirrors[0].URL == "" {
-		return fmt.Errorf("mirror provider and url are required")
-	}
-	if repo.Mode == "" {
-		repo.Mode = "mirror"
-	}
-	if repo.Mode != "mirror" {
-		return fmt.Errorf("unsupported mode %q: only mirror is supported", repo.Mode)
-	}
-	spec.Repos[0] = repo
 	return nil
 }
