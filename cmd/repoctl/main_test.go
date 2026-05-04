@@ -325,6 +325,84 @@ func TestApplyHumanOutputPushesBehindMirror(t *testing.T) {
 	}
 }
 
+func TestApplyHumanOutputWritesProgressToStderr(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	oldApply := applyRepo
+	applyRepo = func(repo config.Repo, result status.Result, force bool) (apply.RepoApply, error) {
+		return apply.RepoApply{
+			ID:      repo.ID,
+			Actions: []apply.Action{{Type: "PUSH_MIRROR", Target: repo.Mirrors[0].Provider}},
+		}, nil
+	}
+	t.Cleanup(func() { applyRepo = oldApply })
+
+	var stderr bytes.Buffer
+	code := withStderr(t, &stderr, func() int {
+		return run([]string{"apply", "-f", configPath})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	if got := stderr.String(); got != "repoctl: applying payments-api\n" {
+		t.Fatalf("stderr = %q, want progress line", got)
+	}
+}
+
+func TestApplyJSONSuppressesProgress(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	oldApply := applyRepo
+	applyRepo = func(repo config.Repo, result status.Result, force bool) (apply.RepoApply, error) {
+		return apply.RepoApply{
+			ID:      repo.ID,
+			Actions: []apply.Action{{Type: "PUSH_MIRROR", Target: repo.Mirrors[0].Provider}},
+		}, nil
+	}
+	t.Cleanup(func() { applyRepo = oldApply })
+
+	var stderr bytes.Buffer
+	code := withStderr(t, &stderr, func() int {
+		return run([]string{"apply", "-f", configPath, "--json"})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want no progress for JSON output", stderr.String())
+	}
+}
+
 func TestApplyRefusesUnsafeMirrorBeforeSideEffects(t *testing.T) {
 	configPath := writeConfig(t, `repos:
   - id: payments-api

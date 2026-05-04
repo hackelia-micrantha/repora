@@ -138,7 +138,7 @@ Repora v0.1 focuses on:
 - [x] Add `--force` flag for risky operations
 - [x] Implement auth model (delegate to system Git per ADR-0005)
 - [x] Secure token handling (no in-process token handling in v0.1)
-- [ ] Add progress indicators (e.g., for long fetches)
+- [x] Add progress indicators (e.g., for long fetches)
 - [x] Implement concurrency limits for apply
 
 ### Week 13: Templating Prototype

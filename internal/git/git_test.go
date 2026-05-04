@@ -2,6 +2,7 @@ package git
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -153,10 +154,14 @@ func TestRunTimesOutGitCommand(t *testing.T) {
 func writeFakeGit(t *testing.T, binDir string) {
 	t.Helper()
 	if runtime.GOOS == "windows" {
-		path := filepath.Join(binDir, "git.bat")
-		data := []byte("@echo off\r\nping -n 4 127.0.0.1 >nul\r\n")
-		if err := os.WriteFile(path, data, 0o700); err != nil {
-			t.Fatalf("write fake git: %v", err)
+		sourcePath := filepath.Join(binDir, "fake_git.go")
+		source := []byte("package main\n\nimport \"time\"\n\nfunc main() {\n\ttime.Sleep(3 * time.Second)\n}\n")
+		if err := os.WriteFile(sourcePath, source, 0o600); err != nil {
+			t.Fatalf("write fake git source: %v", err)
+		}
+		cmd := exec.Command("go", "build", "-o", filepath.Join(binDir, "git.exe"), sourcePath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("build fake git: %v: %s", err, out)
 		}
 		return
 	}

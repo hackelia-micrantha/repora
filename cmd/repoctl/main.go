@@ -66,6 +66,10 @@ var applyRepo = func(repo config.Repo, result status.Result, force bool) (apply.
 	return apply.Execute(repo, result, gitwrap.Client{}, force)
 }
 
+var progressf = func(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, format, args...)
+}
+
 func main() {
 	os.Exit(run(os.Args[1:]))
 }
@@ -235,7 +239,7 @@ func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool,
 		}
 	}
 
-	output, err := applyRepos(spec, summary, force, parallel)
+	output, err := applyRepos(spec, summary, force, parallel, !jsonFlag)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "repoctl: %v\n", err)
 		return 1
@@ -252,7 +256,7 @@ func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool,
 	return 0
 }
 
-func applyRepos(spec config.Spec, summary checkSummary, force bool, parallel int) (apply.Output, error) {
+func applyRepos(spec config.Spec, summary checkSummary, force bool, parallel int, progress bool) (apply.Output, error) {
 	if parallel < 1 {
 		parallel = 1
 	}
@@ -273,6 +277,9 @@ func applyRepos(spec config.Spec, summary checkSummary, force bool, parallel int
 			defer wg.Done()
 			defer func() { <-sem }()
 
+			if progress {
+				progressf("repoctl: applying %s\n", repo.ID)
+			}
 			repoApply, err := applyRepo(repo, summary.results[i], force)
 			resultsCh <- applyResult{index: i, result: repoApply, err: err}
 		}()
