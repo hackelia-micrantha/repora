@@ -170,17 +170,18 @@ Repora assumes repository mutation is a privileged operation.
 Core security principles:
 
 * Principle of least privilege
-* Token-scoped operations
+* Authentication delegated to system Git in v0.1
 * Explicit mutation boundaries
 * No implicit side effects
 * Reviewable plans before mutation
+* No credentials stored in `repora.yaml`
 
 ### Threat considerations
 
 * Supply-chain injection via templates
 * Unauthorized repository mutation
 * Drift masking malicious changes
-* Over-broad CI/CD token permissions
+* Over-broad Git credential permissions
 * Unsafe plugin execution
 
 ### Planned mitigations

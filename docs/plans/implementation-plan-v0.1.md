@@ -137,7 +137,7 @@ Repora v0.1 focuses on:
 ### Week 12: Safety Features
 - [x] Add `--force` flag for risky operations
 - [x] Implement auth model (delegate to system Git per ADR-0005)
-- [ ] Secure token handling (no logging, env var validation)
+- [x] Secure token handling (no in-process token handling in v0.1)
 - [ ] Add progress indicators (e.g., for long fetches)
 - [x] Implement concurrency limits for apply
 
