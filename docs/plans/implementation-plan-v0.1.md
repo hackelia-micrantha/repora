@@ -66,7 +66,7 @@ Repora v0.1 focuses on:
 - [x] Add 30s timeout to Git operations in `git.go` (use context.WithTimeout)
 - [x] Implement recovery for corrupted caches (detect and re-clone)
 - [x] Update error model per SPEC-0006 (clear error messages)
-- [ ] Add logging for debug info
+- [x] Add logging for debug info
 - [x] Test timeout behavior and error scenarios
 
 ## Phase 2: Multi-Repository Support and Validation (Weeks 5-7)

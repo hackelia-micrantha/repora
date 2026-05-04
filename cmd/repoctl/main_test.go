@@ -165,6 +165,46 @@ func TestStatusJSONMatchesDocumentedShape(t *testing.T) {
 	}
 }
 
+func TestStatusDebugWritesRedactedLogsToStderr(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:secret/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:secret/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateEqual}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var stderr bytes.Buffer
+	code := withStderr(t, &stderr, func() int {
+		return run([]string{"status", "-f", configPath, "--debug"})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	got := stderr.String()
+	for _, want := range []string{
+		"repoctl: debug command=status repos=1 parallel=5\n",
+		"repoctl: debug checking repo=payments-api\n",
+		"repoctl: debug checked repo=payments-api state=EQUAL\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("stderr = %q, missing debug line %q", got, want)
+		}
+	}
+	if strings.Contains(got, "secret") || strings.Contains(got, "git@") {
+		t.Fatalf("stderr = %q, want debug output to omit remote URLs", got)
+	}
+}
+
 func TestPlanJSONIncludesPushMirrorActionForBehindMirror(t *testing.T) {
 	configPath := writeConfig(t, `repos:
   - id: payments-api

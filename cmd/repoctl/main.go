@@ -70,6 +70,10 @@ var progressf = func(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, format, args...)
 }
 
+var debugf = func(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, format, args...)
+}
+
 func main() {
 	os.Exit(run(os.Args[1:]))
 }
@@ -93,6 +97,7 @@ func run(args []string) int {
 	parallelFlag := flags.Int("parallel", 5, "max number of concurrent repository checks")
 	continueOnError := flags.Bool("continue-on-error", false, "continue processing repos after an error")
 	force := flags.Bool("force", false, "overwrite mirror refs from canonical when mirror is ahead or diverged")
+	debug := flags.Bool("debug", false, "print debug logs to stderr")
 
 	if err := flags.Parse(args[1:]); err != nil {
 		return 1
@@ -109,7 +114,10 @@ func run(args []string) int {
 		parallel = 1
 	}
 
-	summary := checkRepos(spec, parallel)
+	if *debug {
+		debugf("repoctl: debug command=%s repos=%d parallel=%d\n", command, len(spec.Repos), parallel)
+	}
+	summary := checkRepos(spec, parallel, *debug)
 	if summary.firstErr != nil && !*continueOnError {
 		fmt.Fprintf(os.Stderr, "repoctl: %v\n", summary.firstErr)
 		return 1
@@ -127,7 +135,7 @@ func run(args []string) int {
 	}
 }
 
-func checkRepos(spec config.Spec, parallel int) checkSummary {
+func checkRepos(spec config.Spec, parallel int, debug bool) checkSummary {
 	sem := make(chan struct{}, parallel)
 	resultsCh := make(chan repoResult, len(spec.Repos))
 	var wg sync.WaitGroup
@@ -141,6 +149,9 @@ func checkRepos(spec config.Spec, parallel int) checkSummary {
 			defer wg.Done()
 			defer func() { <-sem }()
 
+			if debug {
+				debugf("repoctl: debug checking repo=%s\n", repo.ID)
+			}
 			result, err := statusCheck(repo)
 			resultsCh <- repoResult{index: i, result: result, err: err}
 		}()
@@ -166,6 +177,9 @@ func checkRepos(spec config.Spec, parallel int) checkSummary {
 		}
 		summary.results[rr.index] = rr.result
 		summary.ok[rr.index] = true
+		if debug {
+			debugf("repoctl: debug checked repo=%s state=%s\n", spec.Repos[rr.index].ID, rr.result.State)
+		}
 		if rr.result.State == status.StateAhead || rr.result.State == status.StateDiverged {
 			summary.failureCode = 2
 		}
