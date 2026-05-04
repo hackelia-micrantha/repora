@@ -69,7 +69,7 @@ func (Client) ConfigureRemote(repoPath, name, url string) error {
 }
 
 func (Client) Fetch(repoPath, name string) error {
-	return run(repoPath, "fetch", name)
+	return run(repoPath, "fetch", "--prune", name)
 }
 
 func (Client) SyncMirrorFromRemote(repoPath, remote string) error {

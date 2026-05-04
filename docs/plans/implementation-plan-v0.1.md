@@ -55,7 +55,7 @@ Repora v0.1 focuses on:
 - [ ] Update config_test.go with YAML tests
 
 ### Week 2-3: Complete Status Logic
-- [ ] Finish `Check()` in `status.go`: Implement fetch operations
+- [x] Finish `Check()` in `status.go`: Implement fetch operations
 - [ ] Add divergence detection using `RevListLeftRightCount`
 - [ ] Handle ahead/behind counts accurately
 - [ ] Add error handling for auth failures and invalid repos
@@ -67,7 +67,7 @@ Repora v0.1 focuses on:
 - [ ] Implement recovery for corrupted caches (detect and re-clone)
 - [ ] Update error model per SPEC-0006 (clear error messages)
 - [ ] Add logging for debug info
-- [ ] Test timeout behavior and error scenarios
+- [x] Test timeout behavior and error scenarios
 
 ## Phase 2: Multi-Repository Support and Validation (Weeks 5-7)
 
