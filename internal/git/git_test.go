@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -54,6 +55,77 @@ func TestEnsureMirrorKeepsValidMirror(t *testing.T) {
 	}
 	if err := client.EnsureMirror(mirrorDir, sourceDir); err != nil {
 		t.Fatalf("second EnsureMirror returned error: %v", err)
+	}
+}
+
+func TestSyncMirrorFromRemoteAndPushMirrorCopiesCanonicalRefs(t *testing.T) {
+	repoDir := t.TempDir()
+	workDir := filepath.Join(repoDir, "work")
+	canonicalDir := filepath.Join(repoDir, "canonical.git")
+	mirrorDir := filepath.Join(repoDir, "mirror.git")
+	cacheDir := filepath.Join(repoDir, "cache.git")
+
+	if err := run("", "init", workDir); err != nil {
+		t.Fatalf("init work repo: %v", err)
+	}
+	if err := run(workDir, "config", "user.email", "repora@example.invalid"); err != nil {
+		t.Fatalf("configure user email: %v", err)
+	}
+	if err := run(workDir, "config", "user.name", "Repora Test"); err != nil {
+		t.Fatalf("configure user name: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(workDir, "README.md"), []byte("initial\n"), 0o600); err != nil {
+		t.Fatalf("write readme: %v", err)
+	}
+	if err := run(workDir, "add", "README.md"); err != nil {
+		t.Fatalf("add readme: %v", err)
+	}
+	if err := run(workDir, "commit", "-m", "initial"); err != nil {
+		t.Fatalf("commit initial: %v", err)
+	}
+	if err := run(workDir, "branch", "-M", "main"); err != nil {
+		t.Fatalf("rename branch: %v", err)
+	}
+	if err := run("", "init", "--bare", canonicalDir); err != nil {
+		t.Fatalf("init canonical repo: %v", err)
+	}
+	if err := run("", "init", "--bare", mirrorDir); err != nil {
+		t.Fatalf("init mirror repo: %v", err)
+	}
+	if err := run(workDir, "remote", "add", "origin", canonicalDir); err != nil {
+		t.Fatalf("add origin: %v", err)
+	}
+	if err := run(workDir, "push", "origin", "main"); err != nil {
+		t.Fatalf("push canonical: %v", err)
+	}
+
+	client := Client{}
+	if err := client.EnsureMirror(cacheDir, canonicalDir); err != nil {
+		t.Fatalf("EnsureMirror returned error: %v", err)
+	}
+	if err := client.ConfigureRemote(cacheDir, "canonical", canonicalDir); err != nil {
+		t.Fatalf("ConfigureRemote canonical returned error: %v", err)
+	}
+	if err := client.ConfigureRemote(cacheDir, "mirror", mirrorDir); err != nil {
+		t.Fatalf("ConfigureRemote mirror returned error: %v", err)
+	}
+	if err := client.SyncMirrorFromRemote(cacheDir, "canonical"); err != nil {
+		t.Fatalf("SyncMirrorFromRemote returned error: %v", err)
+	}
+	if err := client.PushMirror(cacheDir, "mirror"); err != nil {
+		t.Fatalf("PushMirror returned error: %v", err)
+	}
+
+	canonicalHead, err := output(canonicalDir, "rev-parse", "refs/heads/main")
+	if err != nil {
+		t.Fatalf("rev-parse canonical main: %v", err)
+	}
+	mirrorHead, err := output(mirrorDir, "rev-parse", "refs/heads/main")
+	if err != nil {
+		t.Fatalf("rev-parse mirror main: %v", err)
+	}
+	if strings.TrimSpace(mirrorHead) != strings.TrimSpace(canonicalHead) {
+		t.Fatalf("mirror main = %q, want canonical %q", strings.TrimSpace(mirrorHead), strings.TrimSpace(canonicalHead))
 	}
 }
 

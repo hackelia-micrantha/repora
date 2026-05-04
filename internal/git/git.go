@@ -72,6 +72,10 @@ func (Client) Fetch(repoPath, name string) error {
 	return run(repoPath, "fetch", name)
 }
 
+func (Client) SyncMirrorFromRemote(repoPath, remote string) error {
+	return run(repoPath, "fetch", "--prune", remote, "+refs/*:refs/*")
+}
+
 func (Client) SetRemoteHead(repoPath, name string) error {
 	return run(repoPath, "remote", "set-head", name, "-a")
 }
@@ -82,6 +86,10 @@ func (Client) RevListLeftRightCount(repoPath, left, right string) (string, error
 
 func (Client) RevParseShort(repoPath, rev string) (string, error) {
 	return output(repoPath, "rev-parse", "--short", rev)
+}
+
+func (Client) PushMirror(repoPath, remote string) error {
+	return run(repoPath, "push", "--mirror", remote)
 }
 
 func run(repoPath string, args ...string) error {

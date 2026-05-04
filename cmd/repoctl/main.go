@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 
+	"repoctl/internal/apply"
 	"repoctl/internal/config"
 	gitwrap "repoctl/internal/git"
 	"repoctl/internal/plan"
@@ -55,6 +56,10 @@ var statusCheck = func(repo config.Repo) (status.Result, error) {
 	return status.Check(repo, gitwrap.Client{})
 }
 
+var applyRepo = func(repo config.Repo, result status.Result, force bool) (apply.RepoApply, error) {
+	return apply.Execute(repo, result, gitwrap.Client{}, force)
+}
+
 func main() {
 	os.Exit(run(os.Args[1:]))
 }
@@ -66,11 +71,7 @@ func run(args []string) int {
 	}
 
 	command := args[0]
-	if command == "apply" || command == "sync" {
-		fmt.Fprintf(os.Stderr, "repoctl %s is not implemented\n", command)
-		return 1
-	}
-	if command != "status" && command != "plan" {
+	if command != "status" && command != "plan" && command != "apply" && command != "sync" {
 		fmt.Fprintln(os.Stderr, "usage: repoctl <status|plan|apply|sync> -f repora.yaml [--json] [--parallel N] [--continue-on-error]")
 		return 1
 	}
@@ -81,6 +82,7 @@ func run(args []string) int {
 	jsonFlag := flags.Bool("json", false, "print JSON")
 	parallelFlag := flags.Int("parallel", 5, "max number of concurrent repository checks")
 	continueOnError := flags.Bool("continue-on-error", false, "continue processing repos after an error")
+	force := flags.Bool("force", false, "overwrite mirror refs from canonical when mirror is ahead or diverged")
 
 	if err := flags.Parse(args[1:]); err != nil {
 		return 1
@@ -108,6 +110,8 @@ func run(args []string) int {
 		return runStatus(spec, summary, *jsonFlag)
 	case "plan":
 		return runPlan(spec, summary, *jsonFlag)
+	case "apply", "sync":
+		return runApply(spec, summary, *jsonFlag, *force)
 	default:
 		panic("unreachable command validation")
 	}
@@ -211,6 +215,44 @@ func runPlan(spec config.Spec, summary checkSummary, jsonFlag bool) int {
 	return summary.failureCode
 }
 
+func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool) int {
+	if summary.firstErr != nil && !force {
+		fmt.Fprintf(os.Stderr, "repoctl: %d repos failed; refusing apply\n", summary.failedCount)
+		return 1
+	}
+	if !force {
+		for i, result := range summary.results {
+			if summary.ok[i] && apply.IsUnsafe(result) {
+				fmt.Fprintf(os.Stderr, "repoctl: repo %q mirror state is %s; rerun apply with --force to overwrite mirror from canonical\n", spec.Repos[i].ID, result.State)
+				return 2
+			}
+		}
+	}
+
+	output := apply.Output{Apply: make([]apply.RepoApply, 0, len(spec.Repos)-summary.failedCount)}
+	for i, repo := range spec.Repos {
+		if !summary.ok[i] {
+			continue
+		}
+		repoApply, err := applyRepo(repo, summary.results[i], force)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: %v\n", err)
+			return 1
+		}
+		output.Apply = append(output.Apply, repoApply)
+	}
+
+	if jsonFlag {
+		if err := json.NewEncoder(os.Stdout).Encode(output); err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: write json: %v\n", err)
+			return 1
+		}
+	} else {
+		printApply(output)
+	}
+	return 0
+}
+
 func newJSONOutput(spec config.Spec, results []status.Result, ok []bool) jsonOutput {
 	out := jsonOutput{Repos: make([]jsonRepo, 0, len(spec.Repos))}
 	for i, repo := range spec.Repos {
@@ -268,6 +310,23 @@ func printPlan(output plan.Output) {
 		}
 		for _, action := range repoPlan.Actions {
 			fmt.Printf("  push mirror %s: %d commits\n", action.Target, action.Behind)
+		}
+	}
+}
+
+func printApply(output apply.Output) {
+	for _, repoApply := range output.Apply {
+		fmt.Println(repoApply.ID)
+		if len(repoApply.Actions) == 0 {
+			fmt.Println("  no changes")
+			continue
+		}
+		for _, action := range repoApply.Actions {
+			if action.Destructive {
+				fmt.Printf("  force push mirror %s\n", action.Target)
+				continue
+			}
+			fmt.Printf("  push mirror %s\n", action.Target)
 		}
 	}
 }

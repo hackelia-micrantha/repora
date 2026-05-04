@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"repoctl/internal/apply"
 	"repoctl/internal/config"
 	"repoctl/internal/status"
 )
@@ -281,17 +282,86 @@ func TestPlanHumanOutputShowsNoChangesForEqualMirror(t *testing.T) {
 	}
 }
 
-func TestApplyCommandReportsNotImplemented(t *testing.T) {
-	var stderr bytes.Buffer
-	code := withStderr(t, &stderr, func() int {
-		return run([]string{"apply"})
+func TestApplyHumanOutputPushesBehindMirror(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	oldApply := applyRepo
+	applyRepo = func(repo config.Repo, result status.Result, force bool) (apply.RepoApply, error) {
+		return apply.RepoApply{
+			ID: repo.ID,
+			Actions: []apply.Action{
+				{Type: "PUSH_MIRROR", Target: repo.Mirrors[0].Provider},
+			},
+		}, nil
+	}
+	t.Cleanup(func() { applyRepo = oldApply })
+
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"apply", "-f", configPath})
 	})
 
-	if code != 1 {
-		t.Fatalf("run returned %d, want 1", code)
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
 	}
-	if !strings.Contains(stderr.String(), "repoctl apply is not implemented") {
-		t.Fatalf("stderr = %q, want apply not implemented message", stderr.String())
+	want := "payments-api\n  push mirror github\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+}
+
+func TestApplyRefusesUnsafeMirrorBeforeSideEffects(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateDiverged, Ahead: 1, Behind: 2}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	oldApply := applyRepo
+	applyCalled := false
+	applyRepo = func(repo config.Repo, result status.Result, force bool) (apply.RepoApply, error) {
+		applyCalled = true
+		return apply.RepoApply{}, nil
+	}
+	t.Cleanup(func() { applyRepo = oldApply })
+
+	var stderr bytes.Buffer
+	code := withStderr(t, &stderr, func() int {
+		return run([]string{"apply", "-f", configPath})
+	})
+
+	if code != 2 {
+		t.Fatalf("run returned %d, want 2", code)
+	}
+	if applyCalled {
+		t.Fatal("applyRepo was called, want unsafe state rejected before side effects")
+	}
+	if !strings.Contains(stderr.String(), "--force") {
+		t.Fatalf("stderr = %q, want --force guidance", stderr.String())
 	}
 }
 

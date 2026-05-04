@@ -128,14 +128,14 @@ Repora v0.1 focuses on:
 **Success Criteria**: Full sync workflow works safely.
 
 ### Week 11: Apply Logic
-- [ ] Add `apply` subcommand in `main.go`
-- [ ] Create `internal/apply` package
-- [ ] Implement push to mirrors (unidirectional per ADR-0002)
-- [ ] Only proceed if status is safe (no divergence)
-- [ ] Add apply-specific Result struct
+- [x] Add `apply` subcommand in `main.go`
+- [x] Create `internal/apply` package
+- [x] Implement push to mirrors (unidirectional per ADR-0002)
+- [x] Only proceed if status is safe (no divergence)
+- [x] Add apply-specific Result struct
 
 ### Week 12: Safety Features
-- [ ] Add `--force` flag for risky operations
+- [x] Add `--force` flag for risky operations
 - [ ] Implement auth model (tokens via env vars per ADR-0005)
 - [ ] Secure token handling (no logging, env var validation)
 - [ ] Add progress indicators (e.g., for long fetches)
