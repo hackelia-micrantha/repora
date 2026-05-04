@@ -51,10 +51,15 @@ func validate(spec Spec) error {
 	if len(spec.Repos) == 0 {
 		return fmt.Errorf("SCHEMA-0001 requires at least one repo")
 	}
+	seenIDs := make(map[string]struct{}, len(spec.Repos))
 	for i, repo := range spec.Repos {
 		if repo.ID == "" {
 			return fmt.Errorf("repo id is required for repos[%d]", i)
 		}
+		if _, ok := seenIDs[repo.ID]; ok {
+			return fmt.Errorf("duplicate repo id %q", repo.ID)
+		}
+		seenIDs[repo.ID] = struct{}{}
 		if repo.Canonical.Provider == "" || repo.Canonical.URL == "" {
 			return fmt.Errorf("canonical provider and url are required for repo %q", repo.ID)
 		}
