@@ -13,7 +13,27 @@ import (
 )
 
 type jsonOutput struct {
-	Repos []status.Result `json:"repos"`
+	Repos []jsonRepo `json:"repos"`
+}
+
+type jsonRepo struct {
+	ID        string       `json:"id"`
+	Canonical jsonRef      `json:"canonical"`
+	Mirrors   []jsonMirror `json:"mirrors"`
+}
+
+type jsonRef struct {
+	Ref    string `json:"ref"`
+	Commit string `json:"commit"`
+}
+
+type jsonMirror struct {
+	Provider string       `json:"provider"`
+	Ref      string       `json:"ref"`
+	Commit   string       `json:"commit"`
+	State    status.State `json:"state"`
+	Ahead    int          `json:"ahead"`
+	Behind   int          `json:"behind"`
 }
 
 type repoResult struct {
@@ -114,7 +134,7 @@ func run(args []string) int {
 	}
 
 	if *jsonFlag {
-		if err := json.NewEncoder(os.Stdout).Encode(jsonOutput{Repos: orderedResults}); err != nil {
+		if err := json.NewEncoder(os.Stdout).Encode(newJSONOutput(spec, results, ok)); err != nil {
 			fmt.Fprintf(os.Stderr, "repoctl: write json: %v\n", err)
 			return 1
 		}
@@ -133,6 +153,34 @@ func run(args []string) int {
 	}
 
 	return failureCode
+}
+
+func newJSONOutput(spec config.Spec, results []status.Result, ok []bool) jsonOutput {
+	out := jsonOutput{Repos: make([]jsonRepo, 0, len(spec.Repos))}
+	for i, repo := range spec.Repos {
+		if !ok[i] {
+			continue
+		}
+		result := results[i]
+		out.Repos = append(out.Repos, jsonRepo{
+			ID: repo.ID,
+			Canonical: jsonRef{
+				Ref:    "HEAD",
+				Commit: result.Canonical,
+			},
+			Mirrors: []jsonMirror{
+				{
+					Provider: repo.Mirrors[0].Provider,
+					Ref:      "HEAD",
+					Commit:   result.Mirror,
+					State:    result.State,
+					Ahead:    result.Ahead,
+					Behind:   result.Behind,
+				},
+			},
+		})
+	}
+	return out
 }
 
 func printHuman(result status.Result) {

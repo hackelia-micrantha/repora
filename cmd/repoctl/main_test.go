@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -86,6 +87,79 @@ func TestStatusStopsPrintingWhenRepoFailsWithoutContinueOnError(t *testing.T) {
 	}
 	if stdout.Len() != 0 {
 		t.Fatalf("stdout = %q, want empty output on failure", stdout.String())
+	}
+}
+
+func TestStatusJSONMatchesDocumentedShape(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{
+			ID:        repo.ID,
+			State:     status.StateBehind,
+			Ahead:     0,
+			Behind:    3,
+			Canonical: "abc1234",
+			Mirror:    "def5678",
+		}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"status", "-f", configPath, "--json"})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+
+	var got struct {
+		Repos []struct {
+			ID        string `json:"id"`
+			Canonical struct {
+				Ref    string `json:"ref"`
+				Commit string `json:"commit"`
+			} `json:"canonical"`
+			Mirrors []struct {
+				Provider string       `json:"provider"`
+				Ref      string       `json:"ref"`
+				Commit   string       `json:"commit"`
+				State    status.State `json:"state"`
+				Ahead    int          `json:"ahead"`
+				Behind   int          `json:"behind"`
+			} `json:"mirrors"`
+		} `json:"repos"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal json: %v\n%s", err, stdout.String())
+	}
+
+	if len(got.Repos) != 1 {
+		t.Fatalf("repo count = %d, want 1", len(got.Repos))
+	}
+	repo := got.Repos[0]
+	if repo.ID != "payments-api" || repo.Canonical.Ref != "HEAD" || repo.Canonical.Commit != "abc1234" {
+		t.Fatalf("canonical repo output = %#v", repo)
+	}
+	if len(repo.Mirrors) != 1 {
+		t.Fatalf("mirror count = %d, want 1", len(repo.Mirrors))
+	}
+	mirror := repo.Mirrors[0]
+	if mirror.Provider != "github" || mirror.Ref != "HEAD" || mirror.Commit != "def5678" {
+		t.Fatalf("mirror identity output = %#v", mirror)
+	}
+	if mirror.State != status.StateBehind || mirror.Ahead != 0 || mirror.Behind != 3 {
+		t.Fatalf("mirror status output = %#v", mirror)
 	}
 }
 
