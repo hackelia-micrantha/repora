@@ -1,0 +1,101 @@
+Business Source License 1.1
+
+Licensor: Micrantha Software
+Licensed Work: Repora / repoctl (including all associated source code, specifications, schemas, and tooling in this repository)
+
+Copyright (c) 2026 Micrantha Software. All rights reserved.
+
+---
+
+Terms
+
+The Licensor hereby grants you the right to copy, modify, create derivative works, and redistribute the Licensed Work, subject to the limitations described below.
+
+---
+
+Usage Grant
+
+You may use the Licensed Work for:
+
+- Personal use
+- Non-production use
+- Internal business use within a single organization (including use across multiple repositories and systems owned or controlled by that organization)
+
+---
+
+Restrictions
+
+You may NOT, without an explicit commercial license from the Licensor:
+
+1. Use the Licensed Work, or any derivative of it, to provide a hosted, managed, or SaaS offering where the Licensed Work is a primary or material component of the service
+
+2. Sell, sublicense, or otherwise commercially exploit the Licensed Work as a standalone product or as part of a competing product or platform
+
+3. Provide the Licensed Work as part of a commercial service offering where it is used to manage, orchestrate, or govern repositories, CI/CD systems, or development workflows for third parties
+
+4. Circumvent or attempt to circumvent any licensing, feature gating, or usage restrictions implemented by the Licensor
+
+---
+
+Additional Grant
+
+The Licensor may grant additional rights under separate commercial terms. Contact the Licensor for commercial licensing inquiries.
+
+---
+
+Change Date
+
+2029-01-01
+
+---
+
+Change License
+
+On the Change Date, this License will automatically convert to the Apache License, Version 2.0.
+
+---
+
+Redistribution Requirements
+
+If you redistribute the Licensed Work:
+
+- You must include a copy of this License
+- You must retain all copyright notices
+- You must clearly indicate any modifications made
+
+---
+
+Disclaimer
+
+THE LICENSED WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+---
+
+Limitation of Liability
+
+IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE LICENSED WORK OR THE USE OR OTHER DEALINGS IN THE LICENSED WORK.
+
+---
+
+Termination
+
+If you violate the terms of this License, your rights under this License will terminate automatically. Upon termination, you must cease all use of the Licensed Work.
+
+---
+
+Definitions
+
+"Licensed Work" means the software and associated materials provided under this License.
+
+"Internal Use" means use within a single legal entity or organization and not as a service for third parties.
+
+"Production Use" means use in a live environment serving real users, customers, or business operations.
+
+"SaaS Offering" means providing the functionality of the Licensed Work over a network to third parties.
+
+---
+
+Contact
+
+Micrantha Software
+https://micrantha.com
