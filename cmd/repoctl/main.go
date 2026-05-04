@@ -258,7 +258,7 @@ func printPlan(output plan.Output) {
 			continue
 		}
 		for _, action := range repoPlan.Actions {
-			fmt.Printf("  %s %s: behind %d\n", action.Type, action.Target, action.Behind)
+			fmt.Printf("  push mirror %s: %d commits\n", action.Target, action.Behind)
 		}
 	}
 }

@@ -219,6 +219,68 @@ func TestPlanJSONIncludesPushMirrorActionForBehindMirror(t *testing.T) {
 	}
 }
 
+func TestPlanHumanOutputDescribesMirrorPush(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"plan", "-f", configPath})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	want := "payments-api\n  push mirror github: 3 commits\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+}
+
+func TestPlanHumanOutputShowsNoChangesForEqualMirror(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateEqual}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"plan", "-f", configPath})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	want := "payments-api\n  no changes\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+}
+
 func writeConfig(t *testing.T, data string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "repora.yaml")
