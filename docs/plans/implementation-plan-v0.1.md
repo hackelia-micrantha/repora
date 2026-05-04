@@ -46,26 +46,26 @@ Repora v0.1 focuses on:
 **Success Criteria**: `repoctl status -f repora.yaml` works for one repo, outputs correct state.
 
 ### Week 1: Fix Config Parsing
-- [ ] Replace custom parser in `config.go` with `gopkg.in/yaml.v3`
-- [ ] Add YAML dependency: `go get gopkg.in/yaml.v3`
-- [ ] Run `go mod tidy` to update go.mod and go.sum
-- [ ] Update `parse()` function to use YAML unmarshaling
-- [ ] Update `validate()` function for basic schema checks
-- [ ] Test parsing with `testdata/repora.yaml`
-- [ ] Update config_test.go with YAML tests
+- [x] Replace custom parser in `config.go` with `gopkg.in/yaml.v3`
+- [x] Add YAML dependency: `go get gopkg.in/yaml.v3`
+- [x] Run `go mod tidy` to update go.mod and go.sum
+- [x] Update `parse()` function to use YAML unmarshaling
+- [x] Update `validate()` function for basic schema checks
+- [x] Test parsing with `testdata/repora.yaml`
+- [x] Update config_test.go with YAML tests
 
 ### Week 2-3: Complete Status Logic
 - [x] Finish `Check()` in `status.go`: Implement fetch operations
-- [ ] Add divergence detection using `RevListLeftRightCount`
-- [ ] Handle ahead/behind counts accurately
+- [x] Add divergence detection using `RevListLeftRightCount`
+- [x] Handle ahead/behind counts accurately
 - [ ] Add error handling for auth failures and invalid repos
-- [ ] Implement human-readable output in `main.go` (non-JSON mode)
-- [ ] Update status_test.go with unit tests for Check()
+- [x] Implement human-readable output in `main.go` (non-JSON mode)
+- [x] Update status_test.go with unit tests for Check()
 
 ### Week 4: Add Timeouts and Error Handling
-- [ ] Add 30s timeout to Git operations in `git.go` (use context.WithTimeout)
-- [ ] Implement recovery for corrupted caches (detect and re-clone)
-- [ ] Update error model per SPEC-0006 (clear error messages)
+- [x] Add 30s timeout to Git operations in `git.go` (use context.WithTimeout)
+- [x] Implement recovery for corrupted caches (detect and re-clone)
+- [x] Update error model per SPEC-0006 (clear error messages)
 - [ ] Add logging for debug info
 - [x] Test timeout behavior and error scenarios
 
@@ -76,24 +76,24 @@ Repora v0.1 focuses on:
 **Success Criteria**: Status works for full config file with multiple repos.
 
 ### Week 5: Multi-Repo Status
-- [ ] Modify `main.go` to iterate over `spec.Repos`
-- [ ] Add concurrency with goroutines (limit to 5 concurrent per ADR-0007)
-- [ ] Use sync.WaitGroup for aggregation
-- [ ] Update JSON output to include all repos
-- [ ] Handle partial failures gracefully
+- [x] Modify `main.go` to iterate over `spec.Repos`
+- [x] Add concurrency with goroutines (limit to 5 concurrent per ADR-0007)
+- [x] Use sync.WaitGroup for aggregation
+- [x] Update JSON output to include all repos
+- [x] Handle partial failures gracefully
 
 ### Week 6: Schema Validation
-- [ ] Enhance `validate()` in `config.go` for required fields (id, canonical, mirrors)
-- [ ] Add provider validation (only "gitlab" supported in v0.1)
-- [ ] Add mode validation (default to "mirror")
-- [ ] Implement explicit defaults for optional fields
-- [ ] Add validation tests in config_test.go
+- [x] Enhance `validate()` in `config.go` for required fields (id, canonical, mirrors)
+- [x] Add provider validation (only "gitlab" supported in v0.1)
+- [x] Add mode validation (default to "mirror")
+- [x] Implement explicit defaults for optional fields
+- [x] Add validation tests in config_test.go
 
 ### Week 7: Ref Resolution and Divergence
-- [ ] Implement remote HEAD resolution using `origin/HEAD`
-- [ ] Refine divergence classification (handle edge cases)
+- [x] Implement remote HEAD resolution using `origin/HEAD`
+- [x] Refine divergence classification (handle edge cases)
 - [ ] Add support for branch-specific checks (future-proof)
-- [ ] Update status tests for multi-repo scenarios
+- [x] Update status tests for multi-repo scenarios
 - [ ] Performance testing with mock repos
 
 ## Phase 3: Plan Command (Weeks 8-10)
@@ -103,11 +103,11 @@ Repora v0.1 focuses on:
 **Success Criteria**: `repoctl plan` shows safe changes without applying.
 
 ### Week 8: Plan Logic
-- [ ] Add `plan` subcommand parsing in `main.go`
-- [ ] Create `internal/plan` package
-- [ ] Implement diff generation per ADR-0010 (unified diff model)
-- [ ] Output human-readable plan (e.g., "Mirror will receive X commits")
-- [ ] Add plan-specific Result struct
+- [x] Add `plan` subcommand parsing in `main.go`
+- [x] Create `internal/plan` package
+- [x] Implement diff generation per ADR-0010 (unified diff model)
+- [x] Output human-readable plan (e.g., "Mirror will receive X commits")
+- [x] Add plan-specific Result struct
 
 ### Week 9: Dry-Run Mode
 - [ ] Add `--dry-run` flag to status and plan commands
@@ -116,10 +116,10 @@ Repora v0.1 focuses on:
 - [ ] Add tests for dry-run behavior
 
 ### Week 10: Partial Success Handling
-- [ ] For multi-repo, report per-repo status in JSON
-- [ ] Aggregate overall success/failure
-- [ ] Add `--continue-on-error` flag
-- [ ] Update error handling for partial failures
+- [x] For multi-repo, report per-repo status in JSON
+- [x] Aggregate overall success/failure
+- [x] Add `--continue-on-error` flag
+- [x] Update error handling for partial failures
 
 ## Phase 4: Apply Command and Safety (Weeks 11-13)
 
@@ -162,9 +162,9 @@ Repora v0.1 focuses on:
 ### Week 15: Documentation and Examples
 - [ ] Update project README with usage instructions
 - [ ] Add examples for repora.yaml configurations
-- [ ] Validate against specs (e.g., SPEC-0002 JSON format)
+- [x] Validate against specs (e.g., SPEC-0002 JSON format)
 - [ ] Create troubleshooting guide
-- [ ] Add code formatting and linting (gofmt, golint)
+- [x] Add code formatting and linting (gofmt, golint)
 
 ### Week 16: Release Prep
 - [ ] Build cross-platform binaries (Windows, Linux, macOS)
