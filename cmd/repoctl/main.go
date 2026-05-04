@@ -60,12 +60,21 @@ func main() {
 }
 
 func run(args []string) int {
-	if len(args) == 0 || (args[0] != "status" && args[0] != "plan") {
-		fmt.Fprintln(os.Stderr, "usage: repoctl <status|plan> -f repora.yaml [--json] [--parallel N] [--continue-on-error]")
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "usage: repoctl <status|plan|apply|sync> -f repora.yaml [--json] [--parallel N] [--continue-on-error]")
 		return 1
 	}
 
 	command := args[0]
+	if command == "apply" || command == "sync" {
+		fmt.Fprintf(os.Stderr, "repoctl %s is not implemented\n", command)
+		return 1
+	}
+	if command != "status" && command != "plan" {
+		fmt.Fprintln(os.Stderr, "usage: repoctl <status|plan|apply|sync> -f repora.yaml [--json] [--parallel N] [--continue-on-error]")
+		return 1
+	}
+
 	flags := flag.NewFlagSet("repoctl "+command, flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	configPath := flags.String("f", "repora.yaml", "path to SCHEMA-0001 YAML config")

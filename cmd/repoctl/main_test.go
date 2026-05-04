@@ -281,6 +281,20 @@ func TestPlanHumanOutputShowsNoChangesForEqualMirror(t *testing.T) {
 	}
 }
 
+func TestApplyCommandReportsNotImplemented(t *testing.T) {
+	var stderr bytes.Buffer
+	code := withStderr(t, &stderr, func() int {
+		return run([]string{"apply"})
+	})
+
+	if code != 1 {
+		t.Fatalf("run returned %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "repoctl apply is not implemented") {
+		t.Fatalf("stderr = %q, want apply not implemented message", stderr.String())
+	}
+}
+
 func writeConfig(t *testing.T, data string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "repora.yaml")
@@ -299,6 +313,29 @@ func withStdout(t *testing.T, dst *bytes.Buffer, fn func() int) int {
 	}
 	os.Stdout = w
 	defer func() { os.Stdout = oldStdout }()
+
+	done := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(dst, r)
+		close(done)
+	}()
+
+	code := fn()
+	_ = w.Close()
+	<-done
+	_ = r.Close()
+	return code
+}
+
+func withStderr(t *testing.T, dst *bytes.Buffer, fn func() int) int {
+	t.Helper()
+	oldStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("create stderr pipe: %v", err)
+	}
+	os.Stderr = w
+	defer func() { os.Stderr = oldStderr }()
 
 	done := make(chan struct{})
 	go func() {
