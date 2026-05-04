@@ -44,6 +44,12 @@ type repoResult struct {
 	err    error
 }
 
+type applyResult struct {
+	index  int
+	result apply.RepoApply
+	err    error
+}
+
 type checkSummary struct {
 	results     []status.Result
 	ok          []bool
@@ -111,7 +117,7 @@ func run(args []string) int {
 	case "plan":
 		return runPlan(spec, summary, *jsonFlag)
 	case "apply", "sync":
-		return runApply(spec, summary, *jsonFlag, *force)
+		return runApply(spec, summary, *jsonFlag, *force, parallel)
 	default:
 		panic("unreachable command validation")
 	}
@@ -215,7 +221,7 @@ func runPlan(spec config.Spec, summary checkSummary, jsonFlag bool) int {
 	return summary.failureCode
 }
 
-func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool) int {
+func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool, parallel int) int {
 	if summary.firstErr != nil && !force {
 		fmt.Fprintf(os.Stderr, "repoctl: %d repos failed; refusing apply\n", summary.failedCount)
 		return 1
@@ -229,17 +235,10 @@ func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool)
 		}
 	}
 
-	output := apply.Output{Apply: make([]apply.RepoApply, 0, len(spec.Repos)-summary.failedCount)}
-	for i, repo := range spec.Repos {
-		if !summary.ok[i] {
-			continue
-		}
-		repoApply, err := applyRepo(repo, summary.results[i], force)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "repoctl: %v\n", err)
-			return 1
-		}
-		output.Apply = append(output.Apply, repoApply)
+	output, err := applyRepos(spec, summary, force, parallel)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "repoctl: %v\n", err)
+		return 1
 	}
 
 	if jsonFlag {
@@ -251,6 +250,64 @@ func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool)
 		printApply(output)
 	}
 	return 0
+}
+
+func applyRepos(spec config.Spec, summary checkSummary, force bool, parallel int) (apply.Output, error) {
+	if parallel < 1 {
+		parallel = 1
+	}
+
+	sem := make(chan struct{}, parallel)
+	resultsCh := make(chan applyResult, len(spec.Repos)-summary.failedCount)
+	var wg sync.WaitGroup
+
+	for i, repo := range spec.Repos {
+		if !summary.ok[i] {
+			continue
+		}
+		i := i
+		repo := repo
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			repoApply, err := applyRepo(repo, summary.results[i], force)
+			resultsCh <- applyResult{index: i, result: repoApply, err: err}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultsCh)
+	}()
+
+	ordered := make([]apply.RepoApply, len(spec.Repos))
+	ok := make([]bool, len(spec.Repos))
+	var firstErr error
+	for result := range resultsCh {
+		if result.err != nil && firstErr == nil {
+			firstErr = result.err
+			continue
+		}
+		if result.err != nil {
+			continue
+		}
+		ordered[result.index] = result.result
+		ok[result.index] = true
+	}
+	if firstErr != nil {
+		return apply.Output{}, firstErr
+	}
+
+	output := apply.Output{Apply: make([]apply.RepoApply, 0, len(spec.Repos)-summary.failedCount)}
+	for i, result := range ordered {
+		if ok[i] {
+			output.Apply = append(output.Apply, result)
+		}
+	}
+	return output, nil
 }
 
 func newJSONOutput(spec config.Spec, results []status.Result, ok []bool) jsonOutput {

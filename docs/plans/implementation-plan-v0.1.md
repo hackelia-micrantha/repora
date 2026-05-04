@@ -139,7 +139,7 @@ Repora v0.1 focuses on:
 - [ ] Implement auth model (tokens via env vars per ADR-0005)
 - [ ] Secure token handling (no logging, env var validation)
 - [ ] Add progress indicators (e.g., for long fetches)
-- [ ] Implement concurrency limits for apply
+- [x] Implement concurrency limits for apply
 
 ### Week 13: Templating Prototype
 - [ ] Isolated README templating using Go templates

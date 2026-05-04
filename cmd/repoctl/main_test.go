@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -362,6 +363,119 @@ func TestApplyRefusesUnsafeMirrorBeforeSideEffects(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "--force") {
 		t.Fatalf("stderr = %q, want --force guidance", stderr.String())
+	}
+}
+
+func TestApplyPrintsResultsInConfigOrderWhenAppliesCompleteOutOfOrder(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: slow-repo
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/slow-repo.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/slow-repo.git
+  - id: fast-repo
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/fast-repo.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/fast-repo.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 1}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	oldApply := applyRepo
+	applyRepo = func(repo config.Repo, result status.Result, force bool) (apply.RepoApply, error) {
+		if repo.ID == "slow-repo" {
+			time.Sleep(25 * time.Millisecond)
+		}
+		return apply.RepoApply{
+			ID:      repo.ID,
+			Actions: []apply.Action{{Type: "PUSH_MIRROR", Target: repo.Mirrors[0].Provider}},
+		}, nil
+	}
+	t.Cleanup(func() { applyRepo = oldApply })
+
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"apply", "-f", configPath, "--parallel", "2"})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	slowIndex := strings.Index(stdout.String(), "slow-repo")
+	fastIndex := strings.Index(stdout.String(), "fast-repo")
+	if slowIndex == -1 || fastIndex == -1 {
+		t.Fatalf("stdout missing repo ids:\n%s", stdout.String())
+	}
+	if slowIndex > fastIndex {
+		t.Fatalf("repos printed out of config order:\n%s", stdout.String())
+	}
+}
+
+func TestApplyHonorsParallelLimit(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: one
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/one.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/one.git
+  - id: two
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/two.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/two.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 1}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var mu sync.Mutex
+	active := 0
+	maxActive := 0
+	oldApply := applyRepo
+	applyRepo = func(repo config.Repo, result status.Result, force bool) (apply.RepoApply, error) {
+		mu.Lock()
+		active++
+		if active > maxActive {
+			maxActive = active
+		}
+		mu.Unlock()
+
+		time.Sleep(20 * time.Millisecond)
+
+		mu.Lock()
+		active--
+		mu.Unlock()
+
+		return apply.RepoApply{
+			ID:      repo.ID,
+			Actions: []apply.Action{{Type: "PUSH_MIRROR", Target: repo.Mirrors[0].Provider}},
+		}, nil
+	}
+	t.Cleanup(func() { applyRepo = oldApply })
+
+	code := run([]string{"apply", "-f", configPath, "--parallel", "1"})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	if maxActive > 1 {
+		t.Fatalf("max concurrent applies = %d, want <= 1", maxActive)
 	}
 }
 
