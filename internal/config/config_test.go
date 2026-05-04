@@ -112,6 +112,44 @@ func TestLoadRejectsDuplicateRepoIDs(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsUnsupportedCanonicalProvider(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "repora.yaml")
+	writeFile(t, path, []byte(`repos:
+  - id: payments-api
+    canonical:
+      provider: bitbucket
+      url: git@bitbucket.org:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+    mode: mirror
+`))
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("Load returned nil error, want unsupported canonical provider rejection")
+	}
+}
+
+func TestLoadRejectsUnsupportedMirrorProvider(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "repora.yaml")
+	writeFile(t, path, []byte(`repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: bitbucket
+        url: git@bitbucket.org:org/payments-api.git
+    mode: mirror
+`))
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("Load returned nil error, want unsupported mirror provider rejection")
+	}
+}
+
 func TestLoadDefaultsModeToMirror(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "repora.yaml")
 	writeFile(t, path, []byte(`repos:

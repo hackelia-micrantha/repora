@@ -63,11 +63,17 @@ func validate(spec Spec) error {
 		if repo.Canonical.Provider == "" || repo.Canonical.URL == "" {
 			return fmt.Errorf("canonical provider and url are required for repo %q", repo.ID)
 		}
+		if repo.Canonical.Provider != "gitlab" {
+			return fmt.Errorf("unsupported canonical provider %q for repo %q: only gitlab is supported", repo.Canonical.Provider, repo.ID)
+		}
 		if len(repo.Mirrors) != 1 {
 			return fmt.Errorf("SCHEMA-0001 requires exactly one mirror for repo %q, got %d", repo.ID, len(repo.Mirrors))
 		}
 		if repo.Mirrors[0].Provider == "" || repo.Mirrors[0].URL == "" {
 			return fmt.Errorf("mirror provider and url are required for repo %q", repo.ID)
+		}
+		if !isSupportedMirrorProvider(repo.Mirrors[0].Provider) {
+			return fmt.Errorf("unsupported mirror provider %q for repo %q: supported providers are github and gitlab", repo.Mirrors[0].Provider, repo.ID)
 		}
 		if repo.Mode == "" {
 			repo.Mode = "mirror"
@@ -78,4 +84,8 @@ func validate(spec Spec) error {
 		spec.Repos[i] = repo
 	}
 	return nil
+}
+
+func isSupportedMirrorProvider(provider string) bool {
+	return provider == "github" || provider == "gitlab"
 }
