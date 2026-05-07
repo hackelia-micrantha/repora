@@ -84,6 +84,27 @@ func (Client) RevParseShort(repoPath, rev string) (string, error) {
 	return output(repoPath, "rev-parse", "--short", rev)
 }
 
+func (Client) ResolveRemoteHeadBranch(repoPath, remote string) (string, error) {
+	out, err := output(repoPath, "symbolic-ref", "--short", "refs/remotes/"+remote+"/HEAD")
+	if err != nil {
+		return "", err
+	}
+	ref := strings.TrimSpace(out)
+	prefix := remote + "/"
+	if strings.HasPrefix(ref, prefix) {
+		return strings.TrimPrefix(ref, prefix), nil
+	}
+	return ref, nil
+}
+
+func (Client) PushBranch(repoPath, remote, srcRef, dstBranch string, force bool) error {
+	refspec := srcRef + ":refs/heads/" + dstBranch
+	if force {
+		refspec = "+" + refspec
+	}
+	return run(repoPath, "push", remote, refspec)
+}
+
 func run(repoPath string, args ...string) error {
 	cmd, cancel := gitCommand(repoPath, args...)
 	defer cancel()
