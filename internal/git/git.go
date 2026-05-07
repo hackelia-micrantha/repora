@@ -84,6 +84,14 @@ func (Client) RevParseShort(repoPath, rev string) (string, error) {
 	return output(repoPath, "rev-parse", "--short", rev)
 }
 
+func (Client) ResolveRevision(repoPath, rev string) (string, error) {
+	out, err := output(repoPath, "rev-parse", rev)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out), nil
+}
+
 func (Client) ResolveRemoteHeadBranch(repoPath, remote string) (string, error) {
 	out, err := output(repoPath, "symbolic-ref", "--short", "refs/remotes/"+remote+"/HEAD")
 	if err != nil {
@@ -97,12 +105,15 @@ func (Client) ResolveRemoteHeadBranch(repoPath, remote string) (string, error) {
 	return ref, nil
 }
 
-func (Client) PushBranch(repoPath, remote, srcRef, dstBranch string, force bool) error {
+func (Client) PushBranch(repoPath, remote, srcRef, dstBranch string) error {
 	refspec := srcRef + ":refs/heads/" + dstBranch
-	if force {
-		refspec = "+" + refspec
-	}
 	return run(repoPath, "push", remote, refspec)
+}
+
+func (Client) ForcePushBranchWithLease(repoPath, remote, srcRef, dstBranch, expectedOldOID string) error {
+	lease := "--force-with-lease=refs/heads/" + dstBranch + ":" + expectedOldOID
+	refspec := srcRef + ":refs/heads/" + dstBranch
+	return run(repoPath, "push", remote, lease, refspec)
 }
 
 func run(repoPath string, args ...string) error {
