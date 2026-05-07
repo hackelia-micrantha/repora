@@ -20,7 +20,7 @@ type fakeGitClient struct {
 		repoPath, name string
 	}
 	revListOutput string
-	revParseShort  string
+	revParseShort string
 }
 
 func (f *fakeGitClient) EnsureMirror(path, canonicalURL string) error {
@@ -101,9 +101,18 @@ func TestCheckReturnsEqualState(t *testing.T) {
 	}
 
 	repo := config.Repo{
-		ID: "payments-api",
-		Canonical: config.Endpoint{Provider: "gitlab", URL: "git@gitlab.com:org/payments-api.git"},
-		Mirrors: []config.Endpoint{{Provider: "github", URL: "git@github.com:org/payments-api.git"}},
+		ID:  "payments-api",
+		UID: "repo.example.payments-api",
+		Canonical: config.RemoteRef{
+			Provider: "gitlab",
+			Path:     "org/payments-api",
+			URL:      "https://gitlab.com/org/payments-api.git",
+		},
+		Mirrors: []config.RemoteRef{{
+			Provider: "github",
+			Path:     "org/payments-api",
+			URL:      "https://github.com/org/payments-api.git",
+		}},
 		Mode: "mirror",
 	}
 
@@ -120,6 +129,12 @@ func TestCheckReturnsEqualState(t *testing.T) {
 	if result.Canonical != "abc123" || result.Mirror != "abc123" {
 		t.Fatalf("canonical/mirror = %q/%q, want abc123/abc123", result.Canonical, result.Mirror)
 	}
+	if len(git.ensureMirrorCalls) != 1 || git.ensureMirrorCalls[0].url != "https://gitlab.com/org/payments-api.git" {
+		t.Fatalf("EnsureMirror called with %#v", git.ensureMirrorCalls)
+	}
+	if len(git.configureRemoteCalls) != 2 {
+		t.Fatalf("ConfigureRemote calls = %d, want 2", len(git.configureRemoteCalls))
+	}
 }
 
 func TestCheckReturnsBehindState(t *testing.T) {
@@ -129,9 +144,18 @@ func TestCheckReturnsBehindState(t *testing.T) {
 	}
 
 	repo := config.Repo{
-		ID: "payments-api",
-		Canonical: config.Endpoint{Provider: "gitlab", URL: "git@gitlab.com:org/payments-api.git"},
-		Mirrors: []config.Endpoint{{Provider: "github", URL: "git@github.com:org/payments-api.git"}},
+		ID:  "payments-api",
+		UID: "repo.example.payments-api",
+		Canonical: config.RemoteRef{
+			Provider: "gitlab",
+			Path:     "org/payments-api",
+			URL:      "https://gitlab.com/org/payments-api.git",
+		},
+		Mirrors: []config.RemoteRef{{
+			Provider: "github",
+			Path:     "org/payments-api",
+			URL:      "https://github.com/org/payments-api.git",
+		}},
 		Mode: "mirror",
 	}
 
