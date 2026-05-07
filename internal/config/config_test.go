@@ -6,73 +6,68 @@ import (
 	"testing"
 )
 
-func TestLoadReadsSingleMirrorRepo(t *testing.T) {
+func TestLoadAcceptsProviderPathSchemaV1(t *testing.T) {
 	spec, err := Load(filepath.Join("..", "..", "testdata", "repora.yaml"))
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
 
-	if len(spec.Repos) != 1 {
-		t.Fatalf("repo count = %d, want 1", len(spec.Repos))
+	if spec.Version != 1 {
+		t.Fatalf("version = %d, want 1", spec.Version)
+	}
+	if spec.DefaultTransport != "https" {
+		t.Fatalf("default transport = %q, want https", spec.DefaultTransport)
+	}
+	if len(spec.Repos) != 4 {
+		t.Fatalf("repo count = %d, want 4", len(spec.Repos))
 	}
 
 	repo := spec.Repos[0]
-	if repo.ID != "payments-api" {
-		t.Fatalf("repo ID = %q, want payments-api", repo.ID)
+	if repo.ID != "anthesis" {
+		t.Fatalf("repo ID = %q, want anthesis", repo.ID)
 	}
-	if repo.Canonical.Provider != "gitlab" || repo.Canonical.URL != "git@gitlab.com:org/payments-api.git" {
-		t.Fatalf("canonical = %#v", repo.Canonical)
+	if repo.UID != "repo.micrantha.anthesis" {
+		t.Fatalf("repo UID = %q", repo.UID)
 	}
-	if len(repo.Mirrors) != 1 {
-		t.Fatalf("mirror count = %d, want 1", len(repo.Mirrors))
+	if repo.Canonical.Provider != "gitlab" {
+		t.Fatalf("canonical provider = %q", repo.Canonical.Provider)
 	}
-	if repo.Mirrors[0].Provider != "github" || repo.Mirrors[0].URL != "git@github.com:org/payments-api.git" {
-		t.Fatalf("mirror = %#v", repo.Mirrors[0])
+	if repo.Canonical.Path != "micrantha/anthesis" {
+		t.Fatalf("canonical path = %q", repo.Canonical.Path)
 	}
-	if repo.Mode != "mirror" {
-		t.Fatalf("mode = %q, want mirror", repo.Mode)
+	if repo.Canonical.URL != "https://gitlab.com/micrantha/anthesis.git" {
+		t.Fatalf("canonical URL = %q", repo.Canonical.URL)
 	}
-}
-
-func TestLoadRejectsMoreThanOneMirror(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "repora.yaml")
-	writeFile(t, path, []byte(`repos:
-  - id: payments-api
-    canonical:
-      provider: gitlab
-      url: git@gitlab.com:org/payments-api.git
-    mirrors:
-      - provider: github
-        url: git@github.com:org/payments-api.git
-      - provider: gitlab
-        url: git@gitlab.com:backup/payments-api.git
-    mode: mirror
-`))
-
-	_, err := Load(path)
-	if err == nil {
-		t.Fatal("Load returned nil error, want rejection")
+	if len(repo.Mirrors) != 2 {
+		t.Fatalf("mirror count = %d, want 2", len(repo.Mirrors))
+	}
+	if repo.Mirrors[0].URL != "https://github.com/hackelia-micrantha/anthesis.git" {
+		t.Fatalf("mirror URL = %q", repo.Mirrors[0].URL)
 	}
 }
 
-func TestLoadAllowsMultipleRepos(t *testing.T) {
+func TestLoadDefaultsTransportToHTTPS(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "repora.yaml")
-	writeFile(t, path, []byte(`repos:
-  - id: payments-api
+	writeFile(t, path, []byte(`
+version: 1
+providers:
+  gitlab:
+    base_urls:
+      https: https://gitlab.com
+      ssh: git@gitlab.com:
+  github:
+    base_urls:
+      https: https://github.com
+      ssh: git@github.com:
+repos:
+  - id: blog
+    uid: repo.ryjen.blog
     canonical:
       provider: gitlab
-      url: git@gitlab.com:org/payments-api.git
+      path: ryjen/blog
     mirrors:
       - provider: github
-        url: git@github.com:org/payments-api.git
-    mode: mirror
-  - id: auth-service
-    canonical:
-      provider: gitlab
-      url: git@gitlab.com:org/auth-service.git
-    mirrors:
-      - provider: github
-        url: git@github.com:org/auth-service.git
+        path: ryjen/blog
     mode: mirror
 `))
 
@@ -80,94 +75,144 @@ func TestLoadAllowsMultipleRepos(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	if len(spec.Repos) != 2 {
-		t.Fatalf("repo count = %d, want 2", len(spec.Repos))
+	if got := spec.DefaultTransport; got != "https" {
+		t.Fatalf("default transport = %q, want https", got)
 	}
 }
 
-func TestLoadRejectsDuplicateRepoIDs(t *testing.T) {
+func TestLoadRejectsDuplicateRepoUID(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "repora.yaml")
-	writeFile(t, path, []byte(`repos:
-  - id: payments-api
+	writeFile(t, path, []byte(`
+version: 1
+providers:
+  gitlab:
+    base_urls:
+      https: https://gitlab.com
+      ssh: git@gitlab.com:
+  github:
+    base_urls:
+      https: https://github.com
+      ssh: git@github.com:
+repos:
+  - id: anthesis
+    uid: repo.shared
     canonical:
       provider: gitlab
-      url: git@gitlab.com:org/payments-api.git
+      path: micrantha/anthesis
     mirrors:
       - provider: github
-        url: git@github.com:org/payments-api.git
+        path: hackelia-micrantha/anthesis
     mode: mirror
-  - id: payments-api
+  - id: hyperion
+    uid: repo.shared
     canonical:
       provider: gitlab
-      url: git@gitlab.com:org/backup-payments-api.git
+      path: micrantha/laboratory/hyperion
     mirrors:
       - provider: github
-        url: git@github.com:org/backup-payments-api.git
-    mode: mirror
-`))
-
-	_, err := Load(path)
-	if err == nil {
-		t.Fatal("Load returned nil error, want duplicate id rejection")
-	}
-}
-
-func TestLoadRejectsUnsupportedCanonicalProvider(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "repora.yaml")
-	writeFile(t, path, []byte(`repos:
-  - id: payments-api
-    canonical:
-      provider: bitbucket
-      url: git@bitbucket.org:org/payments-api.git
-    mirrors:
-      - provider: github
-        url: git@github.com:org/payments-api.git
+        path: hackelia-micrantha/hyperion
     mode: mirror
 `))
 
 	_, err := Load(path)
 	if err == nil {
-		t.Fatal("Load returned nil error, want unsupported canonical provider rejection")
+		t.Fatal("Load returned nil error, want duplicate uid rejection")
 	}
 }
 
-func TestLoadRejectsUnsupportedMirrorProvider(t *testing.T) {
+func TestLoadRejectsUnknownProvider(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "repora.yaml")
-	writeFile(t, path, []byte(`repos:
-  - id: payments-api
+	writeFile(t, path, []byte(`
+version: 1
+providers:
+  github:
+    base_urls:
+      https: https://github.com
+      ssh: git@github.com:
+repos:
+  - id: anthesis
+    uid: repo.micrantha.anthesis
     canonical:
       provider: gitlab
-      url: git@gitlab.com:org/payments-api.git
+      path: micrantha/anthesis
     mirrors:
-      - provider: bitbucket
-        url: git@bitbucket.org:org/payments-api.git
+      - provider: github
+        path: hackelia-micrantha/anthesis
     mode: mirror
 `))
 
 	_, err := Load(path)
 	if err == nil {
-		t.Fatal("Load returned nil error, want unsupported mirror provider rejection")
+		t.Fatal("Load returned nil error, want unknown provider rejection")
 	}
 }
 
-func TestLoadDefaultsModeToMirror(t *testing.T) {
+func TestLoadRejectsPathWithDotGitSuffix(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "repora.yaml")
-	writeFile(t, path, []byte(`repos:
-  - id: payments-api
+	writeFile(t, path, []byte(`
+version: 1
+providers:
+  gitlab:
+    base_urls:
+      https: https://gitlab.com
+      ssh: git@gitlab.com:
+  github:
+    base_urls:
+      https: https://github.com
+      ssh: git@github.com:
+repos:
+  - id: anthesis
+    uid: repo.micrantha.anthesis
     canonical:
       provider: gitlab
-      url: git@gitlab.com:org/payments-api.git
+      path: micrantha/anthesis.git
     mirrors:
       - provider: github
-        url: git@github.com:org/payments-api.git
+        path: hackelia-micrantha/anthesis
+    mode: mirror
 `))
 
-	spec, err := Load(path)
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("Load returned nil error, want .git suffix rejection")
+	}
+}
+
+func TestDeriveURLHTTPS(t *testing.T) {
+	provider := Provider{
+		BaseURLs: BaseURLs{
+			HTTPS: "https://github.com",
+			SSH:   "git@github.com:",
+		},
+	}
+
+	got, err := DeriveURL(provider, "ryjen/dubnium", "https")
 	if err != nil {
-		t.Fatalf("Load returned error: %v", err)
+		t.Fatalf("DeriveURL returned error: %v", err)
 	}
-	if got := spec.Repos[0].Mode; got != "mirror" {
-		t.Fatalf("mode = %q, want mirror", got)
+
+	want := "https://github.com/ryjen/dubnium.git"
+	if got != want {
+		t.Fatalf("url = %q, want %q", got, want)
+	}
+}
+
+func TestDeriveURLSSH(t *testing.T) {
+	provider := Provider{
+		BaseURLs: BaseURLs{
+			HTTPS: "https://gitlab.com",
+			SSH:   "git@gitlab.com:",
+		},
+	}
+
+	got, err := DeriveURL(provider, "micrantha/laboratory/dubnium", "ssh")
+	if err != nil {
+		t.Fatalf("DeriveURL returned error: %v", err)
+	}
+
+	want := "git@gitlab.com:micrantha/laboratory/dubnium.git"
+	if got != want {
+		t.Fatalf("url = %q, want %q", got, want)
 	}
 }
 
