@@ -23,15 +23,18 @@ type Result struct {
 }
 
 type Action struct {
-	Type   string `json:"type"`
-	Source string `json:"source"`
-	Target string `json:"target"`
-	Force  bool   `json:"force"`
+	Type              string `json:"type"`
+	Source            string `json:"source"`
+	Target            string `json:"target"`
+	Force             bool   `json:"force"`
+	ExpectedOldTarget string `json:"expected_old_target,omitempty"`
 }
 
 type Git interface {
 	ResolveRemoteHeadBranch(repoPath, remote string) (string, error)
-	PushBranch(repoPath, remote, srcRef, dstBranch string, force bool) error
+	ResolveRevision(repoPath, rev string) (string, error)
+	PushBranch(repoPath, remote, srcRef, dstBranch string) error
+	ForcePushBranchWithLease(repoPath, remote, srcRef, dstBranch, expectedOldOID string) error
 }
 
 func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun bool) (Result, error) {
@@ -59,6 +62,8 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 		dstBranch = srcBranch
 	}
 
+	srcRef := remoteTrackingRef("canonical", srcBranch)
+	dstRef := remoteTrackingRef("mirror", dstBranch)
 	action := Action{
 		Type:   "PUSH_BRANCH",
 		Source: "canonical/" + srcBranch,
@@ -73,22 +78,27 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 		if dryRun {
 			return result, nil
 		}
-		if err := git.PushBranch(path, "mirror", remoteTrackingRef("canonical", srcBranch), dstBranch, false); err != nil {
+		if err := git.PushBranch(path, "mirror", srcRef, dstBranch); err != nil {
 			return result, fmt.Errorf("push mirror branch for repo %q: %w", repo.ID, err)
 		}
 		result.Applied = true
 		return result, nil
 	case status.StateAhead, status.StateDiverged:
 		action.Force = true
+		expectedOldOID, err := git.ResolveRevision(path, dstRef)
+		if err != nil {
+			return result, fmt.Errorf("resolve mirror branch for repo %q: %w", repo.ID, err)
+		}
+		action.ExpectedOldTarget = expectedOldOID
 		result.Actions = append(result.Actions, action)
 		if !force {
-			return result, fmt.Errorf("repo %q is %s; rerun with --force to overwrite mirror default branch", repo.ID, st.State)
+			return result, fmt.Errorf("repo %q is %s; rerun with --force to overwrite mirror default branch using a lease against %s", repo.ID, st.State, shortOID(expectedOldOID))
 		}
 		if dryRun {
 			return result, nil
 		}
-		if err := git.PushBranch(path, "mirror", remoteTrackingRef("canonical", srcBranch), dstBranch, true); err != nil {
-			return result, fmt.Errorf("force push mirror branch for repo %q: %w", repo.ID, err)
+		if err := git.ForcePushBranchWithLease(path, "mirror", srcRef, dstBranch, expectedOldOID); err != nil {
+			return result, fmt.Errorf("force push mirror branch with lease for repo %q: %w", repo.ID, err)
 		}
 		result.Applied = true
 		return result, nil
@@ -99,4 +109,11 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 
 func remoteTrackingRef(remote, branch string) string {
 	return "refs/remotes/" + remote + "/" + strings.TrimSpace(branch)
+}
+
+func shortOID(oid string) string {
+	if len(oid) <= 12 {
+		return oid
+	}
+	return oid[:12]
 }
