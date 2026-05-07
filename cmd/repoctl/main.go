@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 
+	"repoctl/internal/apply"
 	"repoctl/internal/config"
 	gitwrap "repoctl/internal/git"
 	"repoctl/internal/plan"
@@ -40,7 +41,7 @@ type jsonMirror struct {
 type repoResult struct {
 	index  int
 	result status.Result
-	err    error
+	terr   error
 }
 
 type checkSummary struct {
@@ -55,13 +56,17 @@ var statusCheck = func(repo config.Repo) (status.Result, error) {
 	return status.Check(repo, gitwrap.Client{})
 }
 
+var applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
+	return apply.Execute(repo, result, gitwrap.Client{}, force, dryRun)
+}
+
 func main() {
 	os.Exit(run(os.Args[1:]))
 }
 
 func run(args []string) int {
-	if len(args) == 0 || (args[0] != "status" && args[0] != "plan") {
-		fmt.Fprintln(os.Stderr, "usage: repoctl <status|plan> -f repora.yaml [--json] [--parallel N] [--continue-on-error]")
+	if len(args) == 0 || (args[0] != "status" && args[0] != "plan" && args[0] != "apply") {
+		fmt.Fprintln(os.Stderr, "usage: repoctl <status|plan|apply> -f repora.yaml [--json] [--parallel N] [--continue-on-error] [--dry-run] [--force]")
 		return 1
 	}
 
@@ -72,6 +77,8 @@ func run(args []string) int {
 	jsonFlag := flags.Bool("json", false, "print JSON")
 	parallelFlag := flags.Int("parallel", 5, "max number of concurrent repository checks")
 	continueOnError := flags.Bool("continue-on-error", false, "continue processing repos after an error")
+	dryRun := flags.Bool("dry-run", false, "show what would change without mutating mirror state")
+	force := flags.Bool("force", false, "allow destructive mirror overwrites for ahead or diverged mirrors")
 
 	if err := flags.Parse(args[1:]); err != nil {
 		return 1
@@ -99,6 +106,8 @@ func run(args []string) int {
 		return runStatus(spec, summary, *jsonFlag)
 	case "plan":
 		return runPlan(spec, summary, *jsonFlag)
+	case "apply":
+		return runApply(spec, summary, *jsonFlag, *force, *dryRun)
 	default:
 		panic("unreachable command validation")
 	}
@@ -119,7 +128,7 @@ func checkRepos(spec config.Spec, parallel int) checkSummary {
 			defer func() { <-sem }()
 
 			result, err := statusCheck(repo)
-			resultsCh <- repoResult{index: i, result: result, err: err}
+			resultsCh <- repoResult{index: i, result: result, terr: err}
 		}()
 	}
 
@@ -134,10 +143,10 @@ func checkRepos(spec config.Spec, parallel int) checkSummary {
 	}
 
 	for rr := range resultsCh {
-		if rr.err != nil {
+		if rr.terr != nil {
 			summary.failedCount++
 			if summary.firstErr == nil {
-				summary.firstErr = rr.err
+				summary.firstErr = rr.terr
 			}
 			continue
 		}
@@ -202,6 +211,42 @@ func runPlan(spec config.Spec, summary checkSummary, jsonFlag bool) int {
 	return summary.failureCode
 }
 
+func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool, dryRun bool) int {
+	output := apply.Output{Results: make([]apply.Result, 0, len(spec.Repos))}
+	exitCode := 0
+	for i, repo := range spec.Repos {
+		if !summary.ok[i] {
+			continue
+		}
+		result, err := applyExecute(repo, summary.results[i], force, dryRun)
+		if err != nil {
+			if exitCode == 0 {
+				exitCode = 2
+			}
+			result.Error = err.Error()
+		}
+		output.Results = append(output.Results, result)
+	}
+
+	if jsonFlag {
+		if err := json.NewEncoder(os.Stdout).Encode(output); err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: write json: %v\n", err)
+			return 1
+		}
+	} else {
+		printApply(output)
+	}
+
+	if summary.firstErr != nil {
+		fmt.Fprintf(os.Stderr, "repoctl: %d repos failed; continuing due to --continue-on-error\n", summary.failedCount)
+		if exitCode == 0 {
+			exitCode = 1
+		}
+	}
+
+	return exitCode
+}
+
 func newJSONOutput(spec config.Spec, results []status.Result, ok []bool) jsonOutput {
 	out := jsonOutput{Repos: make([]jsonRepo, 0, len(spec.Repos))}
 	for i, repo := range spec.Repos {
@@ -259,6 +304,30 @@ func printPlan(output plan.Output) {
 		}
 		for _, action := range repoPlan.Actions {
 			fmt.Printf("  %s %s: behind %d\n", action.Type, action.Target, action.Behind)
+		}
+	}
+}
+
+func printApply(output apply.Output) {
+	for _, result := range output.Results {
+		fmt.Println(result.ID)
+		if len(result.Actions) == 0 {
+			fmt.Println("  no changes")
+			continue
+		}
+		for _, action := range result.Actions {
+			mode := "apply"
+			if result.DryRun {
+				mode = "dry-run"
+			}
+			if action.Force {
+				fmt.Printf("  %s %s %s -> %s (force)\n", mode, action.Type, action.Source, action.Target)
+			} else {
+				fmt.Printf("  %s %s %s -> %s\n", mode, action.Type, action.Source, action.Target)
+			}
+		}
+		if result.Error != "" {
+			fmt.Printf("  error: %s\n", result.Error)
 		}
 	}
 }
