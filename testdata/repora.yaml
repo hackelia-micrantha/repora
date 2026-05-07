@@ -1,9 +1,65 @@
+version: 1
+default_transport: https
+
+providers:
+  gitlab:
+    base_urls:
+      https: https://gitlab.com
+      ssh: git@gitlab.com:
+  github:
+    base_urls:
+      https: https://github.com
+      ssh: git@github.com:
+  bitbucket:
+    base_urls:
+      https: https://bitbucket.org
+      ssh: git@bitbucket.org:
+
 repos:
-  - id: payments-api
+  - id: anthesis
+    uid: repo.micrantha.anthesis
     canonical:
       provider: gitlab
-      url: git@gitlab.com:org/payments-api.git
+      path: micrantha/anthesis
     mirrors:
       - provider: github
-        url: git@github.com:org/payments-api.git
+        path: hackelia-micrantha/anthesis
+      - provider: bitbucket
+        path: micrantha/anthesis
+    mode: mirror
+
+  - id: dubnium
+    uid: repo.micrantha.dubnium
+    canonical:
+      provider: gitlab
+      path: micrantha/laboratory/dubnium
+    mirrors:
+      - provider: github
+        path: ryjen/dubnium
+      - provider: bitbucket
+        path: micrantha/dubnium
+    mode: mirror
+
+  - id: hyperion
+    uid: repo.micrantha.hyperion
+    canonical:
+      provider: gitlab
+      path: micrantha/laboratory/hyperion
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/hyperion
+      - provider: bitbucket
+        path: micrantha/hyperion
+    mode: mirror
+
+  - id: blog
+    uid: repo.ryjen.blog
+    canonical:
+      provider: gitlab
+      path: ryjen/blog
+    mirrors:
+      - provider: github
+        path: ryjen/blog
+      - provider: bitbucket
+        path: ryjen/blog
     mode: mirror
