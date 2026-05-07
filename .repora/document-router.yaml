@@ -1,0 +1,238 @@
+version: 1
+kind: document-router
+
+metadata:
+  name: repora-default-router
+  description: >-
+    Deterministic document routing profile for context selection and token reduction.
+
+# Global defaults used when a route does not override them.
+defaults:
+  strategy: score_then_prune
+  sort: path_lexicographic
+  max_files: 8
+  max_bytes: 120000
+  max_tokens_hint: 12000
+  snippets_per_file: 8
+  include_code: true
+  include_docs: true
+  include_prompts: true
+  include_examples: false
+  include_tests: false
+  follow_refs: true
+  stop_after_first_exact: false
+
+# Route classes help tools pick a small subset before reading content.
+classes:
+  - id: overview
+    description: High-level product and operating model
+  - id: architecture
+    description: Design, planner, executor, diff model, adapters
+  - id: policy
+    description: Requirements, ADRs, governance, safety, constraints
+  - id: config
+    description: Schema, config shape, samples, examples
+  - id: prompts
+    description: Prompt overlays and agent operating guidance
+  - id: operations
+    description: CI/CD, workflows, automation, release behavior
+
+routes:
+  - id: repo-overview
+    class: overview
+    priority: 100
+    when:
+      any_of:
+        - overview
+        - summary
+        - what is repora
+        - repoctl
+        - quickstart
+        - getting started
+    include:
+      - README.md
+      - docs/index.md
+      - docs/overview/**
+    exclude:
+      - examples/**
+      - tests/**
+    budget:
+      max_files: 4
+      max_bytes: 40000
+      max_tokens_hint: 4000
+
+  - id: architecture-core
+    class: architecture
+    priority: 90
+    when:
+      any_of:
+        - architecture
+        - design
+        - planner
+        - executor
+        - diff engine
+        - unified diff
+        - reconciliation
+        - adapter
+        - graph
+        - concurrency
+    include:
+      - README.md
+      - docs/architecture/**
+      - docs/adr/**
+      - docs/req/**
+      - src/**
+    exclude:
+      - examples/**
+      - tests/**
+      - docs/archive/**
+    budget:
+      max_files: 10
+      max_bytes: 120000
+      max_tokens_hint: 12000
+
+  - id: policy-and-governance
+    class: policy
+    priority: 90
+    when:
+      any_of:
+        - policy
+        - governance
+        - security
+        - threat
+        - safety
+        - requirement
+        - adr
+        - rfc
+        - decision
+        - compliance
+    include:
+      - docs/req/**
+      - docs/adr/**
+      - docs/rfc/**
+      - docs/policy/**
+      - SECURITY.md
+      - README.md
+    exclude:
+      - examples/**
+      - tests/**
+    budget:
+      max_files: 12
+      max_bytes: 140000
+      max_tokens_hint: 14000
+
+  - id: config-and-schema
+    class: config
+    priority: 95
+    when:
+      any_of:
+        - config
+        - configuration
+        - schema
+        - spec
+        - yaml
+        - json
+        - sample config
+        - example config
+    include:
+      - schemas/**
+      - .repora/**
+      - examples/**
+      - docs/spec/**
+      - docs/req/**
+    exclude:
+      - tests/**
+    budget:
+      max_files: 10
+      max_bytes: 100000
+      max_tokens_hint: 10000
+
+  - id: prompts-and-routing
+    class: prompts
+    priority: 95
+    when:
+      any_of:
+        - prompt
+        - prompt overlay
+        - system prompt
+        - routing
+        - document router
+        - context router
+        - token usage
+    include:
+      - prompts/**
+      - .repora/document-router.yaml
+      - docs/routing/**
+      - README.md
+    exclude:
+      - tests/**
+    budget:
+      max_files: 8
+      max_bytes: 90000
+      max_tokens_hint: 9000
+
+  - id: operations-and-workflows
+    class: operations
+    priority: 85
+    when:
+      any_of:
+        - ci
+        - cd
+        - workflow
+        - github actions
+        - pipeline
+        - release
+        - automation
+    include:
+      - .github/workflows/**
+      - docs/operations/**
+      - docs/req/**
+      - docs/adr/**
+      - README.md
+    exclude:
+      - tests/**
+    budget:
+      max_files: 10
+      max_bytes: 100000
+      max_tokens_hint: 10000
+
+fallbacks:
+  - id: docs-first
+    include:
+      - README.md
+      - docs/**
+      - schemas/**
+      - .repora/**
+    exclude:
+      - tests/**
+      - examples/**
+    budget:
+      max_files: 8
+      max_bytes: 100000
+      max_tokens_hint: 10000
+
+  - id: source-first
+    include:
+      - src/**
+      - README.md
+      - docs/architecture/**
+      - docs/adr/**
+    exclude:
+      - tests/**
+      - examples/**
+    budget:
+      max_files: 8
+      max_bytes: 100000
+      max_tokens_hint: 10000
+
+selection:
+  dedupe_by: path
+  prefer:
+    - exact_filename
+    - shorter_path
+    - higher_priority_route
+    - docs_over_examples
+  truncate:
+    mode: head_then_headings
+    heading_scan_limit: 200
+    chars_per_snippet: 3000
