@@ -1,202 +1,224 @@
 # Repora v0.1 Implementation Plan and Checklist
 
 **Date**: May 3, 2026  
+**Last Updated**: May 6, 2026  
 **Target Release**: Q3 2026  
-**Total Effort**: 12-16 weeks  
+**Current Stage**: v0.1-alpha
 
-This document outlines the phased implementation plan for Repora v0.1, based on RFC-0001. It includes detailed checklists for each phase, with tasks, subtasks, dependencies, and success criteria.
+This document now tracks actual implementation state instead of purely planned work.
 
-## Overview
+---
 
-Repora v0.1 focuses on:
-- CLI-first operation via `repoctl`
-- Status checking for GitLab repositories
-- Declarative config via `repora.yaml`
-- Safety-preserving divergence detection
-- Unidirectional canonical-to-mirror synchronization
+# Current Capability Snapshot
 
-## v0.1 Scope and Boundaries
+Repora currently supports:
 
-**In Scope**:
-- Existing repositories only (no creation)
-- GitLab provider support
-- Mirror mode only
-- Basic auth via tokens
-- Local cache storage
+- YAML-based declarative repository specifications
+- Concurrent multi-repository status checks
+- Divergence detection using Git graph comparison
+- Human-readable and JSON output modes
+- `plan` command with structured actions
+- `apply` command for canonical-to-mirror reconciliation
+- Dry-run execution support
+- Explicit destructive-operation gating
+- Lease-based destructive reconciliation semantics
+- Corrupted mirror cache recovery
+- Integration testing with real local Git repositories
+- CI validation for formatting, vetting, tests, and builds
 
-**Out of Scope (Deferred)**:
-- Global config file
-- LFS support
-- Multi-provider CI/CD
-- Artifact registries
-- Advanced templating integration
-- Non-GitLab providers
+Current constraints remain intentional:
 
-## Dependencies
+- existing repositories only
+- mirror mode only
+- default branch reconciliation only
+- unidirectional synchronization only
 
-- Go 1.22+
-- Git CLI 2.0+
-- YAML library (gopkg.in/yaml.v3)
-- GitLab access for testing
+---
 
-## Phase 1: Complete Single-Repository Status Command (Weeks 1-4)
+# Phase Status
 
-**Goal**: Fully implement `repoctl status` for one repository with human and JSON output.  
-**Dependencies**: Existing codebase.  
-**Success Criteria**: `repoctl status -f repora.yaml` works for one repo, outputs correct state.
+## Phase 1 — Status and Config
 
-### Week 1: Fix Config Parsing
-- [ ] Replace custom parser in `config.go` with `gopkg.in/yaml.v3`
-- [ ] Add YAML dependency: `go get gopkg.in/yaml.v3`
-- [ ] Run `go mod tidy` to update go.mod and go.sum
-- [ ] Update `parse()` function to use YAML unmarshaling
-- [ ] Update `validate()` function for basic schema checks
-- [ ] Test parsing with `testdata/repora.yaml`
-- [ ] Update config_test.go with YAML tests
+Completed:
 
-### Week 2-3: Complete Status Logic
-- [ ] Finish `Check()` in `status.go`: Implement fetch operations
-- [ ] Add divergence detection using `RevListLeftRightCount`
-- [ ] Handle ahead/behind counts accurately
-- [ ] Add error handling for auth failures and invalid repos
-- [ ] Implement human-readable output in `main.go` (non-JSON mode)
-- [ ] Update status_test.go with unit tests for Check()
+- YAML parsing using `gopkg.in/yaml.v3`
+- Config validation
+- Concurrent repository checks
+- Divergence detection
+- Human-readable output
+- JSON output
+- Git timeouts
+- Corrupted cache recovery
+- Remote HEAD resolution
 
-### Week 4: Add Timeouts and Error Handling
-- [ ] Add 30s timeout to Git operations in `git.go` (use context.WithTimeout)
-- [ ] Implement recovery for corrupted caches (detect and re-clone)
-- [ ] Update error model per SPEC-0006 (clear error messages)
-- [ ] Add logging for debug info
-- [ ] Test timeout behavior and error scenarios
+Remaining:
 
-## Phase 2: Multi-Repository Support and Validation (Weeks 5-7)
+- structured logging
+- expanded error taxonomy
+- additional validation edge cases
 
-**Goal**: Extend status to handle multiple repos, add full schema validation.  
-**Dependencies**: Phase 1 complete.  
-**Success Criteria**: Status works for full config file with multiple repos.
+---
 
-### Week 5: Multi-Repo Status
-- [ ] Modify `main.go` to iterate over `spec.Repos`
-- [ ] Add concurrency with goroutines (limit to 5 concurrent per ADR-0007)
-- [ ] Use sync.WaitGroup for aggregation
-- [ ] Update JSON output to include all repos
-- [ ] Handle partial failures gracefully
+## Phase 2 — Multi-Repository Support
 
-### Week 6: Schema Validation
-- [ ] Enhance `validate()` in `config.go` for required fields (id, canonical, mirrors)
-- [ ] Add provider validation (only "gitlab" supported in v0.1)
-- [ ] Add mode validation (default to "mirror")
-- [ ] Implement explicit defaults for optional fields
-- [ ] Add validation tests in config_test.go
+Completed:
 
-### Week 7: Ref Resolution and Divergence
-- [ ] Implement remote HEAD resolution using `origin/HEAD`
-- [ ] Refine divergence classification (handle edge cases)
-- [ ] Add support for branch-specific checks (future-proof)
-- [ ] Update status tests for multi-repo scenarios
-- [ ] Performance testing with mock repos
+- concurrent execution
+- ordered aggregation
+- partial failure handling
+- JSON aggregation
+- provider validation
+- explicit defaults
 
-## Phase 3: Plan Command (Weeks 8-10)
+Remaining:
 
-**Goal**: Implement `repoctl plan` to show proposed changes.  
-**Dependencies**: Phase 2 complete.  
-**Success Criteria**: `repoctl plan` shows safe changes without applying.
+- benchmark suites
+- advanced branch mapping
 
-### Week 8: Plan Logic
-- [ ] Add `plan` subcommand parsing in `main.go`
-- [ ] Create `internal/plan` package
-- [ ] Implement diff generation per ADR-0010 (unified diff model)
-- [ ] Output human-readable plan (e.g., "Mirror will receive X commits")
-- [ ] Add plan-specific Result struct
+---
 
-### Week 9: Dry-Run Mode
-- [ ] Add `--dry-run` flag to status and plan commands
-- [ ] Simulate sync operations without actual changes
-- [ ] Ensure dry-run matches real plan output
-- [ ] Add tests for dry-run behavior
+## Phase 3 — Planning
 
-### Week 10: Partial Success Handling
-- [ ] For multi-repo, report per-repo status in JSON
-- [ ] Aggregate overall success/failure
-- [ ] Add `--continue-on-error` flag
-- [ ] Update error handling for partial failures
+Completed:
 
-## Phase 4: Apply Command and Safety (Weeks 11-13)
+- `plan` command
+- structured plan output
+- dry-run support
+- per-repository planning
 
-**Goal**: Implement `repoctl apply` with safety checks.  
-**Dependencies**: Phase 3 complete.  
-**Success Criteria**: Full sync workflow works safely.
+Remaining:
 
-### Week 11: Apply Logic
-- [ ] Add `apply` subcommand in `main.go`
-- [ ] Create `internal/apply` package
-- [ ] Implement push to mirrors (unidirectional per ADR-0002)
-- [ ] Only proceed if status is safe (no divergence)
-- [ ] Add apply-specific Result struct
+- unified diff execution model
+- persisted execution plans
+- serialized review artifacts
 
-### Week 12: Safety Features
-- [ ] Add `--force` flag for risky operations
-- [ ] Implement auth model (tokens via env vars per ADR-0005)
-- [ ] Secure token handling (no logging, env var validation)
-- [ ] Add progress indicators (e.g., for long fetches)
-- [ ] Implement concurrency limits for apply
+---
 
-### Week 13: Templating Prototype
-- [ ] Isolated README templating using Go templates
-- [ ] Create sample templates
-- [ ] Test template rendering
-- [ ] Defer integration into apply (per RFC next steps)
+## Phase 4 — Apply and Safety
 
-## Phase 5: Testing, Documentation, and Release (Weeks 14-16)
+Completed:
 
-**Goal**: Comprehensive testing and v0.1 release.  
-**Dependencies**: All phases complete.  
-**Success Criteria**: Full test suite passes, v0.1 released.
+- `apply` command
+- safe push execution
+- divergence blocking
+- explicit force gating
+- lease-based destructive reconciliation
+- integration testing with real repositories
 
-### Week 14: Comprehensive Tests
-- [ ] Add all test cases: auth failure, invalid config, network errors
-- [ ] Implement performance benchmarks (memory, time)
-- [ ] Add integration tests with real Git repos (if possible)
-- [ ] CI/CD setup for GitLab (per resolved gaps)
+Remaining:
 
-### Week 15: Documentation and Examples
-- [ ] Update project README with usage instructions
-- [ ] Add examples for repora.yaml configurations
-- [ ] Validate against specs (e.g., SPEC-0002 JSON format)
-- [ ] Create troubleshooting guide
-- [ ] Add code formatting and linting (gofmt, golint)
+- execution journaling
+- audit records
+- ref policy configuration
+- auth abstraction layer
+- progress reporting
 
-### Week 16: Release Prep
-- [ ] Build cross-platform binaries (Windows, Linux, macOS)
-- [ ] Tag v0.1 in Git
-- [ ] Create changelog and release notes
-- [ ] Final manual validation on real repos
-- [ ] Publish release notes
+---
 
-## Risks and Mitigations
+## Phase 5 — CI and Release Hardening
 
-- **Git Timeouts**: Configurable timeouts, retry logic.
-- **Auth Issues**: Clear error messages, env var documentation.
-- **Performance**: Limit concurrency, monitor resources.
-- **Data Loss**: Strict checks, no force by default.
+Completed:
 
-## Dependencies
+- GitHub Actions CI
+- cross-platform builds
+- formatting validation
+- `go vet`
+- automated tests
 
-- Go 1.22+
-- Git CLI
-- YAML library (gopkg.in/yaml.v3)
+Remaining:
 
-## Identified Gaps and Future Considerations
+- release automation
+- changelog generation
+- binary publishing
+- benchmark automation
+- security scanning
 
-- **Disk Usage Optimization (ADR-0008)**: No cache size limits or cleanup in v0.1; monitor and add in v0.2.
-- **Memory Monitoring**: Basic concurrency limits, but no profiling; add benchmarks.
-- **CI/CD for Project**: No GitLab CI setup for building repoctl itself; consider adding.
-- **Integration Testing**: Limited real-world testing; use mocks for GitLab API if needed.
-- **User Testing**: No beta testing phase; consider internal validation.
-- **Security Audit**: Basic auth, but no formal review; ensure tokens are not exposed.
+---
 
-## Tracking
+# Recommended Near-Term Milestones
 
-- Use GitHub issues for task tracking.
-- Weekly check-ins to review progress.
-- Automated tests run on each commit.
+## v0.1-alpha
+
+Goals:
+
+- stable status/plan/apply loop
+- integration-tested reconciliation
+- lease-based mutation safety
+- CI-backed validation
+
+## v0.1-beta
+
+Planned additions:
+
+- README templating
+- branch/ref policy model
+- execution journaling
+- structured audit output
+- improved schema definitions
+
+## v0.1
+
+Planned additions:
+
+- stable JSON contracts
+- reproducible builds
+- hardened error taxonomy
+- release packaging
+- expanded provider validation
+
+---
+
+# Current Architectural Constraints
+
+Deliberately deferred:
+
+- plugin execution
+- arbitrary workflow mutation
+- recursive repository creation
+- wildcard multi-branch synchronization
+- container registry mutation
+- hosted control plane behavior
+
+These are intentionally postponed until the mutation model and governance boundaries stabilize.
+
+---
+
+# Major Remaining Risks
+
+## Ref Semantics
+
+Future work should explicitly model:
+
+- branch allowlists
+- protected refs
+- tag reconciliation policy
+- force semantics per ref class
+
+## Auditability
+
+Future work should add:
+
+- execution IDs
+- before/after OIDs
+- structured action logs
+- approval metadata
+
+## Performance
+
+Future work should add:
+
+- benchmark suites
+- cache eviction policies
+- repository size controls
+- memory profiling
+
+---
+
+# Tracking
+
+Recommended:
+
+- GitHub issues for implementation slices
+- ADRs for mutation semantics
+- RFCs for architectural expansion
+- integration-test-first development for reconciliation changes
