@@ -110,10 +110,10 @@ Repora v0.1 focuses on:
 - [x] Add plan-specific Result struct
 
 ### Week 9: Dry-Run Mode
-- [ ] Add `--dry-run` flag to status and plan commands
-- [ ] Simulate sync operations without actual changes
-- [ ] Ensure dry-run matches real plan output
-- [ ] Add tests for dry-run behavior
+- [x] Add `--dry-run` flag to status and plan commands
+- [x] Simulate sync operations without actual changes
+- [x] Ensure dry-run matches real plan output
+- [x] Add tests for dry-run behavior
 
 ### Week 10: Partial Success Handling
 - [x] For multi-repo, report per-repo status in JSON

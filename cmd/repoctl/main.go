@@ -98,8 +98,13 @@ func run(args []string) int {
 	continueOnError := flags.Bool("continue-on-error", false, "continue processing repos after an error")
 	force := flags.Bool("force", false, "overwrite mirror refs from canonical when mirror is ahead or diverged")
 	debug := flags.Bool("debug", false, "print debug logs to stderr")
+	dryRun := flags.Bool("dry-run", false, "show status or plan without applying changes")
 
 	if err := flags.Parse(args[1:]); err != nil {
+		return 1
+	}
+	if *dryRun && command != "status" && command != "plan" {
+		fmt.Fprintln(os.Stderr, "repoctl: --dry-run is only supported for status and plan")
 		return 1
 	}
 
@@ -115,7 +120,7 @@ func run(args []string) int {
 	}
 
 	if *debug {
-		debugf("repoctl: debug command=%s repos=%d parallel=%d\n", command, len(spec.Repos), parallel)
+		debugf("repoctl: debug command=%s repos=%d parallel=%d dry_run=%t\n", command, len(spec.Repos), parallel, *dryRun)
 	}
 	summary := checkRepos(spec, parallel, *debug)
 	if summary.firstErr != nil && !*continueOnError {

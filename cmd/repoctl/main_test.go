@@ -192,7 +192,7 @@ func TestStatusDebugWritesRedactedLogsToStderr(t *testing.T) {
 	}
 	got := stderr.String()
 	for _, want := range []string{
-		"repoctl: debug command=status repos=1 parallel=5\n",
+		"repoctl: debug command=status repos=1 parallel=5 dry_run=false\n",
 		"repoctl: debug checking repo=payments-api\n",
 		"repoctl: debug checked repo=payments-api state=EQUAL\n",
 	} {
@@ -202,6 +202,40 @@ func TestStatusDebugWritesRedactedLogsToStderr(t *testing.T) {
 	}
 	if strings.Contains(got, "secret") || strings.Contains(got, "git@") {
 		t.Fatalf("stderr = %q, want debug output to omit remote URLs", got)
+	}
+}
+
+func TestStatusDryRunMatchesNormalOutput(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateEqual}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var normal bytes.Buffer
+	normalCode := withStdout(t, &normal, func() int {
+		return run([]string{"status", "-f", configPath})
+	})
+	var dryRun bytes.Buffer
+	dryRunCode := withStdout(t, &dryRun, func() int {
+		return run([]string{"status", "-f", configPath, "--dry-run"})
+	})
+
+	if normalCode != 0 || dryRunCode != 0 {
+		t.Fatalf("codes = normal %d dry-run %d, want both 0", normalCode, dryRunCode)
+	}
+	if dryRun.String() != normal.String() {
+		t.Fatalf("dry-run stdout = %q, want normal stdout %q", dryRun.String(), normal.String())
 	}
 }
 
@@ -258,6 +292,54 @@ func TestPlanJSONIncludesPushMirrorActionForBehindMirror(t *testing.T) {
 	action := repoPlan.Actions[0]
 	if action.Type != "PUSH_MIRROR" || action.Target != "github" || action.Behind != 3 || action.Destructive {
 		t.Fatalf("action = %#v, want non-destructive PUSH_MIRROR to github behind 3", action)
+	}
+}
+
+func TestPlanDryRunMatchesNormalOutput(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var normal bytes.Buffer
+	normalCode := withStdout(t, &normal, func() int {
+		return run([]string{"plan", "-f", configPath})
+	})
+	var dryRun bytes.Buffer
+	dryRunCode := withStdout(t, &dryRun, func() int {
+		return run([]string{"plan", "-f", configPath, "--dry-run"})
+	})
+
+	if normalCode != 0 || dryRunCode != 0 {
+		t.Fatalf("codes = normal %d dry-run %d, want both 0", normalCode, dryRunCode)
+	}
+	if dryRun.String() != normal.String() {
+		t.Fatalf("dry-run stdout = %q, want normal stdout %q", dryRun.String(), normal.String())
+	}
+}
+
+func TestApplyRejectsDryRun(t *testing.T) {
+	var stderr bytes.Buffer
+	code := withStderr(t, &stderr, func() int {
+		return run([]string{"apply", "--dry-run"})
+	})
+
+	if code != 1 {
+		t.Fatalf("run returned %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "--dry-run is only supported for status and plan") {
+		t.Fatalf("stderr = %q, want dry-run support error", stderr.String())
 	}
 }
 
