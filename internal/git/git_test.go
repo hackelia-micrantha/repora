@@ -9,26 +9,30 @@ import (
 	"time"
 )
 
-func TestSafePathSegmentPreservesSimpleIdentity(t *testing.T) {
+func TestSafePathSegmentEncodesAllIdentities(t *testing.T) {
 	got, err := SafePathSegment("repo.org.payments-api")
 	if err != nil {
 		t.Fatalf("SafePathSegment returned error: %v", err)
 	}
-	if got != "repo.org.payments-api" {
-		t.Fatalf("segment = %q, want repo.org.payments-api", got)
-	}
-}
-
-func TestSafePathSegmentEncodesUnsafeIdentity(t *testing.T) {
-	got, err := SafePathSegment("repo/org/payments-api")
-	if err != nil {
-		t.Fatalf("SafePathSegment returned error: %v", err)
-	}
-	if !strings.HasPrefix(got, "b64-") {
-		t.Fatalf("segment = %q, want b64- prefix", got)
+	if !strings.HasPrefix(got, "uid-") {
+		t.Fatalf("segment = %q, want uid- prefix", got)
 	}
 	if strings.Contains(got, "/") {
 		t.Fatalf("segment = %q, must not contain path separators", got)
+	}
+}
+
+func TestSafePathSegmentAvoidsEncodedNamespaceCollision(t *testing.T) {
+	unsafeSegment, err := SafePathSegment("repo/org")
+	if err != nil {
+		t.Fatalf("SafePathSegment returned error for unsafe identity: %v", err)
+	}
+	literalSegment, err := SafePathSegment("b64-cmVwby9vcmc")
+	if err != nil {
+		t.Fatalf("SafePathSegment returned error for literal identity: %v", err)
+	}
+	if unsafeSegment == literalSegment {
+		t.Fatalf("segments collided: %q", unsafeSegment)
 	}
 }
 
