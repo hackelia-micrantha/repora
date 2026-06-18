@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -13,6 +14,7 @@ type Spec struct {
 
 type Repo struct {
 	ID        string     `json:"id" yaml:"id"`
+	UID       string     `json:"uid" yaml:"uid"`
 	Canonical Endpoint   `json:"canonical" yaml:"canonical"`
 	Mirrors   []Endpoint `json:"mirrors" yaml:"mirrors"`
 	Mode      string     `json:"mode" yaml:"mode"`
@@ -21,6 +23,13 @@ type Repo struct {
 type Endpoint struct {
 	Provider string `json:"provider" yaml:"provider"`
 	URL      string `json:"url" yaml:"url"`
+}
+
+func (r Repo) DurableID() string {
+	if r.UID != "" {
+		return r.UID
+	}
+	return r.ID
 }
 
 func Load(path string) (Spec, error) {
@@ -52,14 +61,24 @@ func validate(spec Spec) error {
 		return fmt.Errorf("SCHEMA-0001 requires at least one repo")
 	}
 	seenIDs := make(map[string]struct{}, len(spec.Repos))
+	seenUIDs := make(map[string]struct{}, len(spec.Repos))
 	for i, repo := range spec.Repos {
+		repo.ID = strings.TrimSpace(repo.ID)
+		repo.UID = strings.TrimSpace(repo.UID)
 		if repo.ID == "" {
 			return fmt.Errorf("repo id is required for repos[%d]", i)
+		}
+		if repo.UID == "" {
+			repo.UID = repo.ID
 		}
 		if _, ok := seenIDs[repo.ID]; ok {
 			return fmt.Errorf("duplicate repo id %q", repo.ID)
 		}
 		seenIDs[repo.ID] = struct{}{}
+		if _, ok := seenUIDs[repo.UID]; ok {
+			return fmt.Errorf("duplicate repo uid %q", repo.UID)
+		}
+		seenUIDs[repo.UID] = struct{}{}
 		if repo.Canonical.Provider == "" || repo.Canonical.URL == "" {
 			return fmt.Errorf("canonical provider and url are required for repo %q", repo.ID)
 		}
