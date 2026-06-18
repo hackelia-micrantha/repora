@@ -20,7 +20,7 @@ type fakeGitClient struct {
 		repoPath, name string
 	}
 	revListOutput string
-	revParseShort  string
+	revParseShort string
 }
 
 func (f *fakeGitClient) EnsureMirror(path, canonicalURL string) error {
@@ -101,10 +101,10 @@ func TestCheckReturnsEqualState(t *testing.T) {
 	}
 
 	repo := config.Repo{
-		ID: "payments-api",
+		ID:        "payments-api",
 		Canonical: config.Endpoint{Provider: "gitlab", URL: "git@gitlab.com:org/payments-api.git"},
-		Mirrors: []config.Endpoint{{Provider: "github", URL: "git@github.com:org/payments-api.git"}},
-		Mode: "mirror",
+		Mirrors:   []config.Endpoint{{Provider: "github", URL: "git@github.com:org/payments-api.git"}},
+		Mode:      "mirror",
 	}
 
 	result, err := Check(repo, git)
@@ -129,10 +129,10 @@ func TestCheckReturnsBehindState(t *testing.T) {
 	}
 
 	repo := config.Repo{
-		ID: "payments-api",
+		ID:        "payments-api",
 		Canonical: config.Endpoint{Provider: "gitlab", URL: "git@gitlab.com:org/payments-api.git"},
-		Mirrors: []config.Endpoint{{Provider: "github", URL: "git@github.com:org/payments-api.git"}},
-		Mode: "mirror",
+		Mirrors:   []config.Endpoint{{Provider: "github", URL: "git@github.com:org/payments-api.git"}},
+		Mode:      "mirror",
 	}
 
 	result, err := Check(repo, git)

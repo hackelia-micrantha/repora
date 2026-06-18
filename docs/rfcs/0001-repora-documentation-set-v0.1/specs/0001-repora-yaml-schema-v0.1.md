@@ -6,12 +6,12 @@ Status: Draft
 repos:
   - id: string
     canonical:
-      provider: string   # hint only
+      provider: string # hint only
       url: string
     mirrors:
       - provider: string # hint only
         url: string
-    mode: mirror         # fixed in v0.1
+    mode: mirror # fixed in v0.1
 ```
 
 ## Rules

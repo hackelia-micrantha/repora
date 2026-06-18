@@ -52,10 +52,10 @@ func TestExecuteSynchronizesBehindMirrorUsingLocalGitRepos(t *testing.T) {
 	git(t, canonicalWork, "push", "origin", "main")
 
 	repo := config.Repo{
-		ID: "payments-api",
+		ID:        "payments-api",
 		Canonical: config.Endpoint{Provider: "gitlab", URL: canonicalBare},
-		Mirrors: []config.Endpoint{{Provider: "github", URL: mirrorBare}},
-		Mode: "mirror",
+		Mirrors:   []config.Endpoint{{Provider: "github", URL: mirrorBare}},
+		Mode:      "mirror",
 	}
 
 	st, err := status.Check(repo, gitwrap.Client{})

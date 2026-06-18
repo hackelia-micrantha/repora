@@ -1,0 +1,10 @@
+# Ignore artifacts
+go.sum
+go.mod
+LICENSE
+NOTICE
+
+# Ignore directories
+.git
+.github
+testdata

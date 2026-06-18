@@ -322,7 +322,7 @@ func applyRepos(spec config.Spec, summary checkSummary, force bool, dryRun bool,
 		ok[res.index] = true
 	}
 
-	// If we're not continuing on error, we might want to return early, 
+	// If we're not continuing on error, we might want to return early,
 	// but here we aggregate all results that finished.
 	// The caller (runApply) handles the firstErr if necessary.
 	if firstErr != nil && !dryRun {
