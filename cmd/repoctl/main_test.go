@@ -38,7 +38,7 @@ func TestStatusPrintsResultsInConfigOrderWhenChecksCompleteOutOfOrder(t *testing
 		if repo.ID == "slow-repo" {
 			time.Sleep(25 * time.Millisecond)
 		}
-		return status.Result{ID: repo.ID, State: status.StateEqual}, nil
+		return status.Result{ID: repo.ID, UID: repo.DurableID(), State: status.StateEqual}, nil
 	}
 	t.Cleanup(func() { statusCheck = oldCheck })
 
@@ -93,6 +93,7 @@ func TestStatusStopsPrintingWhenRepoFailsWithoutContinueOnError(t *testing.T) {
 func TestStatusJSONMatchesDocumentedShape(t *testing.T) {
 	configPath := writeConfig(t, `repos:
   - id: payments-api
+    uid: repo.org.payments-api
     canonical:
       provider: gitlab
       url: git@gitlab.com:org/payments-api.git
@@ -105,6 +106,7 @@ func TestStatusJSONMatchesDocumentedShape(t *testing.T) {
 	statusCheck = func(repo config.Repo) (status.Result, error) {
 		return status.Result{
 			ID:        repo.ID,
+			UID:       repo.DurableID(),
 			State:     status.StateBehind,
 			Ahead:     0,
 			Behind:    3,
@@ -126,6 +128,7 @@ func TestStatusJSONMatchesDocumentedShape(t *testing.T) {
 	var got struct {
 		Repos []struct {
 			ID        string `json:"id"`
+			UID       string `json:"uid"`
 			Canonical struct {
 				Ref    string `json:"ref"`
 				Commit string `json:"commit"`
@@ -148,7 +151,7 @@ func TestStatusJSONMatchesDocumentedShape(t *testing.T) {
 		t.Fatalf("repo count = %d, want 1", len(got.Repos))
 	}
 	repo := got.Repos[0]
-	if repo.ID != "payments-api" || repo.Canonical.Ref != "HEAD" || repo.Canonical.Commit != "abc1234" {
+	if repo.ID != "payments-api" || repo.UID != "repo.org.payments-api" || repo.Canonical.Ref != "HEAD" || repo.Canonical.Commit != "abc1234" {
 		t.Fatalf("canonical repo output = %#v", repo)
 	}
 	if len(repo.Mirrors) != 1 {
@@ -166,6 +169,7 @@ func TestStatusJSONMatchesDocumentedShape(t *testing.T) {
 func TestPlanJSONIncludesPushMirrorActionForBehindMirror(t *testing.T) {
 	configPath := writeConfig(t, `repos:
   - id: payments-api
+    uid: repo.org.payments-api
     canonical:
       provider: gitlab
       url: git@gitlab.com:org/payments-api.git
@@ -176,7 +180,7 @@ func TestPlanJSONIncludesPushMirrorActionForBehindMirror(t *testing.T) {
 
 	oldCheck := statusCheck
 	statusCheck = func(repo config.Repo) (status.Result, error) {
-		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}, nil
+		return status.Result{ID: repo.ID, UID: repo.DurableID(), State: status.StateBehind, Behind: 3}, nil
 	}
 	t.Cleanup(func() { statusCheck = oldCheck })
 
@@ -192,6 +196,7 @@ func TestPlanJSONIncludesPushMirrorActionForBehindMirror(t *testing.T) {
 	var got struct {
 		Plan []struct {
 			ID      string `json:"id"`
+			UID     string `json:"uid"`
 			Actions []struct {
 				Type        string `json:"type"`
 				Target      string `json:"target"`
@@ -207,8 +212,8 @@ func TestPlanJSONIncludesPushMirrorActionForBehindMirror(t *testing.T) {
 		t.Fatalf("plan count = %d, want 1", len(got.Plan))
 	}
 	repoPlan := got.Plan[0]
-	if repoPlan.ID != "payments-api" {
-		t.Fatalf("plan id = %q, want payments-api", repoPlan.ID)
+	if repoPlan.ID != "payments-api" || repoPlan.UID != "repo.org.payments-api" {
+		t.Fatalf("plan identity = %q/%q, want payments-api/repo.org.payments-api", repoPlan.ID, repoPlan.UID)
 	}
 	if len(repoPlan.Actions) != 1 {
 		t.Fatalf("action count = %d, want 1", len(repoPlan.Actions))
