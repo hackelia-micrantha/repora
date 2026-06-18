@@ -21,7 +21,8 @@ jobs:
 
       - name: Verify formatting
         run: |
-          test -z "$(gofmt -l .)"
+          gofmt -l . | tee gofmt-files.txt
+          test ! -s gofmt-files.txt
 
       - name: Vet
         run: |
