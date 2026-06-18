@@ -4,9 +4,39 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestSafePathSegmentPreservesSimpleIdentity(t *testing.T) {
+	got, err := SafePathSegment("repo.org.payments-api")
+	if err != nil {
+		t.Fatalf("SafePathSegment returned error: %v", err)
+	}
+	if got != "repo.org.payments-api" {
+		t.Fatalf("segment = %q, want repo.org.payments-api", got)
+	}
+}
+
+func TestSafePathSegmentEncodesUnsafeIdentity(t *testing.T) {
+	got, err := SafePathSegment("repo/org/payments-api")
+	if err != nil {
+		t.Fatalf("SafePathSegment returned error: %v", err)
+	}
+	if !strings.HasPrefix(got, "b64-") {
+		t.Fatalf("segment = %q, want b64- prefix", got)
+	}
+	if strings.Contains(got, "/") {
+		t.Fatalf("segment = %q, must not contain path separators", got)
+	}
+}
+
+func TestSafePathSegmentRejectsEmptyIdentity(t *testing.T) {
+	if _, err := SafePathSegment("  "); err == nil {
+		t.Fatal("SafePathSegment returned nil error, want empty identity rejection")
+	}
+}
 
 func TestEnsureMirrorReclonesInvalidPath(t *testing.T) {
 	repoDir := t.TempDir()
