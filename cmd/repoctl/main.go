@@ -20,6 +20,7 @@ type jsonOutput struct {
 
 type jsonRepo struct {
 	ID        string       `json:"id"`
+	UID       string       `json:"uid"`
 	Canonical jsonRef      `json:"canonical"`
 	Mirrors   []jsonMirror `json:"mirrors"`
 }
@@ -255,7 +256,8 @@ func newJSONOutput(spec config.Spec, results []status.Result, ok []bool) jsonOut
 		}
 		result := results[i]
 		out.Repos = append(out.Repos, jsonRepo{
-			ID: repo.ID,
+			ID:  repo.ID,
+			UID: repo.DurableID(),
 			Canonical: jsonRef{
 				Ref:    "HEAD",
 				Commit: result.Canonical,
