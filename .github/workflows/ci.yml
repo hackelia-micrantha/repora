@@ -21,8 +21,11 @@ jobs:
 
       - name: Verify formatting
         run: |
-          gofmt -l . | tee gofmt-files.txt
-          test ! -s gofmt-files.txt
+          files="$(find . -name '*.go' -not -path './.git/*' -exec gofmt -l {} +)"
+          if [ -n "$files" ]; then
+            echo "$files"
+            exit 1
+          fi
 
       - name: Vet
         run: |
