@@ -245,7 +245,7 @@ func TestRunTimesOutGitCommand(t *testing.T) {
 	if err == nil {
 		t.Fatal("run returned nil error, want timeout")
 	}
-	if elapsed > 3.5*time.Second {
+	if elapsed > time.Duration(3.2 * float64(time.Second)) {
 		t.Fatalf("run took %s, want command timeout before fake git exits", elapsed)
 	}
 }
