@@ -329,17 +329,51 @@ func TestPlanDryRunMatchesNormalOutput(t *testing.T) {
 	}
 }
 
-func TestApplyRejectsDryRun(t *testing.T) {
-	var stderr bytes.Buffer
-	code := withStderr(t, &stderr, func() int {
-		return run([]string{"apply", "--dry-run"})
+func TestApplySupportsDryRun(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var dryRunCalled bool
+	oldApply := applyExecute
+	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
+		dryRunCalled = dryRun
+		return apply.Result{
+			ID:     repo.ID,
+			DryRun: dryRun,
+			Actions: []apply.Action{
+				{Type: "PUSH_BRANCH", Source: "canonical/main", Target: repo.Mirrors[0].Provider + "/main"},
+			},
+		}, nil
+	}
+	t.Cleanup(func() { applyExecute = oldApply })
+
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"apply", "-f", configPath, "--dry-run"})
 	})
 
-	if code != 1 {
-		t.Fatalf("run returned %d, want 1", code)
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
 	}
-	if !strings.Contains(stderr.String(), "--dry-run is only supported for status and plan") {
-		t.Fatalf("stderr = %q, want dry-run support error", stderr.String())
+	if !dryRunCalled {
+		t.Fatal("applyExecute was not called with dryRun=true")
+	}
+	want := "payments-api\n  dry-run PUSH_BRANCH canonical/main -> github/main\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}
 }
 
@@ -422,16 +456,17 @@ func TestApplyHumanOutputPushesBehindMirror(t *testing.T) {
 	}
 	t.Cleanup(func() { statusCheck = oldCheck })
 
-	oldApply := applyRepo
-	applyRepo = func(repo config.Repo, result status.Result, force bool) (apply.RepoApply, error) {
-		return apply.RepoApply{
-			ID: repo.ID,
+	oldApply := applyExecute
+	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
+		return apply.Result{
+			ID:    repo.ID,
+			State: result.State,
 			Actions: []apply.Action{
-				{Type: "PUSH_MIRROR", Target: repo.Mirrors[0].Provider},
+				{Type: "PUSH_BRANCH", Source: "canonical/main", Target: repo.Mirrors[0].Provider + "/main"},
 			},
 		}, nil
 	}
-	t.Cleanup(func() { applyRepo = oldApply })
+	t.Cleanup(func() { applyExecute = oldApply })
 
 	var stdout bytes.Buffer
 	code := withStdout(t, &stdout, func() int {
@@ -441,7 +476,7 @@ func TestApplyHumanOutputPushesBehindMirror(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("run returned %d, want 0", code)
 	}
-	want := "payments-api\n  push mirror github\n"
+	want := "payments-api\n  apply PUSH_BRANCH canonical/main -> github/main\n"
 	if stdout.String() != want {
 		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}
@@ -464,14 +499,14 @@ func TestApplyHumanOutputWritesProgressToStderr(t *testing.T) {
 	}
 	t.Cleanup(func() { statusCheck = oldCheck })
 
-	oldApply := applyRepo
-	applyRepo = func(repo config.Repo, result status.Result, force bool) (apply.RepoApply, error) {
-		return apply.RepoApply{
+	oldApply := applyExecute
+	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
+		return apply.Result{
 			ID:      repo.ID,
-			Actions: []apply.Action{{Type: "PUSH_MIRROR", Target: repo.Mirrors[0].Provider}},
+			Actions: []apply.Action{{Type: "PUSH_BRANCH", Source: "canonical/main", Target: repo.Mirrors[0].Provider + "/main"}},
 		}, nil
 	}
-	t.Cleanup(func() { applyRepo = oldApply })
+	t.Cleanup(func() { applyExecute = oldApply })
 
 	var stderr bytes.Buffer
 	code := withStderr(t, &stderr, func() int {
@@ -503,14 +538,14 @@ func TestApplyJSONSuppressesProgress(t *testing.T) {
 	}
 	t.Cleanup(func() { statusCheck = oldCheck })
 
-	oldApply := applyRepo
-	applyRepo = func(repo config.Repo, result status.Result, force bool) (apply.RepoApply, error) {
-		return apply.RepoApply{
+	oldApply := applyExecute
+	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
+		return apply.Result{
 			ID:      repo.ID,
-			Actions: []apply.Action{{Type: "PUSH_MIRROR", Target: repo.Mirrors[0].Provider}},
+			Actions: []apply.Action{{Type: "PUSH_BRANCH", Source: "canonical/main", Target: repo.Mirrors[0].Provider + "/main"}},
 		}, nil
 	}
-	t.Cleanup(func() { applyRepo = oldApply })
+	t.Cleanup(func() { applyExecute = oldApply })
 
 	var stderr bytes.Buffer
 	code := withStderr(t, &stderr, func() int {
@@ -542,13 +577,13 @@ func TestApplyRefusesUnsafeMirrorBeforeSideEffects(t *testing.T) {
 	}
 	t.Cleanup(func() { statusCheck = oldCheck })
 
-	oldApply := applyRepo
+	oldApply := applyExecute
 	applyCalled := false
-	applyRepo = func(repo config.Repo, result status.Result, force bool) (apply.RepoApply, error) {
+	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
 		applyCalled = true
-		return apply.RepoApply{}, nil
+		return apply.Result{}, nil
 	}
-	t.Cleanup(func() { applyRepo = oldApply })
+	t.Cleanup(func() { applyExecute = oldApply })
 
 	var stderr bytes.Buffer
 	code := withStderr(t, &stderr, func() int {
@@ -559,7 +594,7 @@ func TestApplyRefusesUnsafeMirrorBeforeSideEffects(t *testing.T) {
 		t.Fatalf("run returned %d, want 2", code)
 	}
 	if applyCalled {
-		t.Fatal("applyRepo was called, want unsafe state rejected before side effects")
+		t.Fatal("applyExecute was called, want unsafe state rejected before side effects")
 	}
 	if !strings.Contains(stderr.String(), "--force") {
 		t.Fatalf("stderr = %q, want --force guidance", stderr.String())
@@ -590,17 +625,17 @@ func TestApplyPrintsResultsInConfigOrderWhenAppliesCompleteOutOfOrder(t *testing
 	}
 	t.Cleanup(func() { statusCheck = oldCheck })
 
-	oldApply := applyRepo
-	applyRepo = func(repo config.Repo, result status.Result, force bool) (apply.RepoApply, error) {
+	oldApply := applyExecute
+	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
 		if repo.ID == "slow-repo" {
 			time.Sleep(25 * time.Millisecond)
 		}
-		return apply.RepoApply{
+		return apply.Result{
 			ID:      repo.ID,
-			Actions: []apply.Action{{Type: "PUSH_MIRROR", Target: repo.Mirrors[0].Provider}},
+			Actions: []apply.Action{{Type: "PUSH_BRANCH", Source: "canonical/main", Target: repo.Mirrors[0].Provider + "/main"}},
 		}, nil
 	}
-	t.Cleanup(func() { applyRepo = oldApply })
+	t.Cleanup(func() { applyExecute = oldApply })
 
 	var stdout bytes.Buffer
 	code := withStdout(t, &stdout, func() int {
@@ -647,8 +682,8 @@ func TestApplyHonorsParallelLimit(t *testing.T) {
 	var mu sync.Mutex
 	active := 0
 	maxActive := 0
-	oldApply := applyRepo
-	applyRepo = func(repo config.Repo, result status.Result, force bool) (apply.RepoApply, error) {
+	oldApply := applyExecute
+	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
 		mu.Lock()
 		active++
 		if active > maxActive {
@@ -662,12 +697,12 @@ func TestApplyHonorsParallelLimit(t *testing.T) {
 		active--
 		mu.Unlock()
 
-		return apply.RepoApply{
+		return apply.Result{
 			ID:      repo.ID,
-			Actions: []apply.Action{{Type: "PUSH_MIRROR", Target: repo.Mirrors[0].Provider}},
+			Actions: []apply.Action{{Type: "PUSH_BRANCH", Source: "canonical/main", Target: repo.Mirrors[0].Provider + "/main"}},
 		}, nil
 	}
-	t.Cleanup(func() { applyRepo = oldApply })
+	t.Cleanup(func() { applyExecute = oldApply })
 
 	code := run([]string{"apply", "-f", configPath, "--parallel", "1"})
 

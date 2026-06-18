@@ -9,101 +9,116 @@ import (
 )
 
 type fakeGit struct {
-	syncCalls []struct {
-		repoPath string
-		remote   string
+	resolveRemoteHeadBranchCalls []string
+	resolveRevisionCalls         []string
+	pushBranchCalls              []struct {
+		remote    string
+		srcRef    string
+		dstBranch string
 	}
-	pushCalls []struct {
-		repoPath string
-		remote   string
+	forcePushBranchWithLeaseCalls []struct {
+		remote         string
+		srcRef         string
+		dstBranch      string
+		expectedOldOID string
 	}
 }
 
-func (f *fakeGit) SyncMirrorFromRemote(repoPath, remote string) error {
-	f.syncCalls = append(f.syncCalls, struct {
-		repoPath string
-		remote   string
-	}{repoPath: repoPath, remote: remote})
+func (f *fakeGit) ResolveRemoteHeadBranch(repoPath, remote string) (string, error) {
+	f.resolveRemoteHeadBranchCalls = append(f.resolveRemoteHeadBranchCalls, remote)
+	return "main", nil
+}
+
+func (f *fakeGit) ResolveRevision(repoPath, rev string) (string, error) {
+	f.resolveRevisionCalls = append(f.resolveRevisionCalls, rev)
+	return "abc123456789", nil
+}
+
+func (f *fakeGit) PushBranch(repoPath, remote, srcRef, dstBranch string) error {
+	f.pushBranchCalls = append(f.pushBranchCalls, struct {
+		remote    string
+		srcRef    string
+		dstBranch string
+	}{remote: remote, srcRef: srcRef, dstBranch: dstBranch})
 	return nil
 }
 
-func (f *fakeGit) PushMirror(repoPath, remote string) error {
-	f.pushCalls = append(f.pushCalls, struct {
-		repoPath string
-		remote   string
-	}{repoPath: repoPath, remote: remote})
+func (f *fakeGit) ForcePushBranchWithLease(repoPath, remote, srcRef, dstBranch, expectedOldOID string) error {
+	f.forcePushBranchWithLeaseCalls = append(f.forcePushBranchWithLeaseCalls, struct {
+		remote         string
+		srcRef         string
+		dstBranch      string
+		expectedOldOID string
+	}{remote: remote, srcRef: srcRef, dstBranch: dstBranch, expectedOldOID: expectedOldOID})
 	return nil
 }
 
 func TestExecutePushesBehindMirror(t *testing.T) {
 	git := &fakeGit{}
 	repo := testRepo()
-	result := status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}
+	st := status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}
 
-	got, err := Execute(repo, result, git, false)
+	got, err := Execute(repo, st, git, false, false)
 	if err != nil {
 		t.Fatalf("Execute returned error: %v", err)
 	}
-	if len(git.syncCalls) != 1 || git.syncCalls[0].remote != "canonical" {
-		t.Fatalf("sync calls = %#v, want one canonical sync", git.syncCalls)
-	}
-	if len(git.pushCalls) != 1 || git.pushCalls[0].remote != "mirror" {
-		t.Fatalf("push calls = %#v, want one mirror push", git.pushCalls)
+	if len(git.pushBranchCalls) != 1 || git.pushBranchCalls[0].remote != "mirror" {
+		t.Fatalf("push calls = %#v, want one mirror push", git.pushBranchCalls)
 	}
 	if len(got.Actions) != 1 {
 		t.Fatalf("action count = %d, want 1", len(got.Actions))
 	}
 	action := got.Actions[0]
-	if action.Type != "PUSH_MIRROR" || action.Target != "github" || action.Forced || action.Destructive {
-		t.Fatalf("action = %#v, want safe PUSH_MIRROR to github", action)
+	if action.Type != "PUSH_BRANCH" || action.Target != "github/main" || action.Force {
+		t.Fatalf("action = %#v, want safe PUSH_BRANCH to github/main", action)
 	}
 }
 
 func TestExecuteRefusesUnsafeMirrorWithoutForce(t *testing.T) {
 	git := &fakeGit{}
 	repo := testRepo()
-	result := status.Result{ID: repo.ID, State: status.StateDiverged, Ahead: 1, Behind: 2}
+	st := status.Result{ID: repo.ID, State: status.StateDiverged, Ahead: 1, Behind: 2}
 
-	_, err := Execute(repo, result, git, false)
+	_, err := Execute(repo, st, git, false, false)
 	if err == nil {
 		t.Fatal("Execute returned nil error, want unsafe state rejection")
 	}
 	if !strings.Contains(err.Error(), "--force") {
 		t.Fatalf("error = %q, want --force guidance", err.Error())
 	}
-	if len(git.syncCalls) != 0 || len(git.pushCalls) != 0 {
-		t.Fatalf("git calls = sync %#v push %#v, want no side effects", git.syncCalls, git.pushCalls)
+	if len(git.pushBranchCalls) != 0 && len(git.forcePushBranchWithLeaseCalls) != 0 {
+		t.Fatalf("git calls = push %#v force %#v, want no side effects", git.pushBranchCalls, git.forcePushBranchWithLeaseCalls)
 	}
 }
 
 func TestExecuteForcePushesUnsafeMirror(t *testing.T) {
 	git := &fakeGit{}
 	repo := testRepo()
-	result := status.Result{ID: repo.ID, State: status.StateAhead, Ahead: 1}
+	st := status.Result{ID: repo.ID, State: status.StateAhead, Ahead: 1}
 
-	got, err := Execute(repo, result, git, true)
+	got, err := Execute(repo, st, git, true, false)
 	if err != nil {
 		t.Fatalf("Execute returned error: %v", err)
 	}
-	if len(git.syncCalls) != 1 || len(git.pushCalls) != 1 {
-		t.Fatalf("git calls = sync %#v push %#v, want one sync and push", git.syncCalls, git.pushCalls)
+	if len(git.forcePushBranchWithLeaseCalls) != 1 {
+		t.Fatalf("git calls = force %#v, want one force push", git.forcePushBranchWithLeaseCalls)
 	}
-	if len(got.Actions) != 1 || !got.Actions[0].Forced || !got.Actions[0].Destructive {
-		t.Fatalf("actions = %#v, want forced destructive push", got.Actions)
+	if len(got.Actions) != 1 || !got.Actions[0].Force {
+		t.Fatalf("actions = %#v, want forced push", got.Actions)
 	}
 }
 
 func TestExecuteNoopsEqualMirror(t *testing.T) {
 	git := &fakeGit{}
 	repo := testRepo()
-	result := status.Result{ID: repo.ID, State: status.StateEqual}
+	st := status.Result{ID: repo.ID, State: status.StateEqual}
 
-	got, err := Execute(repo, result, git, false)
+	got, err := Execute(repo, st, git, false, false)
 	if err != nil {
 		t.Fatalf("Execute returned error: %v", err)
 	}
-	if len(git.syncCalls) != 0 || len(git.pushCalls) != 0 {
-		t.Fatalf("git calls = sync %#v push %#v, want no side effects", git.syncCalls, git.pushCalls)
+	if len(git.pushBranchCalls) != 0 || len(git.forcePushBranchWithLeaseCalls) != 0 {
+		t.Fatalf("git calls = push %#v force %#v, want no side effects", git.pushBranchCalls, git.forcePushBranchWithLeaseCalls)
 	}
 	if len(got.Actions) != 0 {
 		t.Fatalf("actions = %#v, want none", got.Actions)

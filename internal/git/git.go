@@ -92,6 +92,38 @@ func (Client) PushMirror(repoPath, remote string) error {
 	return run(repoPath, "push", "--mirror", remote)
 }
 
+func (Client) ResolveRevision(repoPath, rev string) (string, error) {
+	out, err := output(repoPath, "rev-parse", rev)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out), nil
+}
+
+func (Client) ResolveRemoteHeadBranch(repoPath, remote string) (string, error) {
+	out, err := output(repoPath, "symbolic-ref", "--short", "refs/remotes/"+remote+"/HEAD")
+	if err != nil {
+		return "", err
+	}
+	ref := strings.TrimSpace(out)
+	prefix := remote + "/"
+	if strings.HasPrefix(ref, prefix) {
+		return strings.TrimPrefix(ref, prefix), nil
+	}
+	return ref, nil
+}
+
+func (Client) PushBranch(repoPath, remote, srcRef, dstBranch string) error {
+	refspec := srcRef + ":refs/heads/" + dstBranch
+	return run(repoPath, "push", remote, refspec)
+}
+
+func (Client) ForcePushBranchWithLease(repoPath, remote, srcRef, dstBranch, expectedOldOID string) error {
+	lease := "--force-with-lease=refs/heads/" + dstBranch + ":" + expectedOldOID
+	refspec := srcRef + ":refs/heads/" + dstBranch
+	return run(repoPath, "push", remote, lease, refspec)
+}
+
 func run(repoPath string, args ...string) error {
 	cmd, cancel := gitCommand(repoPath, args...)
 	defer cancel()

@@ -74,6 +74,14 @@ flowchart LR
 * CI/CD pipelines
 * Repo bootstrapping
 
+### Deterministic document routing
+
+* Context-aware route selection
+* Token-budget enforcement
+* Canonical document preference
+* Prompt and policy isolation
+* Deterministic retrieval pruning
+
 ### Extensibility planned
 
 * Container registries
@@ -131,6 +139,40 @@ repoctl drift
 
 ---
 
+## Document Routing
+
+Repora includes a deterministic document routing model intended to reduce context size and retrieval noise for AI-assisted workflows.
+
+Routing operates before retrieval expansion.
+
+```mermaid
+flowchart LR
+    Query --> Classifier
+    Classifier --> Route
+    Route --> Budget
+    Budget --> Retrieval
+    Retrieval --> Agent
+```
+
+Core principles:
+
+* route before retrieval
+* bounded context budgets
+* canonical document preference
+* deterministic pruning
+* explicit prompt boundaries
+
+Artifacts:
+
+* `.repora/document-router.yaml`
+* `schemas/document-router.schema.json`
+* `docs/routing/document-routing.md`
+* `prompts/document-routing-overlay.md`
+
+The goal is to prevent repository-wide ingestion for narrow tasks.
+
+---
+
 ## Architecture
 
 ### Layers
@@ -183,6 +225,8 @@ Core security principles:
 * Drift masking malicious changes
 * Over-broad Git credential permissions
 * Unsafe plugin execution
+* Prompt injection through repository documents
+* Context poisoning via archived or generated artifacts
 
 ### Planned mitigations
 
@@ -191,6 +235,8 @@ Core security principles:
 * Audit logs
 * Explicit diff approval workflows
 * Sandboxed plugin execution
+* Deterministic routing allowlists
+* Canonical document precedence
 
 ---
 
@@ -217,6 +263,9 @@ See [LICENSE](./LICENSE) for details.
 * [ ] Container registry integrations
 * [ ] Model and workflow definitions
 * [ ] Hosted or self-hosted control plane
+* [ ] AST-aware routing
+* [ ] Graph-aware retrieval planning
+* [ ] Trust-scored document classes
 
 ---
 
