@@ -35,24 +35,7 @@ func SafePathSegment(identity string) (string, error) {
 	if identity == "" {
 		return "", fmt.Errorf("identity is required")
 	}
-	if isSafePathSegment(identity) {
-		return identity, nil
-	}
-	return "b64-" + base64.RawURLEncoding.EncodeToString([]byte(identity)), nil
-}
-
-func isSafePathSegment(identity string) bool {
-	for _, r := range identity {
-		switch {
-		case r >= 'a' && r <= 'z':
-		case r >= 'A' && r <= 'Z':
-		case r >= '0' && r <= '9':
-		case r == '.', r == '_', r == '-':
-		default:
-			return false
-		}
-	}
-	return true
+	return "uid-" + base64.RawURLEncoding.EncodeToString([]byte(identity)), nil
 }
 
 func (Client) EnsureMirror(path, canonicalURL string) error {
