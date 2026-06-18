@@ -235,7 +235,7 @@ func TestRunTimesOutGitCommand(t *testing.T) {
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	oldTimeout := gitTimeout
-	gitTimeout = 35 * time.Millisecond
+	gitTimeout = 15 * time.Millisecond
 	t.Cleanup(func() { gitTimeout = oldTimeout })
 
 	start := time.Now()
