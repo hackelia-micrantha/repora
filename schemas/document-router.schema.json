@@ -3,11 +3,7 @@
   "$id": "https://repora.dev/schemas/document-router.schema.json",
   "title": "Repora Document Router",
   "type": "object",
-  "required": [
-    "version",
-    "kind",
-    "routes"
-  ],
+  "required": ["version", "kind", "routes"],
   "properties": {
     "version": {
       "type": "integer",
@@ -52,10 +48,7 @@
     },
     "route": {
       "type": "object",
-      "required": [
-        "id",
-        "include"
-      ],
+      "required": ["id", "include"],
       "properties": {
         "id": {
           "type": "string"

@@ -38,6 +38,10 @@ type Git interface {
 	ForcePushBranchWithLease(repoPath, remote, srcRef, dstBranch, expectedOldOID string) error
 }
 
+func IsUnsafe(result status.Result) bool {
+	return result.State == status.StateAhead || result.State == status.StateDiverged
+}
+
 func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun bool) (Result, error) {
 	result := Result{
 		ID:      repo.ID,

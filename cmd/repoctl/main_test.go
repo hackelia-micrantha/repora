@@ -8,9 +8,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"repoctl/internal/apply"
 	"repoctl/internal/config"
 	"repoctl/internal/status"
 )
@@ -166,6 +168,80 @@ func TestStatusJSONMatchesDocumentedShape(t *testing.T) {
 	}
 }
 
+func TestStatusDebugWritesRedactedLogsToStderr(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:secret/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:secret/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateEqual}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var stderr bytes.Buffer
+	code := withStderr(t, &stderr, func() int {
+		return run([]string{"status", "-f", configPath, "--debug"})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	got := stderr.String()
+	for _, want := range []string{
+		"repoctl: debug command=status repos=1 parallel=5 dry_run=false\n",
+		"repoctl: debug checking repo=payments-api\n",
+		"repoctl: debug checked repo=payments-api state=EQUAL\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("stderr = %q, missing debug line %q", got, want)
+		}
+	}
+	if strings.Contains(got, "secret") || strings.Contains(got, "git@") {
+		t.Fatalf("stderr = %q, want debug output to omit remote URLs", got)
+	}
+}
+
+func TestStatusDryRunMatchesNormalOutput(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateEqual}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var normal bytes.Buffer
+	normalCode := withStdout(t, &normal, func() int {
+		return run([]string{"status", "-f", configPath})
+	})
+	var dryRun bytes.Buffer
+	dryRunCode := withStdout(t, &dryRun, func() int {
+		return run([]string{"status", "-f", configPath, "--dry-run"})
+	})
+
+	if normalCode != 0 || dryRunCode != 0 {
+		t.Fatalf("codes = normal %d dry-run %d, want both 0", normalCode, dryRunCode)
+	}
+	if dryRun.String() != normal.String() {
+		t.Fatalf("dry-run stdout = %q, want normal stdout %q", dryRun.String(), normal.String())
+	}
+}
+
 func TestPlanJSONIncludesPushMirrorActionForBehindMirror(t *testing.T) {
 	configPath := writeConfig(t, `repos:
   - id: payments-api
@@ -224,6 +300,425 @@ func TestPlanJSONIncludesPushMirrorActionForBehindMirror(t *testing.T) {
 	}
 }
 
+func TestPlanDryRunMatchesNormalOutput(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var normal bytes.Buffer
+	normalCode := withStdout(t, &normal, func() int {
+		return run([]string{"plan", "-f", configPath})
+	})
+	var dryRun bytes.Buffer
+	dryRunCode := withStdout(t, &dryRun, func() int {
+		return run([]string{"plan", "-f", configPath, "--dry-run"})
+	})
+
+	if normalCode != 0 || dryRunCode != 0 {
+		t.Fatalf("codes = normal %d dry-run %d, want both 0", normalCode, dryRunCode)
+	}
+	if dryRun.String() != normal.String() {
+		t.Fatalf("dry-run stdout = %q, want normal stdout %q", dryRun.String(), normal.String())
+	}
+}
+
+func TestApplySupportsDryRun(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var dryRunCalled bool
+	oldApply := applyExecute
+	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
+		dryRunCalled = dryRun
+		return apply.Result{
+			ID:     repo.ID,
+			DryRun: dryRun,
+			Actions: []apply.Action{
+				{Type: "PUSH_BRANCH", Source: "canonical/main", Target: repo.Mirrors[0].Provider + "/main"},
+			},
+		}, nil
+	}
+	t.Cleanup(func() { applyExecute = oldApply })
+
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"apply", "-f", configPath, "--dry-run"})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	if !dryRunCalled {
+		t.Fatal("applyExecute was not called with dryRun=true")
+	}
+	want := "payments-api\n  dry-run PUSH_BRANCH canonical/main -> github/main\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+}
+
+func TestPlanHumanOutputDescribesMirrorPush(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"plan", "-f", configPath})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	want := "payments-api\n  push mirror github: 3 commits\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+}
+
+func TestPlanHumanOutputShowsNoChangesForEqualMirror(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateEqual}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"plan", "-f", configPath})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	want := "payments-api\n  no changes\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+}
+
+func TestApplyHumanOutputPushesBehindMirror(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	oldApply := applyExecute
+	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
+		return apply.Result{
+			ID:    repo.ID,
+			State: result.State,
+			Actions: []apply.Action{
+				{Type: "PUSH_BRANCH", Source: "canonical/main", Target: repo.Mirrors[0].Provider + "/main"},
+			},
+		}, nil
+	}
+	t.Cleanup(func() { applyExecute = oldApply })
+
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"apply", "-f", configPath})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	want := "payments-api\n  apply PUSH_BRANCH canonical/main -> github/main\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+}
+
+func TestApplyHumanOutputWritesProgressToStderr(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	oldApply := applyExecute
+	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
+		return apply.Result{
+			ID:      repo.ID,
+			Actions: []apply.Action{{Type: "PUSH_BRANCH", Source: "canonical/main", Target: repo.Mirrors[0].Provider + "/main"}},
+		}, nil
+	}
+	t.Cleanup(func() { applyExecute = oldApply })
+
+	var stderr bytes.Buffer
+	code := withStderr(t, &stderr, func() int {
+		return run([]string{"apply", "-f", configPath})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	if got := stderr.String(); got != "repoctl: applying payments-api\n" {
+		t.Fatalf("stderr = %q, want progress line", got)
+	}
+}
+
+func TestApplyJSONSuppressesProgress(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 3}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	oldApply := applyExecute
+	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
+		return apply.Result{
+			ID:      repo.ID,
+			Actions: []apply.Action{{Type: "PUSH_BRANCH", Source: "canonical/main", Target: repo.Mirrors[0].Provider + "/main"}},
+		}, nil
+	}
+	t.Cleanup(func() { applyExecute = oldApply })
+
+	var stderr bytes.Buffer
+	code := withStderr(t, &stderr, func() int {
+		return run([]string{"apply", "-f", configPath, "--json"})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want no progress for JSON output", stderr.String())
+	}
+}
+
+func TestApplyRefusesUnsafeMirrorBeforeSideEffects(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateDiverged, Ahead: 1, Behind: 2}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	oldApply := applyExecute
+	applyCalled := false
+	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
+		applyCalled = true
+		return apply.Result{}, nil
+	}
+	t.Cleanup(func() { applyExecute = oldApply })
+
+	var stderr bytes.Buffer
+	code := withStderr(t, &stderr, func() int {
+		return run([]string{"apply", "-f", configPath})
+	})
+
+	if code != 2 {
+		t.Fatalf("run returned %d, want 2", code)
+	}
+	if applyCalled {
+		t.Fatal("applyExecute was called, want unsafe state rejected before side effects")
+	}
+	if !strings.Contains(stderr.String(), "--force") {
+		t.Fatalf("stderr = %q, want --force guidance", stderr.String())
+	}
+}
+
+func TestApplyPrintsResultsInConfigOrderWhenAppliesCompleteOutOfOrder(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: slow-repo
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/slow-repo.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/slow-repo.git
+  - id: fast-repo
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/fast-repo.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/fast-repo.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 1}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	oldApply := applyExecute
+	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
+		if repo.ID == "slow-repo" {
+			time.Sleep(25 * time.Millisecond)
+		}
+		return apply.Result{
+			ID:      repo.ID,
+			Actions: []apply.Action{{Type: "PUSH_BRANCH", Source: "canonical/main", Target: repo.Mirrors[0].Provider + "/main"}},
+		}, nil
+	}
+	t.Cleanup(func() { applyExecute = oldApply })
+
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"apply", "-f", configPath, "--parallel", "2"})
+	})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	slowIndex := strings.Index(stdout.String(), "slow-repo")
+	fastIndex := strings.Index(stdout.String(), "fast-repo")
+	if slowIndex == -1 || fastIndex == -1 {
+		t.Fatalf("stdout missing repo ids:\n%s", stdout.String())
+	}
+	if slowIndex > fastIndex {
+		t.Fatalf("repos printed out of config order:\n%s", stdout.String())
+	}
+}
+
+func TestApplyHonorsParallelLimit(t *testing.T) {
+	configPath := writeConfig(t, `repos:
+  - id: one
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/one.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/one.git
+  - id: two
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/two.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/two.git
+`)
+
+	oldCheck := statusCheck
+	statusCheck = func(repo config.Repo) (status.Result, error) {
+		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 1}, nil
+	}
+	t.Cleanup(func() { statusCheck = oldCheck })
+
+	var mu sync.Mutex
+	active := 0
+	maxActive := 0
+	oldApply := applyExecute
+	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
+		mu.Lock()
+		active++
+		if active > maxActive {
+			maxActive = active
+		}
+		mu.Unlock()
+
+		time.Sleep(20 * time.Millisecond)
+
+		mu.Lock()
+		active--
+		mu.Unlock()
+
+		return apply.Result{
+			ID:      repo.ID,
+			Actions: []apply.Action{{Type: "PUSH_BRANCH", Source: "canonical/main", Target: repo.Mirrors[0].Provider + "/main"}},
+		}, nil
+	}
+	t.Cleanup(func() { applyExecute = oldApply })
+
+	code := run([]string{"apply", "-f", configPath, "--parallel", "1"})
+
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	if maxActive > 1 {
+		t.Fatalf("max concurrent applies = %d, want <= 1", maxActive)
+	}
+}
+
 func writeConfig(t *testing.T, data string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "repora.yaml")
@@ -242,6 +737,29 @@ func withStdout(t *testing.T, dst *bytes.Buffer, fn func() int) int {
 	}
 	os.Stdout = w
 	defer func() { os.Stdout = oldStdout }()
+
+	done := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(dst, r)
+		close(done)
+	}()
+
+	code := fn()
+	_ = w.Close()
+	<-done
+	_ = r.Close()
+	return code
+}
+
+func withStderr(t *testing.T, dst *bytes.Buffer, fn func() int) int {
+	t.Helper()
+	oldStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("create stderr pipe: %v", err)
+	}
+	os.Stderr = w
+	defer func() { os.Stderr = oldStderr }()
 
 	done := make(chan struct{})
 	go func() {

@@ -6,11 +6,11 @@ Repora needs deterministic context selection.
 
 Without routing:
 
-* agents load excessive context
-* token usage scales with repository size
-* prompts become unstable
-* retrieval becomes noisy
-* unrelated specifications contaminate planning
+- agents load excessive context
+- token usage scales with repository size
+- prompts become unstable
+- retrieval becomes noisy
+- unrelated specifications contaminate planning
 
 The document router constrains context selection before retrieval expansion.
 
@@ -47,10 +47,10 @@ The same query should produce approximately the same retrieval set.
 
 Every route has:
 
-* file limits
-* byte limits
-* token budgets
-* truncation behavior
+- file limits
+- byte limits
+- token budgets
+- truncation behavior
 
 ### Explainable
 
@@ -60,22 +60,22 @@ A route should be inspectable and reviewable.
 
 Routing rules should layer:
 
-* architecture
-* policy
-* prompts
-* operations
-* schema
+- architecture
+- policy
+- prompts
+- operations
+- schema
 
 ### Provider-agnostic
 
 The router should work with:
 
-* Codex
-* Claude Code
-* Cursor
-* OpenAI APIs
-* local RAG systems
-* Anthesis-style orchestration
+- Codex
+- Claude Code
+- Cursor
+- OpenAI APIs
+- local RAG systems
+- Anthesis-style orchestration
 
 ---
 
@@ -83,16 +83,16 @@ The router should work with:
 
 Repora uses:
 
-* keyword classification
-* path weighting
-* deterministic pruning
-* explicit budgets
+- keyword classification
+- path weighting
+- deterministic pruning
+- explicit budgets
 
 It intentionally does NOT require:
 
-* embeddings
-* vector databases
-* semantic chunk stores
+- embeddings
+- vector databases
+- semantic chunk stores
 
 Those can exist later as optional augmentations.
 
@@ -121,10 +121,10 @@ Recommended structure:
 
 Avoid:
 
-* massive monolithic RFCs
-* duplicated summaries everywhere
-* embedding implementation details in overview docs
-* storing prompts beside unrelated implementation code
+- massive monolithic RFCs
+- duplicated summaries everywhere
+- embedding implementation details in overview docs
+- storing prompts beside unrelated implementation code
 
 ---
 
@@ -142,19 +142,19 @@ One canonical architectural document is better than many partial summaries.
 
 Examples:
 
-* tests
-* generated assets
-* vendor
-* build artifacts
-* archives
+- tests
+- generated assets
+- vendor
+- build artifacts
+- archives
 
 ### 4. Truncate structurally
 
 Prefer:
 
-* headings
-* summaries
-* interface sections
+- headings
+- summaries
+- interface sections
 
 before full body inclusion.
 
@@ -194,19 +194,19 @@ Routing is part of the trust boundary.
 
 Potential risks:
 
-* malicious prompt injection in unrelated docs
-* archived RFCs influencing current planning
-* hidden instructions in examples
-* context poisoning through generated files
+- malicious prompt injection in unrelated docs
+- archived RFCs influencing current planning
+- hidden instructions in examples
+- context poisoning through generated files
 
 Mitigations:
 
-* route allowlists
-* path scoping
-* canonical sources
-* archived document exclusion
-* deterministic ordering
-* explicit prompt boundaries
+- route allowlists
+- path scoping
+- canonical sources
+- archived document exclusion
+- deterministic ordering
+- explicit prompt boundaries
 
 ---
 
@@ -214,13 +214,13 @@ Mitigations:
 
 Potential future enhancements:
 
-* graph-aware routing
-* spec dependency analysis
-* AST-aware source routing
-* semantic augmentation
-* trust scoring
-* signed document classes
-* policy-enforced context boundaries
+- graph-aware routing
+- spec dependency analysis
+- AST-aware source routing
+- semantic augmentation
+- trust scoring
+- signed document classes
+- policy-enforced context boundaries
 
 The key constraint:
 

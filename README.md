@@ -19,9 +19,9 @@
 
 Think:
 
-* GitOps → but for repositories themselves
-* Terraform → but for repo structure, policy, and CI/CD
-* Policy engine → for developer workflows and governance
+- GitOps → but for repositories themselves
+- Terraform → but for repo structure, policy, and CI/CD
+- Policy engine → for developer workflows and governance
 
 ---
 
@@ -41,10 +41,10 @@ flowchart LR
 
 ### Key properties
 
-* **Deterministic** — same spec → same result
-* **Idempotent** — safe to re-run
-* **Convergent** — drives toward desired state
-* **Auditable** — diff-first execution model
+- **Deterministic** — same spec → same result
+- **Idempotent** — safe to re-run
+- **Convergent** — drives toward desired state
+- **Auditable** — diff-first execution model
 
 ---
 
@@ -52,21 +52,21 @@ flowchart LR
 
 ### Repository orchestration
 
-* Multi-repo reconciliation
-* Bulk operations with concurrency controls
-* Dependency-aware execution
+- Multi-repo reconciliation
+- Bulk operations with concurrency controls
+- Dependency-aware execution
 
 ### Policy & governance
 
-* Enforced structure for files, directories, and configs
-* CI/CD standardization
-* Security baselines
+- Enforced structure for files, directories, and configs
+- CI/CD standardization
+- Security baselines
 
 ### Drift management
 
-* Continuous drift detection
-* Unified diff model
-* Controlled remediation
+- Continuous drift detection
+- Unified diff model
+- Controlled remediation
 
 ### Templating & generation
 
@@ -90,7 +90,27 @@ flowchart LR
 
 ---
 
+## Development
+
+This project uses [mise](https://mise.jdx.sh/) to manage development tools and tasks.
+
+### Setup
+
+```bash
+mise install
+```
+
+### Common Tasks
+
+* **Format code:** `mise run fmt`
+* **Lint code:** `mise run lint`
+* **Run tests:** `mise run test`
+* **Build:** `mise run build`
+
+---
+
 ## Example
+
 
 ### Spec
 
@@ -132,10 +152,10 @@ repoctl drift
 
 ### Design notes
 
-* `plan` computes desired changes
-* `apply` executes with safeguards
-* `diff` produces explicit, reviewable changes
-* `drift` detects divergence over time
+- `plan` computes desired changes
+- `apply` executes with safeguards
+- `diff` produces explicit, reviewable changes
+- `drift` detects divergence over time
 
 ---
 
@@ -156,18 +176,18 @@ flowchart LR
 
 Core principles:
 
-* route before retrieval
-* bounded context budgets
-* canonical document preference
-* deterministic pruning
-* explicit prompt boundaries
+- route before retrieval
+- bounded context budgets
+- canonical document preference
+- deterministic pruning
+- explicit prompt boundaries
 
 Artifacts:
 
-* `.repora/document-router.yaml`
-* `schemas/document-router.schema.json`
-* `docs/routing/document-routing.md`
-* `prompts/document-routing-overlay.md`
+- `.repora/document-router.yaml`
+- `schemas/document-router.schema.json`
+- `docs/routing/document-routing.md`
+- `prompts/document-routing-overlay.md`
 
 The goal is to prevent repository-wide ingestion for narrow tasks.
 
@@ -177,11 +197,11 @@ The goal is to prevent repository-wide ingestion for narrow tasks.
 
 ### Layers
 
-* **Spec Layer** — declarative config using YAML or a future DSL
-* **Planner** — builds the execution graph
-* **Diff Engine** — produces the unified diff model
-* **Executor** — applies changes with bounded concurrency
-* **Adapters** — integrate with Git providers, CI systems, registries, and workflow engines
+- **Spec Layer** — declarative config using YAML or a future DSL
+- **Planner** — builds the execution graph
+- **Diff Engine** — produces the unified diff model
+- **Executor** — applies changes with bounded concurrency
+- **Adapters** — integrate with Git providers, CI systems, registries, and workflow engines
 
 ---
 
@@ -198,10 +218,10 @@ graph TD
 
 Execution should be:
 
-* Graph-aware
-* Bounded by explicit concurrency limits
-* Safe for retries
-* Ordered when dependencies require it
+- Graph-aware
+- Bounded by explicit concurrency limits
+- Safe for retries
+- Ordered when dependencies require it
 
 ---
 
@@ -211,31 +231,32 @@ Repora assumes repository mutation is a privileged operation.
 
 Core security principles:
 
-* Principle of least privilege
-* Token-scoped operations
-* Explicit mutation boundaries
-* No implicit side effects
-* Reviewable plans before mutation
+- Principle of least privilege
+- Authentication delegated to system Git in v0.1
+- Explicit mutation boundaries
+- No implicit side effects
+- Reviewable plans before mutation
+- No credentials stored in `repora.yaml`
 
 ### Threat considerations
 
-* Supply-chain injection via templates
-* Unauthorized repository mutation
-* Drift masking malicious changes
-* Over-broad CI/CD token permissions
-* Unsafe plugin execution
-* Prompt injection through repository documents
-* Context poisoning via archived or generated artifacts
+- Supply-chain injection via templates
+- Unauthorized repository mutation
+- Drift masking malicious changes
+- Over-broad Git credential permissions
+- Unsafe plugin execution
+- Prompt injection through repository documents
+- Context poisoning via archived or generated artifacts
 
 ### Planned mitigations
 
-* Signed templates
-* Policy attestations
-* Audit logs
-* Explicit diff approval workflows
-* Sandboxed plugin execution
-* Deterministic routing allowlists
-* Canonical document precedence
+- Signed templates
+- Policy attestations
+- Audit logs
+- Explicit diff approval workflows
+- Sandboxed plugin execution
+- Deterministic routing allowlists
+- Canonical document precedence
 
 ---
 
@@ -243,9 +264,9 @@ Core security principles:
 
 This project is licensed under the **Business Source License 1.1 (BSL)**.
 
-* Free for personal and internal use
-* Commercial or SaaS use requires a license
-* Converts to Apache-2.0 on 2029-01-01
+- Free for personal and internal use
+- Commercial or SaaS use requires a license
+- Converts to Apache-2.0 on 2029-01-01
 
 See [LICENSE](./LICENSE) for details.
 
@@ -253,18 +274,18 @@ See [LICENSE](./LICENSE) for details.
 
 ## Roadmap
 
-* [ ] Formal spec schema
-* [ ] Stable unified diff model
-* [ ] README templating
-* [ ] CI/CD control
-* [ ] Policy packs
-* [ ] Plugin system
-* [ ] Container registry integrations
-* [ ] Model and workflow definitions
-* [ ] Hosted or self-hosted control plane
-* [ ] AST-aware routing
-* [ ] Graph-aware retrieval planning
-* [ ] Trust-scored document classes
+- [ ] Formal spec schema
+- [ ] Stable unified diff model
+- [ ] README templating
+- [ ] CI/CD control
+- [ ] Policy packs
+- [ ] Plugin system
+- [ ] Container registry integrations
+- [ ] Model and workflow definitions
+- [ ] Hosted or self-hosted control plane
+- [ ] AST-aware routing
+- [ ] Graph-aware retrieval planning
+- [ ] Trust-scored document classes
 
 ---
 
@@ -272,11 +293,11 @@ See [LICENSE](./LICENSE) for details.
 
 Repora is built around a few principles:
 
-* **State over scripts**
-* **Diff before mutation**
-* **Policy as code**
-* **Reproducibility over convenience**
-* **Controlled mutation over implicit automation**
+- **State over scripts**
+- **Diff before mutation**
+- **Policy as code**
+- **Reproducibility over convenience**
+- **Controlled mutation over implicit automation**
 
 ---
 
@@ -298,10 +319,10 @@ Early-stage and actively evolving.
 
 Expect:
 
-* Breaking changes
-* Spec iteration
-* Architecture refinement
-* Security model hardening
+- Breaking changes
+- Spec iteration
+- Architecture refinement
+- Security model hardening
 
 ---
 
@@ -311,9 +332,9 @@ Currently closed to external contributions while the core model stabilizes.
 
 For now:
 
-* Open an issue for discussion
-* Propose use cases
-* Share failure modes from real repository management workflows
+- Open an issue for discussion
+- Propose use cases
+- Share failure modes from real repository management workflows
 
 ---
 

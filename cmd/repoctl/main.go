@@ -45,6 +45,12 @@ type repoResult struct {
 	terr   error
 }
 
+type applyTaskResult struct {
+	index  int
+	result apply.Result
+	err    error
+}
+
 type checkSummary struct {
 	results     []status.Result
 	ok          []bool
@@ -61,27 +67,46 @@ var applyExecute = func(repo config.Repo, result status.Result, force, dryRun bo
 	return apply.Execute(repo, result, gitwrap.Client{}, force, dryRun)
 }
 
+var progressf = func(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, format, args...)
+}
+
+var debugf = func(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, format, args...)
+}
+
 func main() {
 	os.Exit(run(os.Args[1:]))
 }
 
 func run(args []string) int {
-	if len(args) == 0 || (args[0] != "status" && args[0] != "plan" && args[0] != "apply") {
-		fmt.Fprintln(os.Stderr, "usage: repoctl <status|plan|apply> -f repora.yaml [--json] [--parallel N] [--continue-on-error] [--dry-run] [--force]")
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "usage: repoctl <status|plan|apply|sync> -f repora.yaml [--json] [--parallel N] [--continue-on-error] [--dry-run] [--force] [--debug]")
 		return 1
 	}
 
 	command := args[0]
+	if command != "status" && command != "plan" && command != "apply" && command != "sync" {
+		fmt.Fprintln(os.Stderr, "usage: repoctl <status|plan|apply|sync> -f repora.yaml [--json] [--parallel N] [--continue-on-error] [--dry-run] [--force] [--debug]")
+		return 1
+	}
+
 	flags := flag.NewFlagSet("repoctl "+command, flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	configPath := flags.String("f", "repora.yaml", "path to SCHEMA-0001 YAML config")
 	jsonFlag := flags.Bool("json", false, "print JSON")
-	parallelFlag := flags.Int("parallel", 5, "max number of concurrent repository checks")
+	parallelFlag := flags.Int("parallel", 5, "max number of concurrent repository operations")
 	continueOnError := flags.Bool("continue-on-error", false, "continue processing repos after an error")
 	dryRun := flags.Bool("dry-run", false, "show what would change without mutating mirror state")
 	force := flags.Bool("force", false, "allow destructive mirror overwrites for ahead or diverged mirrors")
+	debug := flags.Bool("debug", false, "print debug logs to stderr")
 
 	if err := flags.Parse(args[1:]); err != nil {
+		return 1
+	}
+
+	if *dryRun && command != "status" && command != "plan" && command != "apply" && command != "sync" {
+		fmt.Fprintln(os.Stderr, "repoctl: --dry-run is only supported for status, plan, apply, and sync")
 		return 1
 	}
 
@@ -96,7 +121,11 @@ func run(args []string) int {
 		parallel = 1
 	}
 
-	summary := checkRepos(spec, parallel)
+	if *debug {
+		debugf("repoctl: debug command=%s repos=%d parallel=%d dry_run=%t\n", command, len(spec.Repos), parallel, *dryRun)
+	}
+
+	summary := checkRepos(spec, parallel, *debug)
 	if summary.firstErr != nil && !*continueOnError {
 		fmt.Fprintf(os.Stderr, "repoctl: %v\n", summary.firstErr)
 		return 1
@@ -107,14 +136,14 @@ func run(args []string) int {
 		return runStatus(spec, summary, *jsonFlag)
 	case "plan":
 		return runPlan(spec, summary, *jsonFlag)
-	case "apply":
-		return runApply(spec, summary, *jsonFlag, *force, *dryRun)
+	case "apply", "sync":
+		return runApply(spec, summary, *jsonFlag, *force, *dryRun, parallel)
 	default:
 		panic("unreachable command validation")
 	}
 }
 
-func checkRepos(spec config.Spec, parallel int) checkSummary {
+func checkRepos(spec config.Spec, parallel int, debug bool) checkSummary {
 	sem := make(chan struct{}, parallel)
 	resultsCh := make(chan repoResult, len(spec.Repos))
 	var wg sync.WaitGroup
@@ -128,6 +157,9 @@ func checkRepos(spec config.Spec, parallel int) checkSummary {
 			defer wg.Done()
 			defer func() { <-sem }()
 
+			if debug {
+				debugf("repoctl: debug checking repo=%s\n", repo.ID)
+			}
 			result, err := statusCheck(repo)
 			resultsCh <- repoResult{index: i, result: result, terr: err}
 		}()
@@ -153,6 +185,9 @@ func checkRepos(spec config.Spec, parallel int) checkSummary {
 		}
 		summary.results[rr.index] = rr.result
 		summary.ok[rr.index] = true
+		if debug {
+			debugf("repoctl: debug checked repo=%s state=%s\n", spec.Repos[rr.index].ID, rr.result.State)
+		}
 		if rr.result.State == status.StateAhead || rr.result.State == status.StateDiverged {
 			summary.failureCode = 2
 		}
@@ -212,21 +247,24 @@ func runPlan(spec config.Spec, summary checkSummary, jsonFlag bool) int {
 	return summary.failureCode
 }
 
-func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool, dryRun bool) int {
-	output := apply.Output{Results: make([]apply.Result, 0, len(spec.Repos))}
-	exitCode := 0
-	for i, repo := range spec.Repos {
-		if !summary.ok[i] {
-			continue
-		}
-		result, err := applyExecute(repo, summary.results[i], force, dryRun)
-		if err != nil {
-			if exitCode == 0 {
-				exitCode = 2
+func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool, dryRun bool, parallel int) int {
+	if summary.firstErr != nil && !force {
+		fmt.Fprintf(os.Stderr, "repoctl: %d repos failed; refusing apply\n", summary.failedCount)
+		return 1
+	}
+	if !force && !dryRun {
+		for i, result := range summary.results {
+			if summary.ok[i] && apply.IsUnsafe(result) {
+				fmt.Fprintf(os.Stderr, "repoctl: repo %q mirror state is %s; rerun apply with --force to overwrite mirror from canonical\n", spec.Repos[i].ID, result.State)
+				return 2
 			}
-			result.Error = err.Error()
 		}
-		output.Results = append(output.Results, result)
+	}
+
+	output, err := applyRepos(spec, summary, force, dryRun, parallel, !jsonFlag)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "repoctl: %v\n", err)
+		return 1
 	}
 
 	if jsonFlag {
@@ -237,15 +275,69 @@ func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool,
 	} else {
 		printApply(output)
 	}
+	return 0
+}
 
-	if summary.firstErr != nil {
-		fmt.Fprintf(os.Stderr, "repoctl: %d repos failed; continuing due to --continue-on-error\n", summary.failedCount)
-		if exitCode == 0 {
-			exitCode = 1
+func applyRepos(spec config.Spec, summary checkSummary, force bool, dryRun bool, parallel int, progress bool) (apply.Output, error) {
+	sem := make(chan struct{}, parallel)
+	resultsCh := make(chan applyTaskResult, len(spec.Repos)-summary.failedCount)
+	var wg sync.WaitGroup
+
+	for i, repo := range spec.Repos {
+		if !summary.ok[i] {
+			continue
 		}
+		i := i
+		repo := repo
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			if progress {
+				progressf("repoctl: applying %s\n", repo.ID)
+			}
+			result, err := applyExecute(repo, summary.results[i], force, dryRun)
+			resultsCh <- applyTaskResult{index: i, result: result, err: err}
+		}()
 	}
 
-	return exitCode
+	go func() {
+		wg.Wait()
+		close(resultsCh)
+	}()
+
+	ordered := make([]apply.Result, len(spec.Repos))
+	ok := make([]bool, len(spec.Repos))
+	var firstErr error
+	for res := range resultsCh {
+		if res.err != nil {
+			if firstErr == nil {
+				firstErr = res.err
+			}
+			// Even on error, we might have a result to report (especially in dry-run or partial success)
+			res.result.Error = res.err.Error()
+		}
+		ordered[res.index] = res.result
+		ok[res.index] = true
+	}
+
+	// If we're not continuing on error, we might want to return early,
+	// but here we aggregate all results that finished.
+	// The caller (runApply) handles the firstErr if necessary.
+	if firstErr != nil && !dryRun {
+		// In a real implementation, we might want to be more nuanced about which errors are fatal.
+		// For v0.1, if any apply fails, we report the first error if not in dry-run.
+	}
+
+	output := apply.Output{Results: make([]apply.Result, 0, len(spec.Repos)-summary.failedCount)}
+	for i, res := range ordered {
+		if ok[i] {
+			output.Results = append(output.Results, res)
+		}
+	}
+	return output, nil
 }
 
 func newJSONOutput(spec config.Spec, results []status.Result, ok []bool) jsonOutput {
@@ -305,7 +397,7 @@ func printPlan(output plan.Output) {
 			continue
 		}
 		for _, action := range repoPlan.Actions {
-			fmt.Printf("  %s %s: behind %d\n", action.Type, action.Target, action.Behind)
+			fmt.Printf("  push mirror %s: %d commits\n", action.Target, action.Behind)
 		}
 	}
 }

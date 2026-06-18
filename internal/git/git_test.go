@@ -2,6 +2,7 @@ package git
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -91,6 +92,143 @@ func TestEnsureMirrorKeepsValidMirror(t *testing.T) {
 	}
 }
 
+func TestSyncMirrorFromRemoteAndPushMirrorCopiesCanonicalRefs(t *testing.T) {
+	repoDir := t.TempDir()
+	workDir := filepath.Join(repoDir, "work")
+	canonicalDir := filepath.Join(repoDir, "canonical.git")
+	mirrorDir := filepath.Join(repoDir, "mirror.git")
+	cacheDir := filepath.Join(repoDir, "cache.git")
+
+	if err := run("", "init", workDir); err != nil {
+		t.Fatalf("init work repo: %v", err)
+	}
+	if err := run(workDir, "config", "user.email", "repora@example.invalid"); err != nil {
+		t.Fatalf("configure user email: %v", err)
+	}
+	if err := run(workDir, "config", "user.name", "Repora Test"); err != nil {
+		t.Fatalf("configure user name: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(workDir, "README.md"), []byte("initial\n"), 0o600); err != nil {
+		t.Fatalf("write readme: %v", err)
+	}
+	if err := run(workDir, "add", "README.md"); err != nil {
+		t.Fatalf("add readme: %v", err)
+	}
+	if err := run(workDir, "commit", "-m", "initial"); err != nil {
+		t.Fatalf("commit initial: %v", err)
+	}
+	if err := run(workDir, "branch", "-M", "main"); err != nil {
+		t.Fatalf("rename branch: %v", err)
+	}
+	if err := run("", "init", "--bare", canonicalDir); err != nil {
+		t.Fatalf("init canonical repo: %v", err)
+	}
+	if err := run("", "init", "--bare", mirrorDir); err != nil {
+		t.Fatalf("init mirror repo: %v", err)
+	}
+	if err := run(workDir, "remote", "add", "origin", canonicalDir); err != nil {
+		t.Fatalf("add origin: %v", err)
+	}
+	if err := run(workDir, "push", "origin", "main"); err != nil {
+		t.Fatalf("push canonical: %v", err)
+	}
+
+	client := Client{}
+	if err := client.EnsureMirror(cacheDir, canonicalDir); err != nil {
+		t.Fatalf("EnsureMirror returned error: %v", err)
+	}
+	if err := client.ConfigureRemote(cacheDir, "canonical", canonicalDir); err != nil {
+		t.Fatalf("ConfigureRemote canonical returned error: %v", err)
+	}
+	if err := client.ConfigureRemote(cacheDir, "mirror", mirrorDir); err != nil {
+		t.Fatalf("ConfigureRemote mirror returned error: %v", err)
+	}
+	if err := client.SyncMirrorFromRemote(cacheDir, "canonical"); err != nil {
+		t.Fatalf("SyncMirrorFromRemote returned error: %v", err)
+	}
+	if err := client.PushMirror(cacheDir, "mirror"); err != nil {
+		t.Fatalf("PushMirror returned error: %v", err)
+	}
+
+	canonicalHead, err := output(canonicalDir, "rev-parse", "refs/heads/main")
+	if err != nil {
+		t.Fatalf("rev-parse canonical main: %v", err)
+	}
+	mirrorHead, err := output(mirrorDir, "rev-parse", "refs/heads/main")
+	if err != nil {
+		t.Fatalf("rev-parse mirror main: %v", err)
+	}
+	if strings.TrimSpace(mirrorHead) != strings.TrimSpace(canonicalHead) {
+		t.Fatalf("mirror main = %q, want canonical %q", strings.TrimSpace(mirrorHead), strings.TrimSpace(canonicalHead))
+	}
+}
+
+func TestFetchPrunesStaleRemoteRefs(t *testing.T) {
+	repoDir := t.TempDir()
+	workDir := filepath.Join(repoDir, "work")
+	canonicalDir := filepath.Join(repoDir, "canonical.git")
+	cacheDir := filepath.Join(repoDir, "cache.git")
+
+	if err := run("", "init", workDir); err != nil {
+		t.Fatalf("init work repo: %v", err)
+	}
+	if err := run(workDir, "config", "user.email", "repora@example.invalid"); err != nil {
+		t.Fatalf("configure user email: %v", err)
+	}
+	if err := run(workDir, "config", "user.name", "Repora Test"); err != nil {
+		t.Fatalf("configure user name: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(workDir, "README.md"), []byte("initial\n"), 0o600); err != nil {
+		t.Fatalf("write readme: %v", err)
+	}
+	if err := run(workDir, "add", "README.md"); err != nil {
+		t.Fatalf("add readme: %v", err)
+	}
+	if err := run(workDir, "commit", "-m", "initial"); err != nil {
+		t.Fatalf("commit initial: %v", err)
+	}
+	if err := run(workDir, "branch", "-M", "main"); err != nil {
+		t.Fatalf("rename branch: %v", err)
+	}
+	if err := run(workDir, "branch", "stale"); err != nil {
+		t.Fatalf("create stale branch: %v", err)
+	}
+	if err := run("", "init", "--bare", canonicalDir); err != nil {
+		t.Fatalf("init canonical repo: %v", err)
+	}
+	if err := run(workDir, "remote", "add", "origin", canonicalDir); err != nil {
+		t.Fatalf("add origin: %v", err)
+	}
+	if err := run(workDir, "push", "origin", "main", "stale"); err != nil {
+		t.Fatalf("push branches: %v", err)
+	}
+
+	client := Client{}
+	if err := client.EnsureMirror(cacheDir, canonicalDir); err != nil {
+		t.Fatalf("EnsureMirror returned error: %v", err)
+	}
+	if err := client.ConfigureRemote(cacheDir, "canonical", canonicalDir); err != nil {
+		t.Fatalf("ConfigureRemote canonical returned error: %v", err)
+	}
+	if err := client.Fetch(cacheDir, "canonical"); err != nil {
+		t.Fatalf("initial Fetch returned error: %v", err)
+	}
+	if _, err := output(cacheDir, "show-ref", "--verify", "refs/remotes/canonical/stale"); err != nil {
+		t.Fatalf("expected stale remote ref before prune: %v", err)
+	}
+
+	if err := run(workDir, "push", "origin", "--delete", "stale"); err != nil {
+		t.Fatalf("delete stale branch: %v", err)
+	}
+	if err := client.Fetch(cacheDir, "canonical"); err != nil {
+		t.Fatalf("Fetch returned error: %v", err)
+	}
+
+	if _, err := output(cacheDir, "show-ref", "--verify", "refs/remotes/canonical/stale"); err == nil {
+		t.Fatal("stale remote ref still exists after pruned fetch")
+	}
+}
+
 func TestRunTimesOutGitCommand(t *testing.T) {
 	binDir := t.TempDir()
 	writeFakeGit(t, binDir)
@@ -115,10 +253,14 @@ func TestRunTimesOutGitCommand(t *testing.T) {
 func writeFakeGit(t *testing.T, binDir string) {
 	t.Helper()
 	if runtime.GOOS == "windows" {
-		path := filepath.Join(binDir, "git.bat")
-		data := []byte("@echo off\r\nping -n 4 127.0.0.1 >nul\r\n")
-		if err := os.WriteFile(path, data, 0o700); err != nil {
-			t.Fatalf("write fake git: %v", err)
+		sourcePath := filepath.Join(binDir, "fake_git.go")
+		source := []byte("package main\n\nimport \"time\"\n\nfunc main() {\n\ttime.Sleep(3 * time.Second)\n}\n")
+		if err := os.WriteFile(sourcePath, source, 0o600); err != nil {
+			t.Fatalf("write fake git source: %v", err)
+		}
+		cmd := exec.Command("go", "build", "-o", filepath.Join(binDir, "git.exe"), sourcePath)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("build fake git: %v: %s", err, out)
 		}
 		return
 	}

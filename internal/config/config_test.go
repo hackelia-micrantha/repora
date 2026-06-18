@@ -228,6 +228,25 @@ func TestLoadDefaultsModeToMirror(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsUnknownCredentialFields(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "repora.yaml")
+	writeFile(t, path, []byte(`repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+      token_env: GITLAB_TOKEN
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`))
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("Load returned nil error, want unknown credential field rejection")
+	}
+}
+
 func writeFile(t *testing.T, path string, data []byte) {
 	t.Helper()
 	if err := os.WriteFile(path, data, 0o600); err != nil {

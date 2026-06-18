@@ -103,36 +103,25 @@ func TestApplyRequiresForceForDivergedMirror(t *testing.T) {
 		return status.Result{ID: repo.ID, State: status.StateDiverged, Behind: 1, Ahead: 1}, nil
 	}
 	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
-		return apply.Result{
-			ID:     repo.ID,
-			State:  result.State,
-			DryRun: dryRun,
-			Actions: []apply.Action{{
-				Type:   "PUSH_BRANCH",
-				Source: "canonical/main",
-				Target: "github/main",
-				Force:  true,
-			}},
-			Error: `repo "payments-api" is DIVERGED; rerun with --force to overwrite mirror default branch`,
-		}, assertErr(`repo "payments-api" is DIVERGED; rerun with --force to overwrite mirror default branch`)
+		// This should not be called without --force
+		return apply.Result{}, nil
 	}
 	t.Cleanup(func() {
 		statusCheck = oldCheck
 		applyExecute = oldApply
 	})
 
-	var stdout bytes.Buffer
-	code := withStdout(t, &stdout, func() int {
+	var stderr bytes.Buffer
+	code := withStderr(t, &stderr, func() int {
 		return run([]string{"apply", "-f", configPath})
 	})
 	if code != 2 {
 		t.Fatalf("run returned %d, want 2", code)
 	}
-	if !strings.Contains(stdout.String(), "error: repo \"payments-api\" is DIVERGED") {
-		t.Fatalf("stdout missing divergence error:\n%s", stdout.String())
+	if !strings.Contains(stderr.String(), "mirror state is DIVERGED") {
+		t.Fatalf("stderr missing divergence error:\n%s", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "--force") {
+		t.Fatalf("stderr missing --force guidance:\n%s", stderr.String())
 	}
 }
-
-type assertErr string
-
-func (e assertErr) Error() string { return string(e) }

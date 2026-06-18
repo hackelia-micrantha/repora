@@ -1,0 +1,22 @@
+[tools]
+go = "1.22"
+golangci-lint = "latest"
+prettier = "latest"
+actionlint = "latest"
+taplo = "latest"
+
+[tasks.fmt]
+description = "Format all files"
+run = ["go fmt ./...", "prettier --write .", "taplo fmt"]
+
+[tasks.lint]
+description = "Run all linters"
+run = ["golangci-lint run", "actionlint", "taplo check"]
+
+[tasks.test]
+description = "Run tests"
+run = "go test ./..."
+
+[tasks.build]
+description = "Build the project"
+run = "go build ./cmd/repoctl"
