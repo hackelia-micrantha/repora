@@ -9,13 +9,15 @@ import (
 
 func TestNewRepoPlanAddsPushMirrorActionWhenMirrorIsBehind(t *testing.T) {
 	repo := config.Repo{
-		ID: "payments-api",
+		ID:  "payments-api",
+		UID: "repo.org.payments-api",
 		Mirrors: []config.Endpoint{
 			{Provider: "github", URL: "git@github.com:org/payments-api.git"},
 		},
 	}
 	result := status.Result{
 		ID:     "payments-api",
+		UID:    "repo.org.payments-api",
 		State:  status.StateBehind,
 		Behind: 3,
 	}
@@ -24,6 +26,9 @@ func TestNewRepoPlanAddsPushMirrorActionWhenMirrorIsBehind(t *testing.T) {
 
 	if got.ID != "payments-api" {
 		t.Fatalf("id = %q, want payments-api", got.ID)
+	}
+	if got.UID != "repo.org.payments-api" {
+		t.Fatalf("uid = %q, want repo.org.payments-api", got.UID)
 	}
 	if len(got.Actions) != 1 {
 		t.Fatalf("action count = %d, want 1", len(got.Actions))
@@ -45,6 +50,9 @@ func TestNewRepoPlanAddsNoActionsWhenMirrorIsEqual(t *testing.T) {
 
 	got := NewRepoPlan(repo, result)
 
+	if got.UID != "payments-api" {
+		t.Fatalf("uid = %q, want default payments-api", got.UID)
+	}
 	if len(got.Actions) != 0 {
 		t.Fatalf("actions = %#v, want none", got.Actions)
 	}
