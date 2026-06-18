@@ -3,6 +3,7 @@ package git
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"os/exec"
@@ -17,12 +18,41 @@ const defaultGitTimeout = 30 * time.Second
 
 var gitTimeout = defaultGitTimeout
 
-func MirrorPath(id string) (string, error) {
+func MirrorPath(identity string) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("find home directory: %w", err)
 	}
-	return filepath.Join(home, ".cache", "repora", id+".git"), nil
+	segment, err := SafePathSegment(identity)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".cache", "repora", segment+".git"), nil
+}
+
+func SafePathSegment(identity string) (string, error) {
+	identity = strings.TrimSpace(identity)
+	if identity == "" {
+		return "", fmt.Errorf("identity is required")
+	}
+	if isSafePathSegment(identity) {
+		return identity, nil
+	}
+	return "b64-" + base64.RawURLEncoding.EncodeToString([]byte(identity)), nil
+}
+
+func isSafePathSegment(identity string) bool {
+	for _, r := range identity {
+		switch {
+		case r >= 'a' && r <= 'z':
+		case r >= 'A' && r <= 'Z':
+		case r >= '0' && r <= '9':
+		case r == '.', r == '_', r == '-':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func (Client) EnsureMirror(path, canonicalURL string) error {
