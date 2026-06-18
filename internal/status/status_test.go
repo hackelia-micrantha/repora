@@ -116,8 +116,8 @@ func TestCheckReturnsEqualState(t *testing.T) {
 	if result.ID != "payments-api" || result.UID != "repo.org.payments-api" {
 		t.Fatalf("identity = %q/%q, want payments-api/repo.org.payments-api", result.ID, result.UID)
 	}
-	if len(git.ensureMirrorCalls) != 1 || !strings.Contains(git.ensureMirrorCalls[0].path, "repo.org.payments-api.git") {
-		t.Fatalf("ensure mirror path = %#v, want durable uid path", git.ensureMirrorCalls)
+	if len(git.ensureMirrorCalls) != 1 || !strings.Contains(git.ensureMirrorCalls[0].path, "uid-cmVwby5vcmcucGF5bWVudHMtYXBp.git") {
+		t.Fatalf("ensure mirror path = %#v, want durable uid cache path", git.ensureMirrorCalls)
 	}
 	if result.State != StateEqual {
 		t.Fatalf("state = %q, want %q", result.State, StateEqual)
