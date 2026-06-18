@@ -20,6 +20,7 @@ const (
 
 type Result struct {
 	ID        string `json:"id"`
+	UID       string `json:"uid"`
 	State     State  `json:"state"`
 	Ahead     int    `json:"ahead"`
 	Behind    int    `json:"behind"`
@@ -37,7 +38,7 @@ type Git interface {
 }
 
 func Check(repo config.Repo, git Git) (Result, error) {
-	path, err := gitwrap.MirrorPath(repo.ID)
+	path, err := gitwrap.MirrorPath(repo.DurableID())
 	if err != nil {
 		return Result{}, err
 	}
@@ -74,6 +75,7 @@ func Check(repo config.Repo, git Git) (Result, error) {
 	}
 	result := InterpretDivergence(left, right)
 	result.ID = repo.ID
+	result.UID = repo.DurableID()
 
 	result.Canonical, _ = git.RevParseShort(path, "canonical/HEAD")
 	result.Mirror, _ = git.RevParseShort(path, "mirror/HEAD")
