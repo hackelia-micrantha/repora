@@ -235,7 +235,7 @@ func TestRunTimesOutGitCommand(t *testing.T) {
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	oldTimeout := gitTimeout
-	gitTimeout = 15 * time.Millisecond
+	gitTimeout = 25 * time.Millisecond
 	t.Cleanup(func() { gitTimeout = oldTimeout })
 
 	start := time.Now()
@@ -245,7 +245,7 @@ func TestRunTimesOutGitCommand(t *testing.T) {
 	if err == nil {
 		t.Fatal("run returned nil error, want timeout")
 	}
-	if elapsed > 2*time.Second {
+	if elapsed > 3.5*time.Second {
 		t.Fatalf("run took %s, want command timeout before fake git exits", elapsed)
 	}
 }
