@@ -21,7 +21,7 @@ type fakeGitClient struct {
 		repoPath, name string
 	}
 	revListOutput string
-	revParseShort  string
+	revParseShort string
 }
 
 func (f *fakeGitClient) EnsureMirror(path, canonicalURL string) error {
@@ -98,7 +98,7 @@ func TestParseRevListCount(t *testing.T) {
 func TestCheckReturnsEqualState(t *testing.T) {
 	git := &fakeGitClient{
 		revListOutput: "0\t0\n",
-		revParseShort:  "abc123",
+		revParseShort: "abc123",
 	}
 
 	repo := config.Repo{
@@ -133,7 +133,7 @@ func TestCheckReturnsEqualState(t *testing.T) {
 func TestCheckReturnsBehindState(t *testing.T) {
 	git := &fakeGitClient{
 		revListOutput: "4\t0\n",
-		revParseShort:  "abc123",
+		revParseShort: "abc123",
 	}
 
 	repo := config.Repo{
