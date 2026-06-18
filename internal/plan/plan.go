@@ -11,6 +11,7 @@ type Output struct {
 
 type RepoPlan struct {
 	ID      string   `json:"id"`
+	UID     string   `json:"uid"`
 	Actions []Action `json:"actions"`
 }
 
@@ -35,6 +36,7 @@ func NewOutput(spec config.Spec, results []status.Result, ok []bool) Output {
 func NewRepoPlan(repo config.Repo, result status.Result) RepoPlan {
 	repoPlan := RepoPlan{
 		ID:      repo.ID,
+		UID:     repo.DurableID(),
 		Actions: []Action{},
 	}
 	if result.State == status.StateBehind {
