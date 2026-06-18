@@ -103,6 +103,7 @@ func TestCheckReturnsEqualState(t *testing.T) {
 
 	repo := config.Repo{
 		ID:        "payments-api",
+		UID:       "repo.org.payments-api",
 		Canonical: config.Endpoint{Provider: "gitlab", URL: "git@gitlab.com:org/payments-api.git"},
 		Mirrors:   []config.Endpoint{{Provider: "github", URL: "git@github.com:org/payments-api.git"}},
 		Mode:      "mirror",
@@ -137,6 +138,7 @@ func TestCheckReturnsBehindState(t *testing.T) {
 
 	repo := config.Repo{
 		ID:        "payments-api",
+		UID:       "repo.org.payments-api",
 		Canonical: config.Endpoint{Provider: "gitlab", URL: "git@gitlab.com:org/payments-api.git"},
 		Mirrors:   []config.Endpoint{{Provider: "github", URL: "git@github.com:org/payments-api.git"}},
 		Mode:      "mirror",
