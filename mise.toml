@@ -9,14 +9,42 @@ taplo = "latest"
 description = "Format all files"
 run = ["go fmt ./...", "prettier --write .", "taplo fmt"]
 
+[tasks.check-fmt]
+description = "Check Go formatting"
+run = "gofmt -d cmd internal"
+
+[tasks.vet]
+description = "Run Go vet"
+run = "go vet ./..."
+
 [tasks.lint]
 description = "Run all linters"
 run = ["golangci-lint run", "actionlint", "taplo check"]
+depends = ["check-fmt", "vet"]
 
 [tasks.test]
 description = "Run tests"
 run = "go test ./..."
 
-[tasks.build]
-description = "Build the project"
+[tasks.build-local]
+description = "Build the local binary for debugging"
 run = "go build ./cmd/repoctl"
+
+[tasks.build-linux]
+description = "Build for Linux"
+run = "go build ./..."
+env = { GOOS = "linux", GOARCH = "amd64" }
+
+[tasks.build-windows]
+description = "Build for Windows"
+run = "go build ./..."
+env = { GOOS = "windows", GOARCH = "amd64" }
+
+[tasks.build-darwin]
+description = "Build for macOS"
+run = "go build ./..."
+env = { GOOS = "darwin", GOARCH = "amd64" }
+
+[tasks.build]
+description = "Build the project for all platforms (matching CI)"
+depends = ["build-linux", "build-windows", "build-darwin"]

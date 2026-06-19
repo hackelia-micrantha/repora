@@ -1,6 +1,7 @@
 package status
 
 import (
+	"strings"
 	"testing"
 
 	"repoctl/internal/config"
@@ -102,6 +103,7 @@ func TestCheckReturnsEqualState(t *testing.T) {
 
 	repo := config.Repo{
 		ID:        "payments-api",
+		UID:       "repo.org.payments-api",
 		Canonical: config.Endpoint{Provider: "gitlab", URL: "git@gitlab.com:org/payments-api.git"},
 		Mirrors:   []config.Endpoint{{Provider: "github", URL: "git@github.com:org/payments-api.git"}},
 		Mode:      "mirror",
@@ -110,6 +112,12 @@ func TestCheckReturnsEqualState(t *testing.T) {
 	result, err := Check(repo, git)
 	if err != nil {
 		t.Fatalf("Check returned unexpected error: %v", err)
+	}
+	if result.ID != "payments-api" || result.UID != "repo.org.payments-api" {
+		t.Fatalf("identity = %q/%q, want payments-api/repo.org.payments-api", result.ID, result.UID)
+	}
+	if len(git.ensureMirrorCalls) != 1 || !strings.Contains(git.ensureMirrorCalls[0].path, "uid-cmVwby5vcmcucGF5bWVudHMtYXBp.git") {
+		t.Fatalf("ensure mirror path = %#v, want durable uid cache path", git.ensureMirrorCalls)
 	}
 	if result.State != StateEqual {
 		t.Fatalf("state = %q, want %q", result.State, StateEqual)
@@ -130,6 +138,7 @@ func TestCheckReturnsBehindState(t *testing.T) {
 
 	repo := config.Repo{
 		ID:        "payments-api",
+		UID:       "repo.org.payments-api",
 		Canonical: config.Endpoint{Provider: "gitlab", URL: "git@gitlab.com:org/payments-api.git"},
 		Mirrors:   []config.Endpoint{{Provider: "github", URL: "git@github.com:org/payments-api.git"}},
 		Mode:      "mirror",

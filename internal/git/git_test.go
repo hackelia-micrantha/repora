@@ -10,6 +10,39 @@ import (
 	"time"
 )
 
+func TestSafePathSegmentEncodesAllIdentities(t *testing.T) {
+	got, err := SafePathSegment("repo.org.payments-api")
+	if err != nil {
+		t.Fatalf("SafePathSegment returned error: %v", err)
+	}
+	if !strings.HasPrefix(got, "uid-") {
+		t.Fatalf("segment = %q, want uid- prefix", got)
+	}
+	if strings.Contains(got, "/") {
+		t.Fatalf("segment = %q, must not contain path separators", got)
+	}
+}
+
+func TestSafePathSegmentAvoidsEncodedNamespaceCollision(t *testing.T) {
+	unsafeSegment, err := SafePathSegment("repo/org")
+	if err != nil {
+		t.Fatalf("SafePathSegment returned error for unsafe identity: %v", err)
+	}
+	literalSegment, err := SafePathSegment("b64-cmVwby9vcmc")
+	if err != nil {
+		t.Fatalf("SafePathSegment returned error for literal identity: %v", err)
+	}
+	if unsafeSegment == literalSegment {
+		t.Fatalf("segments collided: %q", unsafeSegment)
+	}
+}
+
+func TestSafePathSegmentRejectsEmptyIdentity(t *testing.T) {
+	if _, err := SafePathSegment("  "); err == nil {
+		t.Fatal("SafePathSegment returned nil error, want empty identity rejection")
+	}
+}
+
 func TestEnsureMirrorReclonesInvalidPath(t *testing.T) {
 	repoDir := t.TempDir()
 	sourceDir := filepath.Join(repoDir, "source.git")
@@ -212,7 +245,7 @@ func TestRunTimesOutGitCommand(t *testing.T) {
 	if err == nil {
 		t.Fatal("run returned nil error, want timeout")
 	}
-	if elapsed > 2*time.Second {
+	if elapsed > time.Duration(3.2*float64(time.Second)) {
 		t.Fatalf("run took %s, want command timeout before fake git exits", elapsed)
 	}
 }

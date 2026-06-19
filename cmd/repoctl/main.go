@@ -20,6 +20,7 @@ type jsonOutput struct {
 
 type jsonRepo struct {
 	ID        string       `json:"id"`
+	UID       string       `json:"uid"`
 	Canonical jsonRef      `json:"canonical"`
 	Mirrors   []jsonMirror `json:"mirrors"`
 }
@@ -325,10 +326,10 @@ func applyRepos(spec config.Spec, summary checkSummary, force bool, dryRun bool,
 	// If we're not continuing on error, we might want to return early,
 	// but here we aggregate all results that finished.
 	// The caller (runApply) handles the firstErr if necessary.
-	if firstErr != nil && !dryRun {
-		// In a real implementation, we might want to be more nuanced about which errors are fatal.
-		// For v0.1, if any apply fails, we report the first error if not in dry-run.
-	}
+	// if firstErr != nil && !dryRun {
+	// 	// In a real implementation, we might want to be more nuanced about which errors are fatal.
+	// 	// For v0.1, if any apply fails, we report the first error if not in dry-run.
+	// }
 
 	output := apply.Output{Results: make([]apply.Result, 0, len(spec.Repos)-summary.failedCount)}
 	for i, res := range ordered {
@@ -347,7 +348,8 @@ func newJSONOutput(spec config.Spec, results []status.Result, ok []bool) jsonOut
 		}
 		result := results[i]
 		out.Repos = append(out.Repos, jsonRepo{
-			ID: repo.ID,
+			ID:  repo.ID,
+			UID: repo.DurableID(),
 			Canonical: jsonRef{
 				Ref:    "HEAD",
 				Commit: result.Canonical,

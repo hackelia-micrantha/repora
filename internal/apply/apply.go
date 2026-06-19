@@ -15,6 +15,7 @@ type Output struct {
 
 type Result struct {
 	ID      string       `json:"id"`
+	UID     string       `json:"uid"`
 	State   status.State `json:"state"`
 	Applied bool         `json:"applied"`
 	DryRun  bool         `json:"dry_run"`
@@ -44,12 +45,13 @@ func IsUnsafe(result status.Result) bool {
 func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun bool) (Result, error) {
 	result := Result{
 		ID:      repo.ID,
+		UID:     repo.DurableID(),
 		State:   st.State,
 		DryRun:  dryRun,
 		Actions: []Action{},
 	}
 
-	path, err := gitwrap.MirrorPath(repo.ID)
+	path, err := gitwrap.MirrorPath(repo.DurableID())
 	if err != nil {
 		return result, err
 	}
