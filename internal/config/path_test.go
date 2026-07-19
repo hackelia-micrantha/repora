@@ -48,3 +48,47 @@ func TestLoadRejectsAmbiguousEndpoint(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 }
+
+func TestLoadRejectsCredentialBearingLegacyURLs(t *testing.T) {
+	tests := []string{
+		"https://token@github.com/org/payments-api.git",
+		"https://user:password@github.com/org/payments-api.git",
+	}
+
+	for _, legacyURL := range tests {
+		t.Run(legacyURL, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "repora.yaml")
+			writeFile(t, path, []byte(`repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: `+legacyURL+`
+`))
+
+			_, err := Load(path)
+			if err == nil || !strings.Contains(err.Error(), "must not contain credentials") {
+				t.Fatalf("error = %v", err)
+			}
+		})
+	}
+}
+
+func TestLoadAcceptsSCPLegacyURL(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "repora.yaml")
+	writeFile(t, path, []byte(`repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:org/payments-api.git
+    mirrors:
+      - provider: github
+        url: git@github.com:org/payments-api.git
+`))
+
+	if _, err := Load(path); err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+}
