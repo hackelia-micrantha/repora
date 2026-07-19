@@ -61,6 +61,7 @@ flowchart LR
 - Enforced structure for files, directories, and configs
 - CI/CD standardization
 - Security baselines
+- Repository and CI/CD posture evaluation
 
 ### Drift management
 
@@ -193,6 +194,16 @@ The goal is to prevent repository-wide ingestion for narrow tasks.
 
 ---
 
+## Repository and CI/CD Posture
+
+Repora can model repository security posture and CI/CD posture as declarative repository state.
+
+The posture model is documented in [`docs/posture.md`](docs/posture.md). It covers normalized repository facts, CI/CD hardening checks, policy evaluation, exceptions, remediation plans, and the boundary between read-only checks and provider mutation.
+
+The goal is not to replace specialized scanners. Repora should orchestrate posture tools, normalize their findings, and produce reviewable reports, issues, PRs, or guarded provider-setting changes.
+
+---
+
 ## Architecture
 
 ### Layers
@@ -278,6 +289,7 @@ See [LICENSE](./LICENSE) for details.
 - [ ] Stable unified diff model
 - [ ] README templating
 - [ ] CI/CD control
+- [ ] Repository and CI/CD posture checks
 - [ ] Policy packs
 - [ ] Plugin system
 - [ ] Container registry integrations
