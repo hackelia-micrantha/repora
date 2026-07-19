@@ -3,8 +3,8 @@ repos:
     uid: repo.org.payments-api
     canonical:
       provider: gitlab
-      path: org/payments-api
+      url: git@gitlab.com:org/payments-api.git
     mirrors:
       - provider: github
-        path: org/payments-api
+        url: git@github.com:org/payments-api.git
     mode: mirror
