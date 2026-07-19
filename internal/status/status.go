@@ -7,6 +7,7 @@ import (
 
 	"repoctl/internal/config"
 	gitwrap "repoctl/internal/git"
+	"repoctl/internal/transport"
 )
 
 type State string
@@ -38,18 +39,28 @@ type Git interface {
 }
 
 func Check(repo config.Repo, git Git) (Result, error) {
+	resolver := transport.DefaultResolver(transport.HTTPS)
+	canonical, err := resolver.Resolve(repo.Canonical)
+	if err != nil {
+		return Result{}, fmt.Errorf("resolve canonical for repo %q: %w", repo.ID, err)
+	}
+	mirror, err := resolver.Resolve(repo.Mirrors[0])
+	if err != nil {
+		return Result{}, fmt.Errorf("resolve mirror for repo %q: %w", repo.ID, err)
+	}
+
 	path, err := gitwrap.MirrorPath(repo.DurableID())
 	if err != nil {
 		return Result{}, err
 	}
 
-	if err := git.EnsureMirror(path, repo.Canonical.URL); err != nil {
+	if err := git.EnsureMirror(path, canonical.URL); err != nil {
 		return Result{}, err
 	}
-	if err := git.ConfigureRemote(path, "canonical", repo.Canonical.URL); err != nil {
+	if err := git.ConfigureRemote(path, "canonical", canonical.URL); err != nil {
 		return Result{}, err
 	}
-	if err := git.ConfigureRemote(path, "mirror", repo.Mirrors[0].URL); err != nil {
+	if err := git.ConfigureRemote(path, "mirror", mirror.URL); err != nil {
 		return Result{}, err
 	}
 	if err := git.Fetch(path, "canonical"); err != nil {

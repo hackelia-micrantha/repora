@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -23,7 +24,8 @@ type Repo struct {
 
 type Endpoint struct {
 	Provider string `json:"provider" yaml:"provider"`
-	URL      string `json:"url" yaml:"url"`
+	Path     string `json:"path,omitempty" yaml:"path,omitempty"`
+	URL      string `json:"url,omitempty" yaml:"url,omitempty"`
 }
 
 func (r Repo) DurableID() string {
@@ -82,8 +84,8 @@ func validate(spec Spec) error {
 			return fmt.Errorf("duplicate repo uid %q", repo.UID)
 		}
 		seenUIDs[repo.UID] = struct{}{}
-		if repo.Canonical.Provider == "" || repo.Canonical.URL == "" {
-			return fmt.Errorf("canonical provider and url are required for repo %q", repo.ID)
+		if err := validateEndpoint(repo.Canonical, "canonical", repo.ID); err != nil {
+			return err
 		}
 		if repo.Canonical.Provider != "gitlab" {
 			return fmt.Errorf("unsupported canonical provider %q for repo %q: only gitlab is supported", repo.Canonical.Provider, repo.ID)
@@ -91,8 +93,8 @@ func validate(spec Spec) error {
 		if len(repo.Mirrors) != 1 {
 			return fmt.Errorf("SCHEMA-0001 requires exactly one mirror for repo %q, got %d", repo.ID, len(repo.Mirrors))
 		}
-		if repo.Mirrors[0].Provider == "" || repo.Mirrors[0].URL == "" {
-			return fmt.Errorf("mirror provider and url are required for repo %q", repo.ID)
+		if err := validateEndpoint(repo.Mirrors[0], "mirror", repo.ID); err != nil {
+			return err
 		}
 		if !isSupportedMirrorProvider(repo.Mirrors[0].Provider) {
 			return fmt.Errorf("unsupported mirror provider %q for repo %q: supported providers are github and gitlab", repo.Mirrors[0].Provider, repo.ID)
@@ -106,6 +108,45 @@ func validate(spec Spec) error {
 		spec.Repos[i] = repo
 	}
 	return nil
+}
+
+func validateEndpoint(endpoint Endpoint, role, repoID string) error {
+	if strings.TrimSpace(endpoint.Provider) == "" {
+		return fmt.Errorf("%s provider is required for repo %q", role, repoID)
+	}
+	path := strings.TrimSpace(endpoint.Path)
+	rawURL := strings.TrimSpace(endpoint.URL)
+	pathSet := path != ""
+	urlSet := rawURL != ""
+	if pathSet == urlSet {
+		return fmt.Errorf("%s must define exactly one of path or legacy url for repo %q", role, repoID)
+	}
+	if urlSet && containsURLCredentials(rawURL) {
+		return fmt.Errorf("%s legacy url must not contain credentials for repo %q", role, repoID)
+	}
+	if pathSet {
+		if strings.Contains(path, "://") || strings.Contains(path, "@") || strings.HasPrefix(path, "/") || strings.HasPrefix(path, ".") {
+			return fmt.Errorf("%s path must be provider-relative for repo %q", role, repoID)
+		}
+		parts := strings.Split(strings.Trim(path, "/"), "/")
+		if len(parts) < 2 {
+			return fmt.Errorf("%s path must include an owner or namespace for repo %q", role, repoID)
+		}
+		for _, part := range parts {
+			if part == "" || part == "." || part == ".." {
+				return fmt.Errorf("%s path contains an invalid segment for repo %q", role, repoID)
+			}
+		}
+	}
+	return nil
+}
+
+func containsURLCredentials(raw string) bool {
+	if strings.HasPrefix(raw, "git@") {
+		return false
+	}
+	parsed, err := url.Parse(raw)
+	return err == nil && parsed.User != nil
 }
 
 func isSupportedMirrorProvider(provider string) bool {
