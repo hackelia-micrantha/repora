@@ -238,15 +238,16 @@ The ordered implementation path is maintained in [`docs/roadmap/ordered-implemen
 
 The immediate critical path is:
 
-1. document the implemented provider/path topology and compatibility boundary
-2. separate topology, observation, planning, and execution
-3. stabilize versioned JSON contracts
-4. make one serialized plan the apply boundary
-5. add stale-plan validation and execution journaling
-6. enforce explicit branch/ref policy
-7. expand to multiple mirrors
-8. integrate optional Anthesis policy evaluation
-9. harden and package a v0.1 release
+1. separate topology, observation, planning, and execution
+2. stabilize versioned JSON contracts
+3. make one serialized plan the apply boundary
+4. add stale-plan validation and execution journaling
+5. enforce explicit branch/ref policy
+6. expand to multiple mirrors
+7. integrate optional Anthesis policy evaluation
+8. harden and package a v0.1 release
+
+The runtime resolver foundation and provider/path topology documentation are complete. Configurable provider bases and user-selected transport remain tracked under issue #16 outside the immediate #22 decision-path slice.
 
 ## License
 
