@@ -196,11 +196,11 @@ The goal is to prevent repository-wide ingestion for narrow tasks.
 
 ## Repository and CI/CD Posture
 
-Repora can model repository security posture and CI/CD posture as declarative repository state.
+Repora can model repository security posture, CI/CD posture, mirror management, documentation hygiene, commit-history evidence, and local workflow controls as declarative repository state.
 
-The posture model is documented in [`docs/posture.md`](docs/posture.md). It covers normalized repository facts, CI/CD hardening checks, policy evaluation, exceptions, remediation plans, and the boundary between read-only checks and provider mutation.
+The posture model is documented in [`docs/posture.md`](docs/posture.md). It covers normalized repository facts, CI/CD hardening checks, mirror drift, README and documentation hygiene, commit analysis, hook expectations, policy evaluation, exceptions, remediation plans, and the boundary between read-only checks and provider mutation.
 
-The goal is not to replace specialized scanners. Repora should orchestrate posture tools, normalize their findings, and produce reviewable reports, issues, PRs, or guarded provider-setting changes.
+The goal is not to replace specialized scanners, documentation linters, or commit-forensics tools. Repora should orchestrate posture tools, normalize their findings, and produce reviewable reports, issues, PRs, or guarded provider-setting changes.
 
 ---
 
