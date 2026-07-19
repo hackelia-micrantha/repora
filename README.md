@@ -1,187 +1,172 @@
 # Repora / repoctl
 
-> Deterministic, policy-driven repository management — treat repos as declarative state.
+> Experimental, deterministic Git repository mirror control.
 
----
-
-![status](https://img.shields.io/badge/status-active-blue)
+![status](https://img.shields.io/badge/status-pre--alpha-blue)
 ![license](https://img.shields.io/badge/license-BSL%201.1-orange)
-![platform](https://img.shields.io/badge/platform-multi--repo-black)
-![concurrency](https://img.shields.io/badge/design-concurrent-green)
-
----
+![implementation](https://img.shields.io/badge/runtime-single--mirror-black)
 
 ## Overview
 
-**Repora** is a repository control plane that defines and enforces the desired state of codebases at scale.
+**Repora** is an early-stage project for managing repository state through explicit observation, planning, policy, execution, and evidence.
 
-**repoctl** is the CLI that reconciles real repositories to that state.
+**repoctl** is the current Go CLI prototype. Each configured repository currently compares and synchronizes one GitLab canonical default branch to exactly one configured GitHub or GitLab mirror. Multiple repository entries may be processed in one invocation with bounded concurrency.
 
-Think:
+The broader repository-control-plane model described below is the project direction, not the current feature set.
 
-- GitOps → but for repositories themselves
-- Terraform → but for repo structure, policy, and CI/CD
-- Policy engine → for developer workflows and governance
+## Implemented today
 
----
+The current CLI supports:
 
-## Core Model
+- strict YAML configuration parsing
+- multiple configured repository entries per invocation
+- bounded concurrent repository processing
+- stable repository identity using `id` and optional durable `uid`
+- one GitLab canonical repository per entry
+- exactly one GitHub or GitLab mirror per entry
+- system Git authentication and credential handling
+- local bare mirror caching
+- default-branch status classification:
+  - `EQUAL`
+  - `BEHIND`
+  - `AHEAD`
+  - `DIVERGED`
+- plan output for a behind mirror
+- dry-run apply
+- normal default-branch push when the mirror is behind
+- explicit `--force` handling for ahead or diverged mirrors
+- force-with-lease protection against stale target overwrites
+- human-readable and JSON output
+- top-level help through `repoctl --help`, `repoctl -h`, or `repoctl help`
 
-Repora treats repositories as **declarative resources**:
+## Current limitations
+
+Repora is pre-alpha and should not yet be treated as a general Git mirror, repository control plane, or production governance service.
+
+Current limitations include:
+
+- URL-based configuration rather than provider/path topology
+- GitLab-only canonical repositories
+- one mirror per configured repository
+- default branch only
+- no tag synchronization
+- no deleted-ref reconciliation
+- no complete ref inventory
+- plan and apply do not yet consume one serialized plan artifact
+- no durable execution journal
+- no explicit branch/ref policy model
+- no Anthesis policy integration
+- no release binaries or compatibility guarantee for JSON output
+
+The existing `--force` path is transitional. It uses force-with-lease, but it is not yet constrained by the planned branch/ref policy and approval model.
+
+## Current workflow
 
 ```mermaid
 flowchart LR
-    Spec[Spec / Config] --> Planner[Planner]
-    Planner --> Diff[Unified Diff Model]
-    Diff --> Executor[Executor]
-    Executor --> Repos[Repositories]
-    Repos --> Drift[Drift Detection]
-    Drift --> Planner
+    Config[repora.yaml] --> Status[Fetch canonical and mirror]
+    Status --> Compare[Compare default branches]
+    Compare --> Plan[Produce semantic plan]
+    Compare --> Apply[Apply default-branch update]
+    Apply --> Lease[Use force-with-lease when explicitly forced]
 ```
 
-### Key properties
+The target architecture moves to a single plan artifact consumed by apply:
 
-- **Deterministic** — same spec → same result
-- **Idempotent** — safe to re-run
-- **Convergent** — drives toward desired state
-- **Auditable** — diff-first execution model
+```mermaid
+flowchart LR
+    Topology[Topology] --> Resolver[Transport resolver]
+    Resolver --> Observe[Observed ref state]
+    Observe --> Planner[Deterministic planner]
+    Planner --> Artifact[Versioned plan artifact]
+    Artifact --> Policy[Policy decision]
+    Policy --> Executor[Stale-safe executor]
+    Executor --> Journal[Execution journal]
+```
 
----
-
-## Features
-
-### Repository orchestration
-
-- Multi-repo reconciliation
-- Bulk operations with concurrency controls
-- Dependency-aware execution
-
-### Policy & governance
-
-- Enforced structure for files, directories, and configs
-- CI/CD standardization
-- Security baselines
-- Repository and CI/CD posture evaluation
-
-### Drift management
-
-- Continuous drift detection
-- Unified diff model
-- Controlled remediation
-
-### Templating & generation
-
-* README templating
-* CI/CD pipelines
-* Repo bootstrapping
-
-### Deterministic document routing
-
-* Context-aware route selection
-* Token-budget enforcement
-* Canonical document preference
-* Prompt and policy isolation
-* Deterministic retrieval pruning
-
-### Extensibility planned
-
-* Container registries
-* Model and workflow definitions
-* Plugin system
-
----
+See [`docs/architecture/mirror-workflow-semantics.md`](docs/architecture/mirror-workflow-semantics.md) for the intended mirror-controller semantics.
 
 ## Development
 
 This project uses [mise](https://mise.jdx.sh/) to manage development tools and tasks.
 
-### Setup
-
 ```bash
 mise install
+mise run fmt
+mise run lint
+mise run test
+mise run build
 ```
 
-### Common Tasks
+The project can also be built and tested directly with Go tooling.
 
-* **Format code:** `mise run fmt`
-* **Lint code:** `mise run lint`
-* **Run tests:** `mise run test`
-* **Build:** `mise run build`
+## Current configuration
 
----
-
-## Example
-
-
-### Spec
+The runtime still uses explicit remote URLs:
 
 ```yaml
 repos:
-  - name: service-a
-    template: base-service
-    policies:
-      - ci-standard
-      - security-baseline
+  - id: anthesis
+    uid: repo.anthesis
+    canonical:
+      provider: gitlab
+      url: https://gitlab.com/micrantha/anthesis.git
+    mirrors:
+      - provider: github
+        url: https://github.com/hackelia-micrantha/anthesis.git
+    mode: mirror
 ```
 
-### Apply
+Credentials must not be embedded in `repora.yaml`. Authentication is delegated to system Git and configured credential helpers.
 
-```bash
-repoctl apply -f repora.yaml
-```
-
-### Output conceptual
-
-```diff
-+ .github/workflows/ci.yml
-+ README.md
-~ package.json (scripts normalized)
-- legacy-config.yml
-```
-
----
+The planned provider/path schema will make logical locations authoritative and resolve transport URLs at runtime.
 
 ## CLI
 
+Show the implemented command surface with:
+
 ```bash
-repoctl init
-repoctl plan
-repoctl apply
-repoctl diff
-repoctl drift
+repoctl --help
 ```
 
-### Design notes
+Primary workflows:
 
-- `plan` computes desired changes
-- `apply` executes with safeguards
-- `diff` produces explicit, reviewable changes
-- `drift` detects divergence over time
-
----
-
-## Document Routing
-
-Repora includes a deterministic document routing model intended to reduce context size and retrieval noise for AI-assisted workflows.
-
-Routing operates before retrieval expansion.
-
-```mermaid
-flowchart LR
-    Query --> Classifier
-    Classifier --> Route
-    Route --> Budget
-    Budget --> Retrieval
-    Retrieval --> Agent
+```bash
+repoctl status -f repora.yaml
+repoctl plan -f repora.yaml
+repoctl apply -f repora.yaml --dry-run
+repoctl apply -f repora.yaml
+repoctl sync -f repora.yaml
 ```
 
-Core principles:
+`sync` is currently an alias for `apply`. Top-level help is also available through `repoctl -h` and `repoctl help`.
 
-- route before retrieval
-- bounded context budgets
-- canonical document preference
-- deterministic pruning
-- explicit prompt boundaries
+Commands such as generalized `diff`, continuous `drift`, repository bootstrapping, and policy management remain planned work.
+
+## Product direction
+
+Repora is intended to become a local-first repository controller with these properties:
+
+- **Deterministic** — identical topology, observations, and policy produce the same plan
+- **Idempotent** — safe operations converge without unnecessary mutation
+- **Reviewable** — mutation intent is represented before execution
+- **Stale-safe** — apply rejects changed target state rather than silently re-planning
+- **Auditable** — plans, decisions, leases, and outcomes can be journaled
+- **Policy-driven** — destructive or sensitive operations fail closed unless explicitly authorized
+
+Potential managed domains include:
+
+- Git ref reconciliation
+- selected deterministic repository artifacts
+- CI/CD and security baseline assessment
+- repository posture evidence
+- deterministic context routing for AI-assisted work
+
+These domains will share the planner, policy, execution, and evidence substrate rather than becoming independent mutation paths.
+
+## Document routing
+
+Repora includes a repository-local deterministic document-routing definition intended to reduce retrieval noise for AI-assisted workflows.
 
 Artifacts:
 
@@ -190,11 +175,18 @@ Artifacts:
 - `docs/routing/document-routing.md`
 - `prompts/document-routing-overlay.md`
 
-The goal is to prevent repository-wide ingestion for narrow tasks.
+The routing model is currently a specification and repository convention. Advanced features such as trust tiers, context receipts, hierarchical summaries, subsystem manifests, and AST-aware routing remain planned.
 
----
+Core routing principles:
 
-## Repository and CI/CD Posture
+- route before retrieval expansion
+- explicit include and exclude rules
+- bounded file, byte, and token budgets
+- deterministic ordering and pruning
+- canonical-document preference
+- prompt and generated-content boundaries
+
+## Repository and CI/CD posture
 
 Repora can model repository security posture, CI/CD posture, mirror management, documentation hygiene, commit-history evidence, and local workflow controls as declarative repository state.
 
@@ -202,74 +194,48 @@ The posture model is documented in [`docs/posture.md`](docs/posture.md). It cove
 
 The goal is not to replace specialized scanners, documentation linters, or commit-forensics tools. Repora should orchestrate posture tools, normalize their findings, and produce reviewable reports, issues, PRs, or guarded provider-setting changes.
 
----
+## Security model
 
-## Architecture
+Repository mutation is privileged. Current and planned controls follow these principles:
 
-### Layers
+- least privilege
+- credentials delegated to system Git
+- no credentials stored in `repora.yaml`
+- explicit mutation boundaries
+- reviewable intent before mutation
+- force-with-lease for explicitly forced default-branch updates
+- fail-closed handling for unsupported or ambiguous states
+- deterministic routing allowlists for AI context
 
-- **Spec Layer** — declarative config using YAML or a future DSL
-- **Planner** — builds the execution graph
-- **Diff Engine** — produces the unified diff model
-- **Executor** — applies changes with bounded concurrency
-- **Adapters** — integrate with Git providers, CI systems, registries, and workflow engines
+Threats under consideration include:
 
----
+- unauthorized repository mutation
+- stale-plan overwrites
+- deletion or rewrite of durable refs
+- over-broad Git credentials
+- supply-chain injection through templates
+- unsafe plugin execution
+- prompt injection through repository content
+- context poisoning through generated, archived, or external artifacts
 
-## Concurrency Model
+Planned mitigations include explicit ref policy, durable journals, approvals, policy attestations, signed artifacts, sandboxed extensions, and context receipts.
 
-Repora is designed for controlled parallelism across many repositories.
+## Roadmap
 
-```mermaid
-graph TD
-    A[Repo A] --> C[Shared Policy]
-    B[Repo B] --> C
-    C --> D[Apply Changes]
-```
+The ordered implementation path is maintained in [`docs/roadmap/ordered-implementation-path.md`](docs/roadmap/ordered-implementation-path.md).
 
-Execution should be:
+The immediate critical path is:
 
-- Graph-aware
-- Bounded by explicit concurrency limits
-- Safe for retries
-- Ordered when dependencies require it
-
----
-
-## Security Model
-
-Repora assumes repository mutation is a privileged operation.
-
-Core security principles:
-
-- Principle of least privilege
-- Authentication delegated to system Git in v0.1
-- Explicit mutation boundaries
-- No implicit side effects
-- Reviewable plans before mutation
-- No credentials stored in `repora.yaml`
-
-### Threat considerations
-
-- Supply-chain injection via templates
-- Unauthorized repository mutation
-- Drift masking malicious changes
-- Over-broad Git credential permissions
-- Unsafe plugin execution
-- Prompt injection through repository documents
-- Context poisoning via archived or generated artifacts
-
-### Planned mitigations
-
-- Signed templates
-- Policy attestations
-- Audit logs
-- Explicit diff approval workflows
-- Sandboxed plugin execution
-- Deterministic routing allowlists
-- Canonical document precedence
-
----
+1. define mirror workflow semantics
+2. introduce provider/path transport resolution
+3. separate topology, observation, planning, and execution
+4. stabilize versioned JSON contracts
+5. make one serialized plan the apply boundary
+6. add stale-plan validation and execution journaling
+7. enforce explicit branch/ref policy
+8. expand to multiple mirrors
+9. integrate optional Anthesis policy evaluation
+10. harden and package a v0.1 release
 
 ## License
 
@@ -281,84 +247,10 @@ This project is licensed under the **Business Source License 1.1 (BSL)**.
 
 See [LICENSE](./LICENSE) for details.
 
----
+## Project status
 
-## Roadmap
+Pre-alpha and actively evolving. Expect breaking changes, schema iteration, and architecture refinement.
 
-- [ ] Formal spec schema
-- [ ] Stable unified diff model
-- [ ] README templating
-- [ ] CI/CD control
-- [ ] Repository and CI/CD posture checks
-- [ ] Policy packs
-- [ ] Plugin system
-- [ ] Container registry integrations
-- [ ] Model and workflow definitions
-- [ ] Hosted or self-hosted control plane
-- [ ] AST-aware routing
-- [ ] Graph-aware retrieval planning
-- [ ] Trust-scored document classes
+External contributions are currently closed while the core model stabilizes. Issues describing concrete use cases and failure modes are welcome.
 
----
-
-## Philosophy
-
-Repora is built around a few principles:
-
-- **State over scripts**
-- **Diff before mutation**
-- **Policy as code**
-- **Reproducibility over convenience**
-- **Controlled mutation over implicit automation**
-
----
-
-## Comparison
-
-| Tool           | Focus                    | Gap                                             |
-| -------------- | ------------------------ | ----------------------------------------------- |
-| Terraform      | Infrastructure state     | No repo-level control                           |
-| GitHub Actions | CI/CD execution          | No global repo governance                       |
-| Backstage      | Service catalog          | Catalog-first, not enforcement-first            |
-| Repo templates | Bootstrapping            | Weak long-term drift control                    |
-| Repora         | Repository control plane | Purpose-built for repo state, policy, and drift |
-
----
-
-## Status
-
-Early-stage and actively evolving.
-
-Expect:
-
-- Breaking changes
-- Spec iteration
-- Architecture refinement
-- Security model hardening
-
----
-
-## Contributing
-
-Currently closed to external contributions while the core model stabilizes.
-
-For now:
-
-- Open an issue for discussion
-- Propose use cases
-- Share failure modes from real repository management workflows
-
----
-
-## Contact
-
-Micrantha Software
-[https://micrantha.com](https://micrantha.com)
-
----
-
-## Final Note
-
-Repora is an attempt to make repository management deterministic, enforceable, and scalable.
-
-The goal is not just to automate repository changes, but to make those changes planned, reviewable, repeatable, and governed.
+Micrantha Software — [micrantha.com](https://micrantha.com)

@@ -80,6 +80,11 @@ func main() {
 }
 
 func run(args []string) int {
+	if isHelpRequest(args) {
+		printHelp(os.Stdout)
+		return 0
+	}
+
 	if len(args) == 0 {
 		fmt.Fprintln(os.Stderr, "usage: repoctl <status|plan|apply|sync> -f repora.yaml [--json] [--parallel N] [--continue-on-error] [--dry-run] [--force] [--debug]")
 		return 1
@@ -156,7 +161,6 @@ func checkRepos(spec config.Spec, parallel int, debug bool) checkSummary {
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-
 			if debug {
 				debugf("repoctl: debug checking repo=%s\n", repo.ID)
 			}
@@ -174,7 +178,6 @@ func checkRepos(spec config.Spec, parallel int, debug bool) checkSummary {
 		results: make([]status.Result, len(spec.Repos)),
 		ok:      make([]bool, len(spec.Repos)),
 	}
-
 	for rr := range resultsCh {
 		if rr.terr != nil {
 			summary.failedCount++
@@ -202,7 +205,6 @@ func runStatus(spec config.Spec, summary checkSummary, jsonFlag bool) int {
 			orderedResults = append(orderedResults, result)
 		}
 	}
-
 	if jsonFlag {
 		if err := json.NewEncoder(os.Stdout).Encode(newJSONOutput(spec, summary.results, summary.ok)); err != nil {
 			fmt.Fprintf(os.Stderr, "repoctl: write json: %v\n", err)
@@ -213,7 +215,6 @@ func runStatus(spec config.Spec, summary checkSummary, jsonFlag bool) int {
 			printHuman(result)
 		}
 	}
-
 	if summary.firstErr != nil {
 		fmt.Fprintf(os.Stderr, "repoctl: %d repos failed; continuing due to --continue-on-error\n", summary.failedCount)
 		if summary.failureCode == 2 {
@@ -221,7 +222,6 @@ func runStatus(spec config.Spec, summary checkSummary, jsonFlag bool) int {
 		}
 		return 1
 	}
-
 	return summary.failureCode
 }
 
@@ -235,7 +235,6 @@ func runPlan(spec config.Spec, summary checkSummary, jsonFlag bool) int {
 	} else {
 		printPlan(planOutput)
 	}
-
 	if summary.firstErr != nil {
 		fmt.Fprintf(os.Stderr, "repoctl: %d repos failed; continuing due to --continue-on-error\n", summary.failedCount)
 		if summary.failureCode == 2 {
@@ -243,7 +242,6 @@ func runPlan(spec config.Spec, summary checkSummary, jsonFlag bool) int {
 		}
 		return 1
 	}
-
 	return summary.failureCode
 }
 
@@ -260,13 +258,11 @@ func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool,
 			}
 		}
 	}
-
 	output, err := applyRepos(spec, summary, force, dryRun, parallel, !jsonFlag)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "repoctl: %v\n", err)
 		return 1
 	}
-
 	if jsonFlag {
 		if err := json.NewEncoder(os.Stdout).Encode(output); err != nil {
 			fmt.Fprintf(os.Stderr, "repoctl: write json: %v\n", err)
@@ -282,7 +278,6 @@ func applyRepos(spec config.Spec, summary checkSummary, force bool, dryRun bool,
 	sem := make(chan struct{}, parallel)
 	resultsCh := make(chan applyTaskResult, len(spec.Repos)-summary.failedCount)
 	var wg sync.WaitGroup
-
 	for i, repo := range spec.Repos {
 		if !summary.ok[i] {
 			continue
@@ -294,7 +289,6 @@ func applyRepos(spec config.Spec, summary checkSummary, force bool, dryRun bool,
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-
 			if progress {
 				progressf("repoctl: applying %s\n", repo.ID)
 			}
@@ -302,35 +296,19 @@ func applyRepos(spec config.Spec, summary checkSummary, force bool, dryRun bool,
 			resultsCh <- applyTaskResult{index: i, result: result, err: err}
 		}()
 	}
-
 	go func() {
 		wg.Wait()
 		close(resultsCh)
 	}()
-
 	ordered := make([]apply.Result, len(spec.Repos))
 	ok := make([]bool, len(spec.Repos))
-	var firstErr error
 	for res := range resultsCh {
 		if res.err != nil {
-			if firstErr == nil {
-				firstErr = res.err
-			}
-			// Even on error, we might have a result to report (especially in dry-run or partial success)
 			res.result.Error = res.err.Error()
 		}
 		ordered[res.index] = res.result
 		ok[res.index] = true
 	}
-
-	// If we're not continuing on error, we might want to return early,
-	// but here we aggregate all results that finished.
-	// The caller (runApply) handles the firstErr if necessary.
-	// if firstErr != nil && !dryRun {
-	// 	// In a real implementation, we might want to be more nuanced about which errors are fatal.
-	// 	// For v0.1, if any apply fails, we report the first error if not in dry-run.
-	// }
-
 	output := apply.Output{Results: make([]apply.Result, 0, len(spec.Repos)-summary.failedCount)}
 	for i, res := range ordered {
 		if ok[i] {
@@ -350,20 +328,15 @@ func newJSONOutput(spec config.Spec, results []status.Result, ok []bool) jsonOut
 		out.Repos = append(out.Repos, jsonRepo{
 			ID:  repo.ID,
 			UID: repo.DurableID(),
-			Canonical: jsonRef{
-				Ref:    "HEAD",
-				Commit: result.Canonical,
-			},
-			Mirrors: []jsonMirror{
-				{
-					Provider: repo.Mirrors[0].Provider,
-					Ref:      "HEAD",
-					Commit:   result.Mirror,
-					State:    result.State,
-					Ahead:    result.Ahead,
-					Behind:   result.Behind,
-				},
-			},
+			Canonical: jsonRef{Ref: "HEAD", Commit: result.Canonical},
+			Mirrors: []jsonMirror{{
+				Provider: repo.Mirrors[0].Provider,
+				Ref:      "HEAD",
+				Commit:   result.Mirror,
+				State:    result.State,
+				Ahead:    result.Ahead,
+				Behind:   result.Behind,
+			}},
 		})
 	}
 	return out
