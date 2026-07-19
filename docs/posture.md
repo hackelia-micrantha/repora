@@ -177,6 +177,8 @@ Important risk patterns:
 - sensitive files changed outside expected review paths
 - repeated hotfixes bypassing declared process
 
+Commit analysis should focus on repository and process risk. It should not become individual productivity scoring, identity profiling, or intent inference. Findings should be grounded in observable repository evidence and phrased as review or governance signals.
+
 ## Hooks and local workflow posture
 
 Hooks and local workflow controls should be tracked where repositories rely on them for safety or consistency.
@@ -363,14 +365,14 @@ Provider API mutation should come after file-based reports, issues, and PR remed
 1. Add read-only posture inventory for GitHub repositories.
 2. Normalize repository and CI/CD facts.
 3. Emit markdown posture reports.
-4. Add policy profile evaluation with explainable findings.
-5. Add issue generation for findings.
-6. Add PR-based remediation for file-backed fixes.
-7. Add guarded provider API mutation for branch protection and repository settings.
-8. Add mirror management checks for canonical and mirror repositories.
-9. Add documentation and README hygiene checks.
-10. Add commit analysis findings for risky or process-drift patterns.
-11. Add hook and local workflow posture checks.
+4. Add documentation and README hygiene checks.
+5. Add mirror management checks for canonical and mirror repositories.
+6. Add policy profile evaluation with explainable findings.
+7. Add issue generation for findings.
+8. Add PR-based remediation for file-backed fixes.
+9. Add commit analysis findings for risky or process-drift patterns.
+10. Add hook and local workflow posture checks.
+11. Add guarded provider API mutation for branch protection and repository settings.
 12. Add GitLab and Bitbucket adapters.
 
 The first useful slice is:
