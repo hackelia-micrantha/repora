@@ -6,6 +6,8 @@ import (
 )
 
 func TestLoadPreferredProviderPathFixture(t *testing.T) {
+	t.Parallel()
+
 	spec, err := Load(filepath.Join("..", "..", "testdata", "repora-provider-path.yaml"))
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
