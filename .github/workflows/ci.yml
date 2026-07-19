@@ -19,23 +19,13 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Check formatting
-        id: formatting
-        continue-on-error: true
+      - name: Verify formatting
         run: |
-          find . -name '*.go' -not -path './.git/*' -exec gofmt -l {} + | tee formatting-files.txt
-          test ! -s formatting-files.txt
-
-      - name: Upload formatting diagnostics
-        if: steps.formatting.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: formatting-files
-          path: formatting-files.txt
-
-      - name: Fail on formatting
-        if: steps.formatting.outcome == 'failure'
-        run: exit 1
+          files="$(find . -name '*.go' -not -path './.git/*' -exec gofmt -l {} +)"
+          if [ -n "$files" ]; then
+            echo "$files"
+            exit 1
+          fi
 
       - name: Vet
         run: |
