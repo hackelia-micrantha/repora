@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -114,10 +115,14 @@ func validateEndpoint(endpoint Endpoint, role, repoID string) error {
 		return fmt.Errorf("%s provider is required for repo %q", role, repoID)
 	}
 	path := strings.TrimSpace(endpoint.Path)
+	rawURL := strings.TrimSpace(endpoint.URL)
 	pathSet := path != ""
-	urlSet := strings.TrimSpace(endpoint.URL) != ""
+	urlSet := rawURL != ""
 	if pathSet == urlSet {
 		return fmt.Errorf("%s must define exactly one of path or legacy url for repo %q", role, repoID)
+	}
+	if urlSet && containsURLCredentials(rawURL) {
+		return fmt.Errorf("%s legacy url must not contain credentials for repo %q", role, repoID)
 	}
 	if pathSet {
 		if strings.Contains(path, "://") || strings.Contains(path, "@") || strings.HasPrefix(path, "/") || strings.HasPrefix(path, ".") {
@@ -134,6 +139,14 @@ func validateEndpoint(endpoint Endpoint, role, repoID string) error {
 		}
 	}
 	return nil
+}
+
+func containsURLCredentials(raw string) bool {
+	if strings.HasPrefix(raw, "git@") {
+		return false
+	}
+	parsed, err := url.Parse(raw)
+	return err == nil && parsed.User != nil
 }
 
 func isSupportedMirrorProvider(provider string) bool {
