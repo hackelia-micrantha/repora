@@ -4,6 +4,20 @@ Repora should treat repository security posture and CI/CD posture as declarative
 
 The goal is to collect normalized facts about repositories, evaluate them against explicit posture policies, and produce reviewable remediation plans.
 
+## Goals
+
+Posture work should make Repora useful for recurring repository stewardship, not only one-time bootstrapping.
+
+Primary goals:
+
+- **Harden repository security** by evaluating branch protection, ownership, access boundaries, secrets posture, dependency automation, release hygiene, and CI/CD trust boundaries.
+- **Manage mirrors** by keeping canonical repositories, mirrors, remotes, provider metadata, and synchronization expectations explicit and drift-aware.
+- **Maintain documentation and README hygiene** by checking for required docs, stale or missing sections, inconsistent project metadata, and repository-specific documentation expectations.
+- **Analyze commit history** by surfacing risky change patterns, large or unusual commits, unsigned or unreviewed changes, release-boundary changes, and drift between declared process and observed history.
+- **Govern hooks and local workflow controls** by tracking expected Git hooks, pre-commit checks, local policy entrypoints, and repo-specific developer workflow safeguards.
+
+These goals should be expressed as facts, policies, findings, and remediation plans so they remain auditable and provider-neutral where possible.
+
 ## Purpose
 
 Repository posture covers the durable controls around a repository: branch protection, ownership, security metadata, dependency automation, access boundaries, and release hygiene.
@@ -94,6 +108,95 @@ Important risk patterns:
 - self-hosted runners reachable from untrusted code
 - deployment jobs without explicit environment approval
 - release workflows that publish unsigned or unaudited artifacts
+
+## Mirror management posture
+
+Mirror management should be part of posture because mirrors can silently become security, availability, and provenance risks.
+
+Initial mirror facts should include:
+
+- canonical repository identity
+- declared mirror repositories
+- configured remotes
+- default branches across canonical and mirror repositories
+- synchronization direction and mode
+- drift between canonical and mirrors
+- provider visibility and access settings
+- release and tag propagation expectations
+
+Important risk patterns:
+
+- mirror accepts writes when it should be read-only
+- mirror default branch diverges from canonical
+- tags or releases exist in one provider but not another
+- stale mirror presents outdated security fixes as current
+- mirror metadata implies a different source of truth than `repora.yaml`
+
+## Documentation and README hygiene
+
+Documentation hygiene should be evaluated as repository state, not as prose preference.
+
+Initial documentation facts should include:
+
+- required documents by repository profile
+- README presence and expected sections
+- stale project metadata
+- links to architecture, security, support, and operational docs
+- consistency between repo metadata and docs
+- generated or archived document classification
+- canonical document selection for AI-assisted workflows
+
+Important risk patterns:
+
+- README describes obsolete commands or unsupported workflows
+- security contact or disclosure process is missing
+- docs disagree with configured CI/CD or release process
+- archived/generated docs are treated as canonical
+- repository purpose is unclear enough to cause unsafe automation
+
+## Commit analysis posture
+
+Commit analysis should provide evidence about how repository changes actually happen over time.
+
+Initial commit facts should include:
+
+- signed commit and tag prevalence
+- merge strategy patterns
+- commit size and file-scope outliers
+- sensitive-path changes
+- release-boundary changes
+- unreviewed or direct-to-main changes where provider APIs expose them
+- author and committer patterns
+- relationship between commits, issues, PRs, and releases
+
+Important risk patterns:
+
+- direct commits to protected or sensitive branches
+- large mixed-purpose commits that obscure review
+- unsigned release tags
+- sensitive files changed outside expected review paths
+- repeated hotfixes bypassing declared process
+
+## Hooks and local workflow posture
+
+Hooks and local workflow controls should be tracked where repositories rely on them for safety or consistency.
+
+Initial hook facts should include:
+
+- expected hook manager, such as pre-commit, Lefthook, Husky, or custom Git hooks
+- configured hook entrypoints
+- required local checks
+- relationship between local hooks and CI checks
+- bootstrap instructions for developer machines
+- bypass or escape hatch documentation
+
+Important risk patterns:
+
+- local hooks are required by convention but not documented
+- CI does not enforce checks that local hooks are expected to catch
+- hook bootstrap is missing or stale
+- hooks execute unreviewed or network-loaded code
+- repo-specific policy entrypoints are inconsistent across mirrors
 
 ## Normalized facts
 
@@ -186,6 +289,10 @@ repoctl posture apply
 - create or update CODEOWNERS
 - open issues for provider settings that require manual confirmation
 - propose branch protection updates
+- update README or documentation sections
+- reconcile mirror metadata or remote configuration
+- flag risky commit history patterns for review
+- add or standardize hook configuration
 
 `apply` should only run after review and should preserve the same diff-first execution model used elsewhere in Repora.
 
@@ -211,7 +318,16 @@ repoctl ci explain .github/workflows/build.yml
 repoctl ci harden --plan
 ```
 
-These should remain posture-oriented commands rather than becoming a general CI runner.
+Additional focused helpers may be useful later:
+
+```bash
+repoctl mirrors check
+repoctl docs check
+repoctl commits analyze
+repoctl hooks check
+```
+
+These should remain posture-oriented commands rather than becoming a general CI runner, documentation linter, or commit forensics tool.
 
 ## Provider support
 
@@ -251,7 +367,11 @@ Provider API mutation should come after file-based reports, issues, and PR remed
 5. Add issue generation for findings.
 6. Add PR-based remediation for file-backed fixes.
 7. Add guarded provider API mutation for branch protection and repository settings.
-8. Add GitLab and Bitbucket adapters.
+8. Add mirror management checks for canonical and mirror repositories.
+9. Add documentation and README hygiene checks.
+10. Add commit analysis findings for risky or process-drift patterns.
+11. Add hook and local workflow posture checks.
+12. Add GitLab and Bitbucket adapters.
 
 The first useful slice is:
 
