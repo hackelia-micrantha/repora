@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This roadmap records the dependency order for Repora's current backlog after durable repository identity (`uid`), mirror workflow semantics, and the first runtime transport resolver slice landed.
+This roadmap records the dependency order for Repora's current backlog after durable repository identity (`uid`), mirror workflow semantics, the first runtime transport resolver slice, and provider/path topology documentation landed.
 
 Feature issues remain authoritative for detailed requirements and acceptance criteria. This document prevents implementation from bypassing architectural or safety prerequisites.
 
@@ -26,7 +26,7 @@ Broader artifact management, document routing, assessment, and hosted-control-pl
 DONE #21 durable uid identity
   -> DONE #29 mirror workflow semantics
   -> DONE #16 runtime transport resolver slice
-  -> #19 provider/path topology documentation
+  -> DONE #19 provider/path topology documentation
   -> #22 topology/observation/planning/execution separation
   -> #3 versioned JSON contracts
   -> #8 serialized plan and unified diff execution boundary
@@ -41,13 +41,14 @@ DONE #21 durable uid identity
   -> #11 v0.1 release hardening
 ```
 
-Issue #16 remains open for the broader configurable-base and transport-selection work. Its prerequisite runtime resolver boundary is complete; #19 documents the currently implemented provider/path behavior without claiming those remaining features.
+Issue #16 remains open for the broader configurable-base and transport-selection work. Its prerequisite runtime resolver boundary is complete, and #19 documents the currently implemented provider/path behavior without claiming those remaining features.
 
 ## Priority bands
 
 ### P0 — Semantic and documentation truth
 
 - DONE #29 mirror workflow semantics
+- DONE #19 provider/path topology documentation
 - keep README claims aligned with implemented behavior
 - maintain this ordered roadmap
 - ensure document routing includes the actual Go source roots
@@ -57,7 +58,7 @@ Exit condition: source ownership, classifications, destructive-change defaults, 
 ### P1 — Topology foundation
 
 - DONE #16 runtime transport resolver slice
-- #19 provider/path topology documentation
+- DONE #19 provider/path topology documentation
 - remaining #16 configurable provider bases and transport selection
 
 Exit condition: provider/path is authoritative, runtime URLs are derived, legacy URL compatibility is bounded, and credentials cannot enter serialized topology.
