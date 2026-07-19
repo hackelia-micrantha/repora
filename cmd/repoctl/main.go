@@ -326,8 +326,8 @@ func newJSONOutput(spec config.Spec, results []status.Result, ok []bool) jsonOut
 		}
 		result := results[i]
 		out.Repos = append(out.Repos, jsonRepo{
-			ID:  repo.ID,
-			UID: repo.DurableID(),
+			ID:        repo.ID,
+			UID:       repo.DurableID(),
 			Canonical: jsonRef{Ref: "HEAD", Commit: result.Canonical},
 			Mirrors: []jsonMirror{{
 				Provider: repo.Mirrors[0].Provider,
