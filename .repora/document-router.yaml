@@ -6,7 +6,6 @@ metadata:
   description: >-
     Deterministic document routing profile for context selection and token reduction.
 
-# Global defaults used when a route does not override them.
 defaults:
   strategy: score_then_prune
   sort: path_lexicographic
@@ -22,7 +21,6 @@ defaults:
   follow_refs: true
   stop_after_first_exact: false
 
-# Route classes help tools pick a small subset before reading content.
 classes:
   - id: overview
     description: High-level product and operating model
@@ -76,12 +74,14 @@ routes:
         - adapter
         - graph
         - concurrency
+        - mirror semantics
     include:
       - README.md
       - docs/architecture/**
       - docs/adr/**
       - docs/req/**
-      - src/**
+      - cmd/**
+      - internal/**
     exclude:
       - examples/**
       - tests/**
@@ -111,6 +111,7 @@ routes:
       - docs/adr/**
       - docs/rfc/**
       - docs/policy/**
+      - docs/architecture/mirror-workflow-semantics.md
       - SECURITY.md
       - README.md
     exclude:
@@ -140,6 +141,7 @@ routes:
       - examples/**
       - docs/spec/**
       - docs/req/**
+      - internal/config/**
     exclude:
       - tests/**
     budget:
@@ -213,7 +215,8 @@ fallbacks:
 
   - id: source-first
     include:
-      - src/**
+      - cmd/**
+      - internal/**
       - README.md
       - docs/architecture/**
       - docs/adr/**
