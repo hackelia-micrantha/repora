@@ -1,0 +1,10 @@
+repos:
+  - id: payments-api
+    uid: repo.org.payments-api
+    canonical:
+      provider: gitlab
+      path: org/payments-api
+    mirrors:
+      - provider: github
+        path: org/payments-api
+    mode: mirror
