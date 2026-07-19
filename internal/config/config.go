@@ -23,7 +23,8 @@ type Repo struct {
 
 type Endpoint struct {
 	Provider string `json:"provider" yaml:"provider"`
-	URL      string `json:"url" yaml:"url"`
+	Path     string `json:"path,omitempty" yaml:"path,omitempty"`
+	URL      string `json:"url,omitempty" yaml:"url,omitempty"`
 }
 
 func (r Repo) DurableID() string {
@@ -82,8 +83,8 @@ func validate(spec Spec) error {
 			return fmt.Errorf("duplicate repo uid %q", repo.UID)
 		}
 		seenUIDs[repo.UID] = struct{}{}
-		if repo.Canonical.Provider == "" || repo.Canonical.URL == "" {
-			return fmt.Errorf("canonical provider and url are required for repo %q", repo.ID)
+		if err := validateEndpoint(repo.Canonical, "canonical", repo.ID); err != nil {
+			return err
 		}
 		if repo.Canonical.Provider != "gitlab" {
 			return fmt.Errorf("unsupported canonical provider %q for repo %q: only gitlab is supported", repo.Canonical.Provider, repo.ID)
@@ -91,8 +92,8 @@ func validate(spec Spec) error {
 		if len(repo.Mirrors) != 1 {
 			return fmt.Errorf("SCHEMA-0001 requires exactly one mirror for repo %q, got %d", repo.ID, len(repo.Mirrors))
 		}
-		if repo.Mirrors[0].Provider == "" || repo.Mirrors[0].URL == "" {
-			return fmt.Errorf("mirror provider and url are required for repo %q", repo.ID)
+		if err := validateEndpoint(repo.Mirrors[0], "mirror", repo.ID); err != nil {
+			return err
 		}
 		if !isSupportedMirrorProvider(repo.Mirrors[0].Provider) {
 			return fmt.Errorf("unsupported mirror provider %q for repo %q: supported providers are github and gitlab", repo.Mirrors[0].Provider, repo.ID)
@@ -104,6 +105,18 @@ func validate(spec Spec) error {
 			return fmt.Errorf("unsupported mode %q for repo %q: only mirror is supported", repo.Mode, repo.ID)
 		}
 		spec.Repos[i] = repo
+	}
+	return nil
+}
+
+func validateEndpoint(endpoint Endpoint, role, repoID string) error {
+	if strings.TrimSpace(endpoint.Provider) == "" {
+		return fmt.Errorf("%s provider is required for repo %q", role, repoID)
+	}
+	pathSet := strings.TrimSpace(endpoint.Path) != ""
+	urlSet := strings.TrimSpace(endpoint.URL) != ""
+	if pathSet == urlSet {
+		return fmt.Errorf("%s must define exactly one of path or legacy url for repo %q", role, repoID)
 	}
 	return nil
 }
