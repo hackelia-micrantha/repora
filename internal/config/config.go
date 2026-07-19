@@ -113,10 +113,25 @@ func validateEndpoint(endpoint Endpoint, role, repoID string) error {
 	if strings.TrimSpace(endpoint.Provider) == "" {
 		return fmt.Errorf("%s provider is required for repo %q", role, repoID)
 	}
-	pathSet := strings.TrimSpace(endpoint.Path) != ""
+	path := strings.TrimSpace(endpoint.Path)
+	pathSet := path != ""
 	urlSet := strings.TrimSpace(endpoint.URL) != ""
 	if pathSet == urlSet {
 		return fmt.Errorf("%s must define exactly one of path or legacy url for repo %q", role, repoID)
+	}
+	if pathSet {
+		if strings.Contains(path, "://") || strings.Contains(path, "@") || strings.HasPrefix(path, "/") || strings.HasPrefix(path, ".") {
+			return fmt.Errorf("%s path must be provider-relative for repo %q", role, repoID)
+		}
+		parts := strings.Split(strings.Trim(path, "/"), "/")
+		if len(parts) < 2 {
+			return fmt.Errorf("%s path must include an owner or namespace for repo %q", role, repoID)
+		}
+		for _, part := range parts {
+			if part == "" || part == "." || part == ".." {
+				return fmt.Errorf("%s path contains an invalid segment for repo %q", role, repoID)
+			}
+		}
 	}
 	return nil
 }
