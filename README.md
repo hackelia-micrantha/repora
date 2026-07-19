@@ -22,6 +22,9 @@ The current CLI supports:
 - multiple configured repository entries per invocation
 - bounded concurrent repository processing
 - stable repository identity using `id` and optional durable `uid`
+- provider-relative repository locations using `provider + path`
+- runtime HTTPS URL derivation for GitHub and GitLab
+- bounded compatibility for legacy URL-based endpoints
 - one GitLab canonical repository per entry
 - exactly one GitHub or GitLab mirror per entry
 - system Git authentication and credential handling
@@ -45,8 +48,10 @@ Repora is pre-alpha and should not yet be treated as a general Git mirror, repos
 
 Current limitations include:
 
-- URL-based configuration rather than provider/path topology
 - GitLab-only canonical repositories
+- built-in GitHub and GitLab transport bases only
+- default HTTPS transport for path-based runtime operations
+- no user-configurable transport selection
 - one mirror per configured repository
 - default branch only
 - no tag synchronization
@@ -64,7 +69,8 @@ The existing `--force` path is transitional. It uses force-with-lease, but it is
 
 ```mermaid
 flowchart LR
-    Config[repora.yaml] --> Status[Fetch canonical and mirror]
+    Config[repora.yaml] --> Resolver[Resolve provider/path endpoints]
+    Resolver --> Status[Fetch canonical and mirror]
     Status --> Compare[Compare default branches]
     Compare --> Plan[Produce semantic plan]
     Compare --> Apply[Apply default-branch update]
@@ -102,7 +108,7 @@ The project can also be built and tested directly with Go tooling.
 
 ## Current configuration
 
-The runtime still uses explicit remote URLs:
+Use `provider + path` as the authoritative repository location:
 
 ```yaml
 repos:
@@ -110,16 +116,22 @@ repos:
     uid: repo.anthesis
     canonical:
       provider: gitlab
-      url: https://gitlab.com/micrantha/anthesis.git
+      path: micrantha/anthesis
     mirrors:
       - provider: github
-        url: https://github.com/hackelia-micrantha/anthesis.git
+        path: hackelia-micrantha/anthesis
     mode: mirror
 ```
 
-Credentials must not be embedded in `repora.yaml`. Authentication is delegated to system Git and configured credential helpers.
+`id` is the human-facing operational alias. `uid` is the durable logical identity used for cache continuity and future history or evidence. Keep `uid` stable when renaming `id`, moving a repository, changing provider, or changing transport.
 
-The planned provider/path schema will make logical locations authoritative and resolve transport URLs at runtime.
+The runtime currently resolves the example to HTTPS Git remotes immediately before Git operations. Resolved URLs are runtime state, not durable identity.
+
+Credentials must not be embedded in `repora.yaml`. Authentication is delegated to system Git and configured credential helpers. Credential-bearing HTTP URLs are rejected during configuration loading.
+
+Legacy `url` fields remain accepted temporarily, but an endpoint must define exactly one of `path` or `url`. New configuration should use `path`.
+
+See [`docs/configuration/provider-path-topology-v1.md`](docs/configuration/provider-path-topology-v1.md) for the complete field reference, nested GitLab paths, migration examples, validation errors, compatibility behavior, and current limitations.
 
 ## CLI
 
@@ -226,16 +238,15 @@ The ordered implementation path is maintained in [`docs/roadmap/ordered-implemen
 
 The immediate critical path is:
 
-1. define mirror workflow semantics
-2. introduce provider/path transport resolution
-3. separate topology, observation, planning, and execution
-4. stabilize versioned JSON contracts
-5. make one serialized plan the apply boundary
-6. add stale-plan validation and execution journaling
-7. enforce explicit branch/ref policy
-8. expand to multiple mirrors
-9. integrate optional Anthesis policy evaluation
-10. harden and package a v0.1 release
+1. document the implemented provider/path topology and compatibility boundary
+2. separate topology, observation, planning, and execution
+3. stabilize versioned JSON contracts
+4. make one serialized plan the apply boundary
+5. add stale-plan validation and execution journaling
+6. enforce explicit branch/ref policy
+7. expand to multiple mirrors
+8. integrate optional Anthesis policy evaluation
+9. harden and package a v0.1 release
 
 ## License
 
