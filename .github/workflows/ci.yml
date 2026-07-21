@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GO_VERSION: '1.22'
+  GO_VERSION: '1.25.8'
 
 jobs:
   format:
@@ -118,11 +118,36 @@ jobs:
         run: go build -trimpath -o ./bin/repoctl ./cmd/repoctl
 
       - name: Exercise command boundary
+        shell: bash
         run: |
-          ./bin/repoctl --help
-          ./bin/repoctl status --help
-          ./bin/repoctl plan --help
-          ./bin/repoctl apply --help
+          set -euo pipefail
+
+          ./bin/repoctl --help >/dev/null
+
+          assert_subcommand_help() {
+            local command="$1"
+            local output
+            local status
+
+            set +e
+            output="$(./bin/repoctl "$command" --help 2>&1)"
+            status=$?
+            set -e
+
+            if [ "$status" -ne 1 ]; then
+              printf '%s --help exited %d, want 1\n' "$command" "$status" >&2
+              printf '%s\n' "$output" >&2
+              return 1
+            fi
+            if [ -z "$output" ]; then
+              printf '%s --help produced no output\n' "$command" >&2
+              return 1
+            fi
+          }
+
+          assert_subcommand_help status
+          assert_subcommand_help plan
+          assert_subcommand_help apply
 
   build:
     name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
