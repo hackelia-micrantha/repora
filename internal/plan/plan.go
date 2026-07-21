@@ -89,6 +89,12 @@ type Observation struct {
 	MirrorHeadOID   string
 }
 
+// RequiresMirrorHeadObservation reports whether planning needs the current
+// mirror head to construct a force-with-lease action.
+func RequiresMirrorHeadObservation(result status.Result) bool {
+	return result.State == status.StateAhead || result.State == status.StateDiverged
+}
+
 func Reconcile(repo config.Repo, result status.Result, observed Observation, force bool) (ReconciliationPlan, error) {
 	repoPlan := ReconciliationPlan{ID: repo.ID, UID: repo.DurableID(), Actions: []PlannedAction{}}
 
@@ -116,8 +122,16 @@ func Reconcile(repo config.Repo, result status.Result, observed Observation, for
 
 	action := PlannedAction{
 		Type: ActionPushBranch,
-		Source: Remote{Provider: repo.Canonical.Provider, Name: "canonical", Branch: sourceBranch},
-		Target: Remote{Provider: repo.Mirrors[0].Provider, Name: "mirror", Branch: targetBranch},
+		Source: Remote{
+			Provider: repo.Canonical.Provider,
+			Name:     "canonical",
+			Branch:   sourceBranch,
+		},
+		Target: Remote{
+			Provider: repo.Mirrors[0].Provider,
+			Name:     "mirror",
+			Branch:   targetBranch,
+		},
 		Reason: fmt.Sprintf("mirror is %s", strings.ToLower(string(result.State))),
 	}
 
