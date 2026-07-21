@@ -12,8 +12,10 @@ import (
 	"repoctl/internal/plan"
 )
 
-// Git contains only the mutation operations required to execute plans.
+// Git contains the reference reads and mutation operations required to execute
+// plans safely. Reference reads are used only to reject stale plan input.
 type Git interface {
+	ResolveRevision(repoPath, rev string) (string, error)
 	PushBranch(repoPath, remote, srcRef, dstBranch string) error
 	ForcePushBranchWithLease(repoPath, remote, srcRef, dstBranch, expectedOldOID string) error
 }
@@ -54,8 +56,8 @@ func (r Result) AllApplied() bool {
 }
 
 // Execute applies every action in planned order. It validates the complete plan
-// before invoking Git so malformed plans fail closed without mutation. Mutation
-// failure stops execution while preserving applied, failed, and skipped results.
+// and verifies every expected source and target reference before invoking a Git
+// mutation. Malformed or stale plans therefore fail closed without mutation.
 func Execute(repoPath string, planned plan.ReconciliationPlan, git Git) (Result, error) {
 	result := Result{Actions: make([]ActionResult, len(planned.Actions))}
 	for i, action := range planned.Actions {
@@ -64,9 +66,12 @@ func Execute(repoPath string, planned plan.ReconciliationPlan, git Git) (Result,
 
 	for i, action := range planned.Actions {
 		if err := validateAction(action); err != nil {
-			result.Actions[i].Outcome = OutcomeFailed
-			result.Actions[i].Error = err.Error()
-			return result, fmt.Errorf("validate action %d: %w", i, err)
+			return failPreflight(result, i, fmt.Errorf("validate action %d: %w", i, err))
+		}
+	}
+	for i, action := range planned.Actions {
+		if err := validateCurrentRefs(repoPath, action, git); err != nil {
+			return failPreflight(result, i, fmt.Errorf("stale action %d: %w", i, err))
 		}
 	}
 
@@ -88,6 +93,12 @@ func Execute(repoPath string, planned plan.ReconciliationPlan, git Git) (Result,
 	return result, nil
 }
 
+func failPreflight(result Result, index int, err error) (Result, error) {
+	result.Actions[index].Outcome = OutcomeFailed
+	result.Actions[index].Error = err.Error()
+	return result, err
+}
+
 func validateAction(action plan.PlannedAction) error {
 	if action.Type != plan.ActionPushBranch {
 		return fmt.Errorf("unsupported action type %q", action.Type)
@@ -98,15 +109,44 @@ func validateAction(action plan.PlannedAction) error {
 	if strings.TrimSpace(action.Target.Name) == "" || strings.TrimSpace(action.Target.Branch) == "" {
 		return fmt.Errorf("push action requires target remote and branch")
 	}
-	if action.Force && strings.TrimSpace(action.ExpectedOldTarget) == "" {
-		return fmt.Errorf("forced push action requires expected old target")
+	if strings.TrimSpace(action.ExpectedSource) == "" {
+		return fmt.Errorf("push action requires expected source")
 	}
-	if !action.Force && strings.TrimSpace(action.ExpectedOldTarget) != "" {
-		return fmt.Errorf("normal push action must not include expected old target")
+	if strings.TrimSpace(action.ExpectedOldTarget) == "" {
+		return fmt.Errorf("push action requires expected old target")
+	}
+	return nil
+}
+
+func validateCurrentRefs(repoPath string, action plan.PlannedAction, git Git) error {
+	sourceRef := remoteTrackingRef(action.Source.Name, action.Source.Branch)
+	currentSource, err := git.ResolveRevision(repoPath, sourceRef)
+	if err != nil {
+		return fmt.Errorf("resolve source %s: %w", sourceRef, err)
+	}
+	if strings.TrimSpace(currentSource) != strings.TrimSpace(action.ExpectedSource) {
+		return fmt.Errorf("source %s changed from %s to %s", sourceRef, shortOID(action.ExpectedSource), shortOID(currentSource))
+	}
+
+	targetRef := remoteTrackingRef(action.Target.Name, action.Target.Branch)
+	currentTarget, err := git.ResolveRevision(repoPath, targetRef)
+	if err != nil {
+		return fmt.Errorf("resolve target %s: %w", targetRef, err)
+	}
+	if strings.TrimSpace(currentTarget) != strings.TrimSpace(action.ExpectedOldTarget) {
+		return fmt.Errorf("target %s changed from %s to %s", targetRef, shortOID(action.ExpectedOldTarget), shortOID(currentTarget))
 	}
 	return nil
 }
 
 func remoteTrackingRef(remote, branch string) string {
 	return "refs/remotes/" + strings.TrimSpace(remote) + "/" + strings.TrimSpace(branch)
+}
+
+func shortOID(oid string) string {
+	oid = strings.TrimSpace(oid)
+	if len(oid) <= 12 {
+		return oid
+	}
+	return oid[:12]
 }
