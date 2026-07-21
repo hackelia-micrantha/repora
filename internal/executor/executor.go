@@ -30,7 +30,7 @@ type Result struct {
 	Actions []ActionResult
 }
 
-// Execute applies every action in planned order. It validates each action
+// Execute applies every action in planned order. It validates the complete plan
 // before invoking Git so malformed plans fail closed without mutation.
 func Execute(repoPath string, planned plan.ReconciliationPlan, git Git) (Result, error) {
 	result := Result{Actions: make([]ActionResult, 0, len(planned.Actions))}
@@ -38,7 +38,9 @@ func Execute(repoPath string, planned plan.ReconciliationPlan, git Git) (Result,
 		if err := validateAction(action); err != nil {
 			return result, fmt.Errorf("validate action %d: %w", i, err)
 		}
+	}
 
+	for _, action := range planned.Actions {
 		actionResult := ActionResult{Action: action}
 		srcRef := remoteTrackingRef(action.Source.Name, action.Source.Branch)
 		if action.Force {
