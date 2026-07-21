@@ -1,10 +1,7 @@
 // Package plan owns deterministic reconciliation decisions.
 //
 // It consumes configured repository identity plus observed repository state and
-// produces in-memory actions. It must not perform Git mutations. The apply
-// package temporarily remains responsible for resolving local execution details
-// and executing these actions until later issue #22 slices introduce an
-// executor boundary.
+// produces in-memory actions. It must not perform Git mutations.
 package plan
 
 import (
@@ -73,6 +70,7 @@ type PlannedAction struct {
 	Source            Remote
 	Target            Remote
 	Force             bool
+	ExpectedSource    string
 	ExpectedOldTarget string
 	Reason            string
 }
@@ -84,15 +82,16 @@ type ReconciliationPlan struct {
 }
 
 type Observation struct {
-	CanonicalBranch string
-	MirrorBranch    string
-	MirrorHeadOID   string
+	CanonicalBranch  string
+	CanonicalHeadOID string
+	MirrorBranch     string
+	MirrorHeadOID    string
 }
 
 // RequiresMirrorHeadObservation reports whether planning needs the current
-// mirror head to construct a force-with-lease action.
+// mirror head to construct an action guarded against stale input.
 func RequiresMirrorHeadObservation(result status.Result) bool {
-	return result.State == status.StateAhead || result.State == status.StateDiverged
+	return result.State == status.StateBehind || result.State == status.StateAhead || result.State == status.StateDiverged
 }
 
 func Reconcile(repo config.Repo, result status.Result, observed Observation, force bool) (ReconciliationPlan, error) {
@@ -120,6 +119,12 @@ func Reconcile(repo config.Repo, result status.Result, observed Observation, for
 		return repoPlan, fmt.Errorf("repo %q requires resolved canonical and mirror branches", repo.ID)
 	}
 
+	expectedSource := strings.TrimSpace(observed.CanonicalHeadOID)
+	expectedTarget := strings.TrimSpace(observed.MirrorHeadOID)
+	if expectedSource == "" || expectedTarget == "" {
+		return repoPlan, fmt.Errorf("repo %q requires observed canonical and mirror heads", repo.ID)
+	}
+
 	action := PlannedAction{
 		Type: ActionPushBranch,
 		Source: Remote{
@@ -132,7 +137,9 @@ func Reconcile(repo config.Repo, result status.Result, observed Observation, for
 			Name:     "mirror",
 			Branch:   targetBranch,
 		},
-		Reason: fmt.Sprintf("mirror is %s", strings.ToLower(string(result.State))),
+		ExpectedSource:    expectedSource,
+		ExpectedOldTarget: expectedTarget,
+		Reason:            fmt.Sprintf("mirror is %s", strings.ToLower(string(result.State))),
 	}
 
 	if result.State == status.StateBehind {
@@ -141,10 +148,6 @@ func Reconcile(repo config.Repo, result status.Result, observed Observation, for
 	}
 
 	action.Force = true
-	action.ExpectedOldTarget = strings.TrimSpace(observed.MirrorHeadOID)
-	if action.ExpectedOldTarget == "" {
-		return repoPlan, fmt.Errorf("repo %q requires observed mirror head for forced update", repo.ID)
-	}
 	repoPlan.Actions = append(repoPlan.Actions, action)
 	if !force {
 		return repoPlan, fmt.Errorf("repo %q is %s; rerun with --force to overwrite mirror default branch using a lease against %s", repo.ID, result.State, shortOID(action.ExpectedOldTarget))
