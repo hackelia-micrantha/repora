@@ -38,6 +38,12 @@ type Git interface {
 	ResolveRevision(repoPath, rev string) (string, error)
 }
 
+type builtPlan struct {
+	path    string
+	planned plan.ReconciliationPlan
+	actions []Action
+}
+
 // IsUnsafe is retained for callers that need to identify states requiring a
 // mirror-head observation. The planner owns that classification.
 func IsUnsafe(result status.Result) bool {
@@ -53,18 +59,42 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 		Actions: []Action{},
 	}
 
-	path, err := gitwrap.MirrorPath(repo.DurableID())
+	built, err := buildPlan(repo, st, git, force)
+	result.Actions = built.actions
 	if err != nil {
 		return result, err
 	}
+	if dryRun || len(built.planned.Actions) == 0 {
+		return result, nil
+	}
+
+	executed, err := executor.Execute(built.path, built.planned, git)
+	if err != nil {
+		return result, fmt.Errorf("execute plan for repo %q: %w", repo.ID, err)
+	}
+	result.Applied = executed.AllApplied()
+	return result, nil
+}
+
+// buildPlan is the single observation-to-plan path used by both dry-run and
+// real apply. Compatibility actions are projected from that exact plan once;
+// execution receives the same in-memory plan without rebuilding decisions.
+func buildPlan(repo config.Repo, st status.Result, git Git, force bool) (builtPlan, error) {
+	built := builtPlan{actions: []Action{}}
+
+	path, err := gitwrap.MirrorPath(repo.DurableID())
+	if err != nil {
+		return built, err
+	}
+	built.path = path
 
 	srcBranch, err := git.ResolveRemoteHeadBranch(path, "canonical")
 	if err != nil {
-		return result, fmt.Errorf("resolve canonical HEAD for repo %q: %w", repo.ID, err)
+		return built, fmt.Errorf("resolve canonical HEAD for repo %q: %w", repo.ID, err)
 	}
 	dstBranch, err := git.ResolveRemoteHeadBranch(path, "mirror")
 	if err != nil {
-		return result, fmt.Errorf("resolve mirror HEAD for repo %q: %w", repo.ID, err)
+		return built, fmt.Errorf("resolve mirror HEAD for repo %q: %w", repo.ID, err)
 	}
 	if dstBranch == "" {
 		dstBranch = srcBranch
@@ -75,14 +105,23 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 		dstRef := "refs/remotes/mirror/" + dstBranch
 		expectedOldOID, err := git.ResolveRevision(path, dstRef)
 		if err != nil {
-			return result, fmt.Errorf("resolve mirror branch for repo %q: %w", repo.ID, err)
+			return built, fmt.Errorf("resolve mirror branch for repo %q: %w", repo.ID, err)
 		}
 		observation.MirrorHeadOID = expectedOldOID
 	}
 
-	planned, planErr := plan.Reconcile(repo, st, observation, force)
+	built.planned, err = plan.Reconcile(repo, st, observation, force)
+	built.actions = compatibilityActions(built.planned)
+	if err != nil {
+		return built, err
+	}
+	return built, nil
+}
+
+func compatibilityActions(planned plan.ReconciliationPlan) []Action {
+	actions := make([]Action, 0, len(planned.Actions))
 	for _, action := range planned.Actions {
-		result.Actions = append(result.Actions, Action{
+		actions = append(actions, Action{
 			Type:              string(action.Type),
 			Source:            action.Source.Name + "/" + action.Source.Branch,
 			Target:            action.Target.Provider + "/" + action.Target.Branch,
@@ -90,17 +129,5 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 			ExpectedOldTarget: action.ExpectedOldTarget,
 		})
 	}
-	if planErr != nil {
-		return result, planErr
-	}
-	if dryRun || len(planned.Actions) == 0 {
-		return result, nil
-	}
-
-	executed, err := executor.Execute(path, planned, git)
-	if err != nil {
-		return result, fmt.Errorf("execute plan for repo %q: %w", repo.ID, err)
-	}
-	result.Applied = executed.AllApplied()
-	return result, nil
+	return actions
 }
