@@ -108,6 +108,21 @@ func TestExecuteRejectsMalformedForceWithoutMutation(t *testing.T) {
 	}
 }
 
+func TestExecuteValidatesCompletePlanBeforeMutation(t *testing.T) {
+	git := &fakeGit{}
+	valid := testAction(false)
+	invalid := testAction(true)
+	invalid.ExpectedOldTarget = ""
+
+	_, err := Execute("/tmp/repo", testPlan(valid, invalid), git)
+	if err == nil || !strings.Contains(err.Error(), "validate action 1") {
+		t.Fatalf("error = %v, want second-action validation failure", err)
+	}
+	if len(git.pushCalls) != 0 || len(git.forceCalls) != 0 {
+		t.Fatalf("git calls = push %#v force %#v, want no mutation", git.pushCalls, git.forceCalls)
+	}
+}
+
 func TestExecuteReturnsMutationFailure(t *testing.T) {
 	git := &fakeGit{pushErr: errors.New("network failed")}
 
