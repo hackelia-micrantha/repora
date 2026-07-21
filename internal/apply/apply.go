@@ -101,6 +101,6 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 	if err != nil {
 		return result, fmt.Errorf("execute plan for repo %q: %w", repo.ID, err)
 	}
-	result.Applied = len(executed.Actions) > 0
+	result.Applied = executed.AllApplied()
 	return result, nil
 }
