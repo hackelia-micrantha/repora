@@ -23,15 +23,17 @@ config/topology
 
 The planner decides whether reconciliation produces no action, a normal branch push, a fail-closed forced action, or an explicitly authorized forced action. Dry-run renders those planner actions directly. Real apply passes the same in-memory actions to the executor, which owns `PushBranch` and `ForcePushBranchWithLease` calls.
 
-The executor's action results are internal implementation types and are not a stabilized public serialization contract. The existing user-facing `repoctl plan` JSON model remains separate from the in-memory reconciliation model, avoiding premature coupling to issue #8 or the public JSON contracts owned by issue #3.
+Executor results now retain one ordered internal result for every planned action. Successful actions before a mutation failure remain `APPLIED`, the failing action is `FAILED` with its error, and unattempted later actions remain `SKIPPED`. Complete-plan validation still occurs before any mutation. These internal types are not a stabilized public serialization contract.
 
-## Temporary boundary
+## Failure and recovery
 
-Apply still resolves default branches and the expected mirror head used by force-with-lease before invoking the planner. Those reads are observation and execution preparation, not mutation. The command path also continues to expose the existing apply result model rather than a generalized execution-result contract.
+Mutation execution stops after the first failure. Callers must preserve the returned partial result for diagnostics and must re-plan from current remote state before retrying rather than replaying the prior in-memory plan. The existing user-facing apply JSON remains unchanged in this slice and does not claim the repository was fully applied after a partial failure.
+
+Apply still resolves default branches and the expected mirror head used by force-with-lease before invoking the planner. Those reads are observation and execution preparation, not mutation. The command path continues to expose the existing apply result model rather than a generalized execution-result contract.
 
 ## Remaining issue #22 slices
 
-1. Add structured per-repository and per-mirror partial-failure results.
+1. Add public per-repository and per-mirror partial-failure reporting after the multi-mirror result model is defined.
 2. Strengthen proof that dry-run and apply consume exactly the same complete action sequence as multi-action planning evolves.
 3. Add stale-plan validation before execution.
 4. Integrate the serialized plan artifact under issue #8 without coupling durable identity to runtime URLs.
