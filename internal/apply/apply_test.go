@@ -86,7 +86,7 @@ func TestExecuteRefusesUnsafeMirrorWithoutForce(t *testing.T) {
 	if !strings.Contains(err.Error(), "--force") {
 		t.Fatalf("error = %q, want --force guidance", err.Error())
 	}
-	if len(git.pushBranchCalls) != 0 && len(git.forcePushBranchWithLeaseCalls) != 0 {
+	if len(git.pushBranchCalls) != 0 || len(git.forcePushBranchWithLeaseCalls) != 0 {
 		t.Fatalf("git calls = push %#v force %#v, want no side effects", git.pushBranchCalls, git.forcePushBranchWithLeaseCalls)
 	}
 }
@@ -122,6 +122,45 @@ func TestExecuteNoopsEqualMirror(t *testing.T) {
 	}
 	if len(got.Actions) != 0 {
 		t.Fatalf("actions = %#v, want none", got.Actions)
+	}
+}
+
+func TestExecutePlannerFailureDoesNotMutate(t *testing.T) {
+	git := &fakeGit{}
+	repo := testRepo()
+	repo.Mirrors = nil
+	st := status.Result{ID: repo.ID, State: status.StateBehind, Behind: 1}
+
+	_, err := Execute(repo, st, git, false, false)
+	if err == nil {
+		t.Fatal("Execute returned nil error, want planner failure")
+	}
+	if !strings.Contains(err.Error(), "no configured mirror") {
+		t.Fatalf("error = %q, want missing mirror planner error", err.Error())
+	}
+	if len(git.pushBranchCalls) != 0 || len(git.forcePushBranchWithLeaseCalls) != 0 {
+		t.Fatalf("git calls = push %#v force %#v, want no mutation after planner failure", git.pushBranchCalls, git.forcePushBranchWithLeaseCalls)
+	}
+}
+
+func TestExecuteDryRunReportsPlannedActionWithoutMutation(t *testing.T) {
+	git := &fakeGit{}
+	repo := testRepo()
+	st := status.Result{ID: repo.ID, State: status.StateDiverged, Ahead: 1, Behind: 2}
+
+	got, err := Execute(repo, st, git, true, true)
+	if err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	if len(git.pushBranchCalls) != 0 || len(git.forcePushBranchWithLeaseCalls) != 0 {
+		t.Fatalf("git calls = push %#v force %#v, want no dry-run mutation", git.pushBranchCalls, git.forcePushBranchWithLeaseCalls)
+	}
+	if len(got.Actions) != 1 {
+		t.Fatalf("actions = %#v, want one planner action", got.Actions)
+	}
+	action := got.Actions[0]
+	if action.Type != "PUSH_BRANCH" || action.Source != "canonical/main" || action.Target != "github/main" || !action.Force || action.ExpectedOldTarget != "abc123456789" {
+		t.Fatalf("action = %#v, want planner-derived forced branch action", action)
 	}
 }
 
