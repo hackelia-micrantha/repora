@@ -18,42 +18,72 @@ type Git interface {
 	ForcePushBranchWithLease(repoPath, remote, srcRef, dstBranch, expectedOldOID string) error
 }
 
-// ActionResult records whether one planned action was applied. This is an
-// internal execution result, not a stabilized public serialization contract.
+type Outcome string
+
+const (
+	OutcomeApplied Outcome = "APPLIED"
+	OutcomeFailed  Outcome = "FAILED"
+	OutcomeSkipped Outcome = "SKIPPED"
+)
+
+// ActionResult records the outcome of one planned action. This is an internal
+// execution result, not a stabilized public serialization contract.
 type ActionResult struct {
+	Index   int
 	Action  plan.PlannedAction
-	Applied bool
+	Outcome Outcome
+	Error   string
 }
 
-// Result contains action results in the same deterministic order as the plan.
+// Result contains one action result for every planned action in deterministic
+// plan order, including actions skipped after a failure.
 type Result struct {
 	Actions []ActionResult
 }
 
+func (r Result) AllApplied() bool {
+	if len(r.Actions) == 0 {
+		return false
+	}
+	for _, action := range r.Actions {
+		if action.Outcome != OutcomeApplied {
+			return false
+		}
+	}
+	return true
+}
+
 // Execute applies every action in planned order. It validates the complete plan
-// before invoking Git so malformed plans fail closed without mutation.
+// before invoking Git so malformed plans fail closed without mutation. Mutation
+// failure stops execution while preserving applied, failed, and skipped results.
 func Execute(repoPath string, planned plan.ReconciliationPlan, git Git) (Result, error) {
-	result := Result{Actions: make([]ActionResult, 0, len(planned.Actions))}
+	result := Result{Actions: make([]ActionResult, len(planned.Actions))}
+	for i, action := range planned.Actions {
+		result.Actions[i] = ActionResult{Index: i, Action: action, Outcome: OutcomeSkipped}
+	}
+
 	for i, action := range planned.Actions {
 		if err := validateAction(action); err != nil {
+			result.Actions[i].Outcome = OutcomeFailed
+			result.Actions[i].Error = err.Error()
 			return result, fmt.Errorf("validate action %d: %w", i, err)
 		}
 	}
 
-	for _, action := range planned.Actions {
-		actionResult := ActionResult{Action: action}
+	for i, action := range planned.Actions {
 		srcRef := remoteTrackingRef(action.Source.Name, action.Source.Branch)
+		var err error
 		if action.Force {
-			if err := git.ForcePushBranchWithLease(repoPath, action.Target.Name, srcRef, action.Target.Branch, action.ExpectedOldTarget); err != nil {
-				return result, fmt.Errorf("force push branch: %w", err)
-			}
+			err = git.ForcePushBranchWithLease(repoPath, action.Target.Name, srcRef, action.Target.Branch, action.ExpectedOldTarget)
 		} else {
-			if err := git.PushBranch(repoPath, action.Target.Name, srcRef, action.Target.Branch); err != nil {
-				return result, fmt.Errorf("push branch: %w", err)
-			}
+			err = git.PushBranch(repoPath, action.Target.Name, srcRef, action.Target.Branch)
 		}
-		actionResult.Applied = true
-		result.Actions = append(result.Actions, actionResult)
+		if err != nil {
+			result.Actions[i].Outcome = OutcomeFailed
+			result.Actions[i].Error = err.Error()
+			return result, fmt.Errorf("execute action %d: %w", i, err)
+		}
+		result.Actions[i].Outcome = OutcomeApplied
 	}
 	return result, nil
 }
