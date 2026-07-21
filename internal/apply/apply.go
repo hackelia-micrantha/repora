@@ -6,6 +6,7 @@ import (
 
 	"repoctl/internal/config"
 	gitwrap "repoctl/internal/git"
+	"repoctl/internal/plan"
 	"repoctl/internal/status"
 )
 
@@ -38,8 +39,10 @@ type Git interface {
 	ForcePushBranchWithLease(repoPath, remote, srcRef, dstBranch, expectedOldOID string) error
 }
 
+// IsUnsafe is retained for callers that need to identify states requiring a
+// mirror-head observation. The planner owns that classification.
 func IsUnsafe(result status.Result) bool {
-	return result.State == status.StateAhead || result.State == status.StateDiverged
+	return plan.RequiresMirrorHeadObservation(result)
 }
 
 func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun bool) (Result, error) {
@@ -68,58 +71,48 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 		dstBranch = srcBranch
 	}
 
-	srcRef := remoteTrackingRef("canonical", srcBranch)
-	dstRef := remoteTrackingRef("mirror", dstBranch)
-	action := Action{
-		Type:   "PUSH_BRANCH",
-		Source: "canonical/" + srcBranch,
-		Target: repo.Mirrors[0].Provider + "/" + dstBranch,
-	}
-
-	switch st.State {
-	case status.StateEqual:
-		return result, nil
-	case status.StateBehind:
-		result.Actions = append(result.Actions, action)
-		if dryRun {
-			return result, nil
-		}
-		if err := git.PushBranch(path, "mirror", srcRef, dstBranch); err != nil {
-			return result, fmt.Errorf("push mirror branch for repo %q: %w", repo.ID, err)
-		}
-		result.Applied = true
-		return result, nil
-	case status.StateAhead, status.StateDiverged:
-		action.Force = true
+	observation := plan.Observation{CanonicalBranch: srcBranch, MirrorBranch: dstBranch}
+	if plan.RequiresMirrorHeadObservation(st) {
+		dstRef := remoteTrackingRef("mirror", dstBranch)
 		expectedOldOID, err := git.ResolveRevision(path, dstRef)
 		if err != nil {
 			return result, fmt.Errorf("resolve mirror branch for repo %q: %w", repo.ID, err)
 		}
-		action.ExpectedOldTarget = expectedOldOID
-		result.Actions = append(result.Actions, action)
-		if !force {
-			return result, fmt.Errorf("repo %q is %s; rerun with --force to overwrite mirror default branch using a lease against %s", repo.ID, st.State, shortOID(expectedOldOID))
-		}
-		if dryRun {
-			return result, nil
-		}
-		if err := git.ForcePushBranchWithLease(path, "mirror", srcRef, dstBranch, expectedOldOID); err != nil {
+		observation.MirrorHeadOID = expectedOldOID
+	}
+
+	planned, planErr := plan.Reconcile(repo, st, observation, force)
+	for _, action := range planned.Actions {
+		result.Actions = append(result.Actions, Action{
+			Type:              string(action.Type),
+			Source:            action.Source.Name + "/" + action.Source.Branch,
+			Target:            action.Target.Provider + "/" + action.Target.Branch,
+			Force:             action.Force,
+			ExpectedOldTarget: action.ExpectedOldTarget,
+		})
+	}
+	if planErr != nil {
+		return result, planErr
+	}
+	if dryRun || len(planned.Actions) == 0 {
+		return result, nil
+	}
+
+	action := planned.Actions[0]
+	srcRef := remoteTrackingRef(action.Source.Name, action.Source.Branch)
+	if action.Force {
+		if err := git.ForcePushBranchWithLease(path, action.Target.Name, srcRef, action.Target.Branch, action.ExpectedOldTarget); err != nil {
 			return result, fmt.Errorf("force push mirror branch with lease for repo %q: %w", repo.ID, err)
 		}
-		result.Applied = true
-		return result, nil
-	default:
-		return result, fmt.Errorf("unsupported state %q for repo %q", st.State, repo.ID)
+	} else {
+		if err := git.PushBranch(path, action.Target.Name, srcRef, action.Target.Branch); err != nil {
+			return result, fmt.Errorf("push mirror branch for repo %q: %w", repo.ID, err)
+		}
 	}
+	result.Applied = true
+	return result, nil
 }
 
 func remoteTrackingRef(remote, branch string) string {
 	return "refs/remotes/" + remote + "/" + strings.TrimSpace(branch)
-}
-
-func shortOID(oid string) string {
-	if len(oid) <= 12 {
-		return oid
-	}
-	return oid[:12]
 }
