@@ -40,12 +40,12 @@ func NewOutput(spec config.Spec, results []status.Result, ok []bool) Output {
 		if !ok[i] {
 			continue
 		}
-		out.Plan = append(out.Plan, NewStatusRepoPlan(repo, results[i]))
+		out.Plan = append(out.Plan, NewRepoPlan(repo, results[i]))
 	}
 	return out
 }
 
-func NewStatusRepoPlan(repo config.Repo, result status.Result) RepoPlan {
+func NewRepoPlan(repo config.Repo, result status.Result) RepoPlan {
 	repoPlan := RepoPlan{ID: repo.ID, UID: repo.DurableID(), Actions: []Action{}}
 	if result.State == status.StateBehind {
 		repoPlan.Actions = append(repoPlan.Actions, Action{
