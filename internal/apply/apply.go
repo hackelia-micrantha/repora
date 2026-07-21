@@ -125,14 +125,17 @@ func buildPlan(repo config.Repo, st status.Result, git Git, force bool) (builtPl
 
 func compatibilityActions(planned plan.ReconciliationPlan) []Action {
 	actions := make([]Action, 0, len(planned.Actions))
-	for _, action := range planned.Actions {
-		actions = append(actions, Action{
-			Type:              string(action.Type),
-			Source:            action.Source.Name + "/" + action.Source.Branch,
-			Target:            action.Target.Provider + "/" + action.Target.Branch,
-			Force:             action.Force,
-			ExpectedOldTarget: action.ExpectedOldTarget,
-		})
+	for _, plannedAction := range planned.Actions {
+		action := Action{
+			Type:   string(plannedAction.Type),
+			Source: plannedAction.Source.Name + "/" + plannedAction.Source.Branch,
+			Target: plannedAction.Target.Provider + "/" + plannedAction.Target.Branch,
+			Force:  plannedAction.Force,
+		}
+		if plannedAction.Force {
+			action.ExpectedOldTarget = plannedAction.ExpectedOldTarget
+		}
+		actions = append(actions, action)
 	}
 	return actions
 }
