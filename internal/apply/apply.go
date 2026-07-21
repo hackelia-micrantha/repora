@@ -2,9 +2,9 @@ package apply
 
 import (
 	"fmt"
-	"strings"
 
 	"repoctl/internal/config"
+	"repoctl/internal/executor"
 	gitwrap "repoctl/internal/git"
 	"repoctl/internal/plan"
 	"repoctl/internal/status"
@@ -33,10 +33,9 @@ type Action struct {
 }
 
 type Git interface {
+	executor.Git
 	ResolveRemoteHeadBranch(repoPath, remote string) (string, error)
 	ResolveRevision(repoPath, rev string) (string, error)
-	PushBranch(repoPath, remote, srcRef, dstBranch string) error
-	ForcePushBranchWithLease(repoPath, remote, srcRef, dstBranch, expectedOldOID string) error
 }
 
 // IsUnsafe is retained for callers that need to identify states requiring a
@@ -73,7 +72,7 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 
 	observation := plan.Observation{CanonicalBranch: srcBranch, MirrorBranch: dstBranch}
 	if plan.RequiresMirrorHeadObservation(st) {
-		dstRef := remoteTrackingRef("mirror", dstBranch)
+		dstRef := "refs/remotes/mirror/" + dstBranch
 		expectedOldOID, err := git.ResolveRevision(path, dstRef)
 		if err != nil {
 			return result, fmt.Errorf("resolve mirror branch for repo %q: %w", repo.ID, err)
@@ -98,21 +97,10 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 		return result, nil
 	}
 
-	action := planned.Actions[0]
-	srcRef := remoteTrackingRef(action.Source.Name, action.Source.Branch)
-	if action.Force {
-		if err := git.ForcePushBranchWithLease(path, action.Target.Name, srcRef, action.Target.Branch, action.ExpectedOldTarget); err != nil {
-			return result, fmt.Errorf("force push mirror branch with lease for repo %q: %w", repo.ID, err)
-		}
-	} else {
-		if err := git.PushBranch(path, action.Target.Name, srcRef, action.Target.Branch); err != nil {
-			return result, fmt.Errorf("push mirror branch for repo %q: %w", repo.ID, err)
-		}
+	executed, err := executor.Execute(path, planned, git)
+	if err != nil {
+		return result, fmt.Errorf("execute plan for repo %q: %w", repo.ID, err)
 	}
-	result.Applied = true
+	result.Applied = len(executed.Actions) > 0
 	return result, nil
-}
-
-func remoteTrackingRef(remote, branch string) string {
-	return "refs/remotes/" + remote + "/" + strings.TrimSpace(branch)
 }
