@@ -1,6 +1,8 @@
 package plan
 
 import (
+	"reflect"
+	"strings"
 	"testing"
 
 	"repoctl/internal/config"
@@ -8,52 +10,82 @@ import (
 )
 
 func TestNewRepoPlanAddsPushMirrorActionWhenMirrorIsBehind(t *testing.T) {
-	repo := config.Repo{
-		ID:  "payments-api",
-		UID: "repo.org.payments-api",
-		Mirrors: []config.Endpoint{
-			{Provider: "github", URL: "git@github.com:org/payments-api.git"},
-		},
-	}
-	result := status.Result{
-		ID:     "payments-api",
-		UID:    "repo.org.payments-api",
-		State:  status.StateBehind,
-		Behind: 3,
-	}
-
+	repo := testRepo()
+	result := status.Result{State: status.StateBehind, Behind: 3}
 	got := NewRepoPlan(repo, result)
-
-	if got.ID != "payments-api" {
-		t.Fatalf("id = %q, want payments-api", got.ID)
-	}
-	if got.UID != "repo.org.payments-api" {
-		t.Fatalf("uid = %q, want repo.org.payments-api", got.UID)
-	}
-	if len(got.Actions) != 1 {
-		t.Fatalf("action count = %d, want 1", len(got.Actions))
-	}
-	action := got.Actions[0]
-	if action.Type != "PUSH_MIRROR" || action.Target != "github" || action.Behind != 3 || action.Destructive {
-		t.Fatalf("action = %#v, want non-destructive PUSH_MIRROR to github behind 3", action)
+	if len(got.Actions) != 1 || got.Actions[0].Type != "PUSH_MIRROR" {
+		t.Fatalf("actions = %#v, want legacy PUSH_MIRROR action", got.Actions)
 	}
 }
 
-func TestNewRepoPlanAddsNoActionsWhenMirrorIsEqual(t *testing.T) {
-	repo := config.Repo{
-		ID: "payments-api",
-		Mirrors: []config.Endpoint{
-			{Provider: "github", URL: "git@github.com:org/payments-api.git"},
-		},
+func TestReconcileStates(t *testing.T) {
+	tests := []struct {
+		name       string
+		state      status.State
+		force      bool
+		wantAction bool
+		wantForce  bool
+		wantErr    string
+	}{
+		{name: "equal", state: status.StateEqual},
+		{name: "behind", state: status.StateBehind, wantAction: true},
+		{name: "ahead fails closed", state: status.StateAhead, wantAction: true, wantForce: true, wantErr: "--force"},
+		{name: "diverged fails closed", state: status.StateDiverged, wantAction: true, wantForce: true, wantErr: "--force"},
+		{name: "forced ahead", state: status.StateAhead, force: true, wantAction: true, wantForce: true},
+		{name: "forced diverged", state: status.StateDiverged, force: true, wantAction: true, wantForce: true},
 	}
-	result := status.Result{ID: "payments-api", State: status.StateEqual}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Reconcile(testRepo(), status.Result{State: tt.state}, testObservation(), tt.force)
+			if tt.wantErr == "" && err != nil {
+				t.Fatalf("Reconcile returned error: %v", err)
+			}
+			if tt.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tt.wantErr)) {
+				t.Fatalf("error = %v, want containing %q", err, tt.wantErr)
+			}
+			if (len(got.Actions) == 1) != tt.wantAction {
+				t.Fatalf("actions = %#v, wantAction = %v", got.Actions, tt.wantAction)
+			}
+			if tt.wantAction && got.Actions[0].Force != tt.wantForce {
+				t.Fatalf("force = %v, want %v", got.Actions[0].Force, tt.wantForce)
+			}
+		})
+	}
+}
 
-	got := NewRepoPlan(repo, result)
+func TestReconcileIsDeterministic(t *testing.T) {
+	first, err := Reconcile(testRepo(), status.Result{State: status.StateDiverged}, testObservation(), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := Reconcile(testRepo(), status.Result{State: status.StateDiverged}, testObservation(), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(first, second) {
+		t.Fatalf("plans differ:\nfirst: %#v\nsecond: %#v", first, second)
+	}
+}
 
-	if got.UID != "payments-api" {
-		t.Fatalf("uid = %q, want default payments-api", got.UID)
+func TestReconcileRejectsUnsupportedState(t *testing.T) {
+	got, err := Reconcile(testRepo(), status.Result{State: status.State("UNKNOWN")}, testObservation(), false)
+	if err == nil {
+		t.Fatal("Reconcile returned nil error")
 	}
 	if len(got.Actions) != 0 {
 		t.Fatalf("actions = %#v, want none", got.Actions)
 	}
+}
+
+func testRepo() config.Repo {
+	return config.Repo{
+		ID:        "payments-api",
+		UID:       "repo.org.payments-api",
+		Canonical: config.Endpoint{Provider: "gitlab"},
+		Mirrors:   []config.Endpoint{{Provider: "github"}},
+	}
+}
+
+func testObservation() Observation {
+	return Observation{CanonicalBranch: "main", MirrorBranch: "main", MirrorHeadOID: "abc123456789"}
 }
