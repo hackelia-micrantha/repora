@@ -35,7 +35,6 @@ type Action struct {
 type Git interface {
 	executor.Git
 	ResolveRemoteHeadBranch(repoPath, remote string) (string, error)
-	ResolveRevision(repoPath, rev string) (string, error)
 }
 
 type builtPlan struct {
@@ -102,12 +101,18 @@ func buildPlan(repo config.Repo, st status.Result, git Git, force bool) (builtPl
 
 	observation := plan.Observation{CanonicalBranch: srcBranch, MirrorBranch: dstBranch}
 	if plan.RequiresMirrorHeadObservation(st) {
+		srcRef := "refs/remotes/canonical/" + srcBranch
+		sourceOID, err := git.ResolveRevision(path, srcRef)
+		if err != nil {
+			return built, fmt.Errorf("resolve canonical branch for repo %q: %w", repo.ID, err)
+		}
 		dstRef := "refs/remotes/mirror/" + dstBranch
-		expectedOldOID, err := git.ResolveRevision(path, dstRef)
+		targetOID, err := git.ResolveRevision(path, dstRef)
 		if err != nil {
 			return built, fmt.Errorf("resolve mirror branch for repo %q: %w", repo.ID, err)
 		}
-		observation.MirrorHeadOID = expectedOldOID
+		observation.CanonicalHeadOID = sourceOID
+		observation.MirrorHeadOID = targetOID
 	}
 
 	built.planned, err = plan.Reconcile(repo, st, observation, force)
