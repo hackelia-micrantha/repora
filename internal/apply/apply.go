@@ -100,7 +100,7 @@ func buildPlan(repo config.Repo, st status.Result, git Git, force bool) (builtPl
 	}
 
 	observation := plan.Observation{CanonicalBranch: srcBranch, MirrorBranch: dstBranch}
-	if plan.RequiresMirrorHeadObservation(st) {
+	if plan.RequiresRefObservation(st) {
 		srcRef := "refs/remotes/canonical/" + srcBranch
 		sourceOID, err := git.ResolveRevision(path, srcRef)
 		if err != nil {
