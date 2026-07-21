@@ -1,6 +1,7 @@
 package apply
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -86,9 +87,7 @@ func TestExecuteRefusesUnsafeMirrorWithoutForce(t *testing.T) {
 	if !strings.Contains(err.Error(), "--force") {
 		t.Fatalf("error = %q, want --force guidance", err.Error())
 	}
-	if len(git.pushBranchCalls) != 0 || len(git.forcePushBranchWithLeaseCalls) != 0 {
-		t.Fatalf("git calls = push %#v force %#v, want no side effects", git.pushBranchCalls, git.forcePushBranchWithLeaseCalls)
-	}
+	assertNoMutation(t, git)
 }
 
 func TestExecuteForcePushesUnsafeMirror(t *testing.T) {
@@ -117,9 +116,7 @@ func TestExecuteNoopsEqualMirror(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Execute returned error: %v", err)
 	}
-	if len(git.pushBranchCalls) != 0 || len(git.forcePushBranchWithLeaseCalls) != 0 {
-		t.Fatalf("git calls = push %#v force %#v, want no side effects", git.pushBranchCalls, git.forcePushBranchWithLeaseCalls)
-	}
+	assertNoMutation(t, git)
 	if len(got.Actions) != 0 {
 		t.Fatalf("actions = %#v, want none", got.Actions)
 	}
@@ -138,9 +135,7 @@ func TestExecutePlannerFailureDoesNotMutate(t *testing.T) {
 	if !strings.Contains(err.Error(), "no configured mirror") {
 		t.Fatalf("error = %q, want missing mirror planner error", err.Error())
 	}
-	if len(git.pushBranchCalls) != 0 || len(git.forcePushBranchWithLeaseCalls) != 0 {
-		t.Fatalf("git calls = push %#v force %#v, want no mutation after planner failure", git.pushBranchCalls, git.forcePushBranchWithLeaseCalls)
-	}
+	assertNoMutation(t, git)
 }
 
 func TestExecuteDryRunReportsPlannedActionWithoutMutation(t *testing.T) {
@@ -152,15 +147,74 @@ func TestExecuteDryRunReportsPlannedActionWithoutMutation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Execute returned error: %v", err)
 	}
-	if len(git.pushBranchCalls) != 0 || len(git.forcePushBranchWithLeaseCalls) != 0 {
-		t.Fatalf("git calls = push %#v force %#v, want no dry-run mutation", git.pushBranchCalls, git.forcePushBranchWithLeaseCalls)
-	}
+	assertNoMutation(t, git)
 	if len(got.Actions) != 1 {
 		t.Fatalf("actions = %#v, want one planner action", got.Actions)
 	}
 	action := got.Actions[0]
 	if action.Type != "PUSH_BRANCH" || action.Source != "canonical/main" || action.Target != "github/main" || !action.Force || action.ExpectedOldTarget != "abc123456789" {
 		t.Fatalf("action = %#v, want planner-derived forced branch action", action)
+	}
+}
+
+func TestExecuteDryRunAndApplyReportIdenticalActions(t *testing.T) {
+	tests := []struct {
+		name  string
+		state status.Result
+		force bool
+	}{
+		{name: "safe push", state: status.Result{State: status.StateBehind, Behind: 2}},
+		{name: "forced push with lease", state: status.Result{State: status.StateDiverged, Ahead: 1, Behind: 2}, force: true},
+		{name: "no action", state: status.Result{State: status.StateEqual}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := testRepo()
+			tt.state.ID = repo.ID
+			dryGit := &fakeGit{}
+			applyGit := &fakeGit{}
+
+			dryResult, err := Execute(repo, tt.state, dryGit, tt.force, true)
+			if err != nil {
+				t.Fatalf("dry-run Execute returned error: %v", err)
+			}
+			applyResult, err := Execute(repo, tt.state, applyGit, tt.force, false)
+			if err != nil {
+				t.Fatalf("apply Execute returned error: %v", err)
+			}
+
+			if !reflect.DeepEqual(dryResult.Actions, applyResult.Actions) {
+				t.Fatalf("dry-run actions = %#v, apply actions = %#v", dryResult.Actions, applyResult.Actions)
+			}
+			assertNoMutation(t, dryGit)
+		})
+	}
+}
+
+func TestExecuteForcedApplyUsesReportedPlanArguments(t *testing.T) {
+	git := &fakeGit{}
+	repo := testRepo()
+	st := status.Result{ID: repo.ID, State: status.StateDiverged, Ahead: 1, Behind: 2}
+
+	got, err := Execute(repo, st, git, true, false)
+	if err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	if len(got.Actions) != 1 || len(git.forcePushBranchWithLeaseCalls) != 1 {
+		t.Fatalf("result = %#v calls = %#v, want one reported and executed action", got, git.forcePushBranchWithLeaseCalls)
+	}
+	action := got.Actions[0]
+	call := git.forcePushBranchWithLeaseCalls[0]
+	if action.Source != strings.TrimPrefix(call.srcRef, "refs/remotes/") || action.Target != "github/"+call.dstBranch || action.ExpectedOldTarget != call.expectedOldOID || !action.Force {
+		t.Fatalf("reported action = %#v, execution call = %#v, want identical plan arguments", action, call)
+	}
+}
+
+func assertNoMutation(t *testing.T, git *fakeGit) {
+	t.Helper()
+	if len(git.pushBranchCalls) != 0 || len(git.forcePushBranchWithLeaseCalls) != 0 {
+		t.Fatalf("git calls = push %#v force %#v, want no side effects", git.pushBranchCalls, git.forcePushBranchWithLeaseCalls)
 	}
 }
 
