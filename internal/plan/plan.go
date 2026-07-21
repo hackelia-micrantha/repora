@@ -15,6 +15,8 @@ import (
 	"repoctl/internal/status"
 )
 
+// Output is the existing user-facing plan command model. Its serialized shape
+// is intentionally kept separate from the in-memory reconciliation model below.
 type Output struct {
 	Plan []RepoPlan `json:"plan"`
 }
@@ -23,6 +25,37 @@ type RepoPlan struct {
 	ID      string   `json:"id"`
 	UID     string   `json:"uid"`
 	Actions []Action `json:"actions"`
+}
+
+type Action struct {
+	Type        string `json:"type"`
+	Target      string `json:"target"`
+	Behind      int    `json:"behind"`
+	Destructive bool   `json:"destructive"`
+}
+
+func NewOutput(spec config.Spec, results []status.Result, ok []bool) Output {
+	out := Output{Plan: make([]RepoPlan, 0, len(spec.Repos))}
+	for i, repo := range spec.Repos {
+		if !ok[i] {
+			continue
+		}
+		out.Plan = append(out.Plan, NewStatusRepoPlan(repo, results[i]))
+	}
+	return out
+}
+
+func NewStatusRepoPlan(repo config.Repo, result status.Result) RepoPlan {
+	repoPlan := RepoPlan{ID: repo.ID, UID: repo.DurableID(), Actions: []Action{}}
+	if result.State == status.StateBehind {
+		repoPlan.Actions = append(repoPlan.Actions, Action{
+			Type:        "PUSH_MIRROR",
+			Target:      repo.Mirrors[0].Provider,
+			Behind:      result.Behind,
+			Destructive: false,
+		})
+	}
+	return repoPlan
 }
 
 type ActionType string
@@ -35,7 +68,7 @@ type Remote struct {
 	Branch   string
 }
 
-type Action struct {
+type PlannedAction struct {
 	Type              ActionType
 	Source            Remote
 	Target            Remote
@@ -44,33 +77,20 @@ type Action struct {
 	Reason            string
 }
 
+type ReconciliationPlan struct {
+	ID      string
+	UID     string
+	Actions []PlannedAction
+}
+
 type Observation struct {
 	CanonicalBranch string
 	MirrorBranch    string
 	MirrorHeadOID   string
 }
 
-func NewOutput(spec config.Spec, results []status.Result, ok []bool) Output {
-	out := Output{Plan: make([]RepoPlan, 0, len(spec.Repos))}
-	for i, repo := range spec.Repos {
-		if !ok[i] {
-			continue
-		}
-		repoPlan, err := NewRepoPlan(repo, results[i], Observation{}, false)
-		if err != nil {
-			continue
-		}
-		out.Plan = append(out.Plan, repoPlan)
-	}
-	return out
-}
-
-func NewRepoPlan(repo config.Repo, result status.Result, observed Observation, force bool) (RepoPlan, error) {
-	repoPlan := RepoPlan{
-		ID:      repo.ID,
-		UID:     repo.DurableID(),
-		Actions: []Action{},
-	}
+func Reconcile(repo config.Repo, result status.Result, observed Observation, force bool) (ReconciliationPlan, error) {
+	repoPlan := ReconciliationPlan{ID: repo.ID, UID: repo.DurableID(), Actions: []PlannedAction{}}
 
 	switch result.State {
 	case status.StateEqual:
@@ -94,18 +114,10 @@ func NewRepoPlan(repo config.Repo, result status.Result, observed Observation, f
 		return repoPlan, fmt.Errorf("repo %q requires resolved canonical and mirror branches", repo.ID)
 	}
 
-	action := Action{
+	action := PlannedAction{
 		Type: ActionPushBranch,
-		Source: Remote{
-			Provider: repo.Canonical.Provider,
-			Name:     "canonical",
-			Branch:   sourceBranch,
-		},
-		Target: Remote{
-			Provider: repo.Mirrors[0].Provider,
-			Name:     "mirror",
-			Branch:   targetBranch,
-		},
+		Source: Remote{Provider: repo.Canonical.Provider, Name: "canonical", Branch: sourceBranch},
+		Target: Remote{Provider: repo.Mirrors[0].Provider, Name: "mirror", Branch: targetBranch},
 		Reason: fmt.Sprintf("mirror is %s", strings.ToLower(string(result.State))),
 	}
 
