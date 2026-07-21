@@ -46,10 +46,28 @@ func TestReconcileStates(t *testing.T) {
 			if (len(got.Actions) == 1) != tt.wantAction {
 				t.Fatalf("actions = %#v, wantAction = %v", got.Actions, tt.wantAction)
 			}
-			if tt.wantAction && got.Actions[0].Force != tt.wantForce {
-				t.Fatalf("force = %v, want %v", got.Actions[0].Force, tt.wantForce)
+			if tt.wantAction {
+				action := got.Actions[0]
+				if action.Force != tt.wantForce {
+					t.Fatalf("force = %v, want %v", action.Force, tt.wantForce)
+				}
+				if action.ExpectedSource != "source123456789" || action.ExpectedOldTarget != "target123456789" {
+					t.Fatalf("action = %#v, want captured source and target refs", action)
+				}
 			}
 		})
+	}
+}
+
+func TestReconcileRequiresObservedRefsForMutation(t *testing.T) {
+	observed := testObservation()
+	observed.CanonicalHeadOID = ""
+	got, err := Reconcile(testRepo(), status.Result{State: status.StateBehind}, observed, false)
+	if err == nil || !strings.Contains(err.Error(), "canonical and mirror heads") {
+		t.Fatalf("error = %v, want missing observed refs", err)
+	}
+	if len(got.Actions) != 0 {
+		t.Fatalf("actions = %#v, want none", got.Actions)
 	}
 }
 
@@ -87,5 +105,10 @@ func testRepo() config.Repo {
 }
 
 func testObservation() Observation {
-	return Observation{CanonicalBranch: "main", MirrorBranch: "main", MirrorHeadOID: "abc123456789"}
+	return Observation{
+		CanonicalBranch:  "main",
+		CanonicalHeadOID: "source123456789",
+		MirrorBranch:     "main",
+		MirrorHeadOID:    "target123456789",
+	}
 }

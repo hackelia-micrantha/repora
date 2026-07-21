@@ -35,7 +35,6 @@ type Action struct {
 type Git interface {
 	executor.Git
 	ResolveRemoteHeadBranch(repoPath, remote string) (string, error)
-	ResolveRevision(repoPath, rev string) (string, error)
 }
 
 type builtPlan struct {
@@ -101,13 +100,19 @@ func buildPlan(repo config.Repo, st status.Result, git Git, force bool) (builtPl
 	}
 
 	observation := plan.Observation{CanonicalBranch: srcBranch, MirrorBranch: dstBranch}
-	if plan.RequiresMirrorHeadObservation(st) {
+	if plan.RequiresRefObservation(st) {
+		srcRef := "refs/remotes/canonical/" + srcBranch
+		sourceOID, err := git.ResolveRevision(path, srcRef)
+		if err != nil {
+			return built, fmt.Errorf("resolve canonical branch for repo %q: %w", repo.ID, err)
+		}
 		dstRef := "refs/remotes/mirror/" + dstBranch
-		expectedOldOID, err := git.ResolveRevision(path, dstRef)
+		targetOID, err := git.ResolveRevision(path, dstRef)
 		if err != nil {
 			return built, fmt.Errorf("resolve mirror branch for repo %q: %w", repo.ID, err)
 		}
-		observation.MirrorHeadOID = expectedOldOID
+		observation.CanonicalHeadOID = sourceOID
+		observation.MirrorHeadOID = targetOID
 	}
 
 	built.planned, err = plan.Reconcile(repo, st, observation, force)
@@ -120,14 +125,17 @@ func buildPlan(repo config.Repo, st status.Result, git Git, force bool) (builtPl
 
 func compatibilityActions(planned plan.ReconciliationPlan) []Action {
 	actions := make([]Action, 0, len(planned.Actions))
-	for _, action := range planned.Actions {
-		actions = append(actions, Action{
-			Type:              string(action.Type),
-			Source:            action.Source.Name + "/" + action.Source.Branch,
-			Target:            action.Target.Provider + "/" + action.Target.Branch,
-			Force:             action.Force,
-			ExpectedOldTarget: action.ExpectedOldTarget,
-		})
+	for _, plannedAction := range planned.Actions {
+		action := Action{
+			Type:   string(plannedAction.Type),
+			Source: plannedAction.Source.Name + "/" + plannedAction.Source.Branch,
+			Target: plannedAction.Target.Provider + "/" + plannedAction.Target.Branch,
+			Force:  plannedAction.Force,
+		}
+		if plannedAction.Force {
+			action.ExpectedOldTarget = plannedAction.ExpectedOldTarget
+		}
+		actions = append(actions, action)
 	}
 	return actions
 }

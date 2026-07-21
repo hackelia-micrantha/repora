@@ -9,7 +9,10 @@ import (
 )
 
 type fakeGit struct {
-	pushCalls []struct {
+	resolveValues map[string]string
+	resolveErrs   map[string]error
+	resolveCalls  []string
+	pushCalls     []struct {
 		remote    string
 		srcRef    string
 		dstBranch string
@@ -22,6 +25,20 @@ type fakeGit struct {
 	}
 	pushErrs  map[int]error
 	forceErrs map[int]error
+}
+
+func (f *fakeGit) ResolveRevision(_ string, rev string) (string, error) {
+	f.resolveCalls = append(f.resolveCalls, rev)
+	if err := f.resolveErrs[rev]; err != nil {
+		return "", err
+	}
+	if value, ok := f.resolveValues[rev]; ok {
+		return value, nil
+	}
+	if strings.HasPrefix(rev, "refs/remotes/canonical/") {
+		return "src123", nil
+	}
+	return "abc123", nil
 }
 
 func (f *fakeGit) PushBranch(_ string, remote, srcRef, dstBranch string) error {
@@ -63,7 +80,7 @@ func TestExecuteNormalPushUsesPlannedArguments(t *testing.T) {
 
 func TestExecuteForcedPushUsesPlannedLease(t *testing.T) {
 	git := &fakeGit{}
-	_, err := Execute("/tmp/repo", testPlan(testAction(true)), git)
+	got, err := Execute("/tmp/repo", testPlan(testAction(true)), git)
 	if err != nil {
 		t.Fatalf("Execute returned error: %v", err)
 	}
@@ -73,6 +90,9 @@ func TestExecuteForcedPushUsesPlannedLease(t *testing.T) {
 	call := git.forceCalls[0]
 	if call.remote != "mirror" || call.srcRef != "refs/remotes/canonical/main" || call.dstBranch != "main" || call.expectedOldOID != "abc123" {
 		t.Fatalf("force call = %#v, want planned arguments", call)
+	}
+	if !got.AllApplied() {
+		t.Fatalf("result = %#v, want applied forced action", got)
 	}
 }
 
@@ -100,6 +120,48 @@ func TestExecuteValidatesCompletePlanBeforeMutation(t *testing.T) {
 	got, err := Execute("/tmp/repo", testPlan(valid, invalid), git)
 	if err == nil || !strings.Contains(err.Error(), "validate action 1") {
 		t.Fatalf("error = %v, want second-action validation failure", err)
+	}
+	if got.Actions[0].Outcome != OutcomeSkipped || got.Actions[1].Outcome != OutcomeFailed {
+		t.Fatalf("result = %#v, want skipped then failed", got)
+	}
+	if len(git.resolveCalls) != 0 {
+		t.Fatalf("resolve calls = %#v, want no stale checks before structural validation completes", git.resolveCalls)
+	}
+	assertNoMutation(t, git)
+}
+
+func TestExecuteRejectsStaleSourceWithoutMutation(t *testing.T) {
+	git := &fakeGit{resolveValues: map[string]string{"refs/remotes/canonical/main": "new-source"}}
+
+	got, err := Execute("/tmp/repo", testPlan(testAction(false)), git)
+	if err == nil || !strings.Contains(err.Error(), "stale action 0") || !strings.Contains(err.Error(), "source") {
+		t.Fatalf("error = %v, want stale source rejection", err)
+	}
+	if got.Actions[0].Outcome != OutcomeFailed {
+		t.Fatalf("result = %#v, want failed stale action", got)
+	}
+	assertNoMutation(t, git)
+}
+
+func TestExecuteRejectsStaleTargetWithoutMutation(t *testing.T) {
+	git := &fakeGit{resolveValues: map[string]string{"refs/remotes/mirror/main": "new-target"}}
+
+	_, err := Execute("/tmp/repo", testPlan(testAction(true)), git)
+	if err == nil || !strings.Contains(err.Error(), "target") || !strings.Contains(err.Error(), "changed") {
+		t.Fatalf("error = %v, want stale target rejection", err)
+	}
+	assertNoMutation(t, git)
+}
+
+func TestExecuteValidatesAllRefsBeforeMutation(t *testing.T) {
+	first := testAction(false)
+	second := testAction(false)
+	second.Target.Branch = "release"
+	git := &fakeGit{resolveValues: map[string]string{"refs/remotes/mirror/release": "changed"}}
+
+	got, err := Execute("/tmp/repo", testPlan(first, second), git)
+	if err == nil || !strings.Contains(err.Error(), "stale action 1") {
+		t.Fatalf("error = %v, want second-action stale rejection", err)
 	}
 	if got.Actions[0].Outcome != OutcomeSkipped || got.Actions[1].Outcome != OutcomeFailed {
 		t.Fatalf("result = %#v, want skipped then failed", got)
@@ -165,14 +227,12 @@ func testPlan(actions ...plan.PlannedAction) plan.ReconciliationPlan {
 }
 
 func testAction(force bool) plan.PlannedAction {
-	action := plan.PlannedAction{
-		Type:   plan.ActionPushBranch,
-		Source: plan.Remote{Name: "canonical", Branch: "main"},
-		Target: plan.Remote{Name: "mirror", Provider: "github", Branch: "main"},
-		Force:  force,
+	return plan.PlannedAction{
+		Type:              plan.ActionPushBranch,
+		Source:            plan.Remote{Name: "canonical", Branch: "main"},
+		Target:            plan.Remote{Name: "mirror", Provider: "github", Branch: "main"},
+		Force:             force,
+		ExpectedSource:    "src123",
+		ExpectedOldTarget: "abc123",
 	}
-	if force {
-		action.ExpectedOldTarget = "abc123"
-	}
-	return action
 }
