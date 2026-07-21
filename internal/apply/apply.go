@@ -39,12 +39,20 @@ type Git interface {
 	ForcePushBranchWithLease(repoPath, remote, srcRef, dstBranch, expectedOldOID string) error
 }
 
+// IsUnsafe is retained for callers that need to identify states requiring a
+// mirror-head observation. The planner owns that classification.
 func IsUnsafe(result status.Result) bool {
-	return result.State == status.StateAhead || result.State == status.StateDiverged
+	return plan.RequiresMirrorHeadObservation(result)
 }
 
 func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun bool) (Result, error) {
-	result := Result{ID: repo.ID, UID: repo.DurableID(), State: st.State, DryRun: dryRun, Actions: []Action{}}
+	result := Result{
+		ID:      repo.ID,
+		UID:     repo.DurableID(),
+		State:   st.State,
+		DryRun:  dryRun,
+		Actions: []Action{},
+	}
 
 	path, err := gitwrap.MirrorPath(repo.DurableID())
 	if err != nil {
@@ -64,7 +72,7 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 	}
 
 	observation := plan.Observation{CanonicalBranch: srcBranch, MirrorBranch: dstBranch}
-	if IsUnsafe(st) {
+	if plan.RequiresMirrorHeadObservation(st) {
 		dstRef := remoteTrackingRef("mirror", dstBranch)
 		expectedOldOID, err := git.ResolveRevision(path, dstRef)
 		if err != nil {
