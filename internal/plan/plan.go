@@ -89,9 +89,15 @@ type Observation struct {
 }
 
 // RequiresMirrorHeadObservation reports whether planning needs the current
-// mirror head to construct an action guarded against stale input.
+// mirror head to construct a forced action and its lease.
 func RequiresMirrorHeadObservation(result status.Result) bool {
-	return result.State == status.StateBehind || result.State == status.StateAhead || result.State == status.StateDiverged
+	return result.State == status.StateAhead || result.State == status.StateDiverged
+}
+
+// RequiresRefObservation reports whether reconciliation may produce a mutation
+// action whose source and target refs must be captured for stale-plan checks.
+func RequiresRefObservation(result status.Result) bool {
+	return result.State == status.StateBehind || RequiresMirrorHeadObservation(result)
 }
 
 func Reconcile(repo config.Repo, result status.Result, observed Observation, force bool) (ReconciliationPlan, error) {
