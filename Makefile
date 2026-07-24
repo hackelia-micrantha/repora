@@ -1,4 +1,4 @@
-.PHONY: check format-check module-check vet test integration e2e build build-target build-all workflow-check
+.PHONY: check format-check module-check vet test coverage integration e2e build build-target build-all workflow-check
 
 check: format-check module-check vet test integration e2e build
 
@@ -16,6 +16,13 @@ vet:
 test:
 	go test -race -count=1 -short ./...
 
+coverage:
+	mkdir -p artifacts/coverage
+	go test -race -count=1 -short -covermode=atomic \
+		-coverprofile=artifacts/coverage/coverage.out ./...
+	go tool cover -func=artifacts/coverage/coverage.out | \
+		tee artifacts/coverage/coverage.txt
+
 integration:
 	go test -race -count=1 ./internal/apply
 
@@ -31,12 +38,15 @@ build-target:
 	@test -n "$(GOARCH)" || { echo 'GOARCH is required' >&2; exit 2; }
 	mkdir -p bin
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) \
-		go build -trimpath -o ./bin/repoctl-$(GOOS)-$(GOARCH) ./cmd/repoctl
+		go build -trimpath \
+		-o ./bin/repoctl-$(GOOS)-$(GOARCH)$(if $(filter windows,$(GOOS)),.exe,) \
+		./cmd/repoctl
 
 build-all:
 	$(MAKE) build-target GOOS=linux GOARCH=amd64
 	$(MAKE) build-target GOOS=windows GOARCH=amd64
 	$(MAKE) build-target GOOS=darwin GOARCH=amd64
+	$(MAKE) build-target GOOS=darwin GOARCH=arm64
 
 workflow-check:
 	go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
