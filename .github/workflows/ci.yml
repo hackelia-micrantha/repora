@@ -32,12 +32,7 @@ jobs:
           cache: true
 
       - name: Verify formatting
-        run: |
-          files="$(find . -name '*.go' -not -path './.git/*' -exec gofmt -l {} +)"
-          if [ -n "$files" ]; then
-            printf '%s\n' "$files"
-            exit 1
-          fi
+        run: make format-check
 
   lint:
     name: Lint
@@ -54,12 +49,10 @@ jobs:
           cache: true
 
       - name: Verify modules
-        run: |
-          go mod tidy
-          git diff --exit-code -- go.mod go.sum
+        run: make module-check
 
       - name: Vet
-        run: go vet ./...
+        run: make vet
 
   unit:
     name: Unit tests
@@ -76,7 +69,7 @@ jobs:
           cache: true
 
       - name: Run unit tests with race detector
-        run: go test -race -count=1 -skip '^TestExecuteSynchronizesBehindMirrorUsingLocalGitRepos$' ./...
+        run: make test
 
   integration:
     name: Integration tests
@@ -97,8 +90,8 @@ jobs:
           git config --global user.name 'Repora CI'
           git config --global user.email 'repora-ci@example.invalid'
 
-      - name: Run local-repository integration test
-        run: go test -count=1 -run '^TestExecuteSynchronizesBehindMirrorUsingLocalGitRepos$' ./internal/apply
+      - name: Run local-repository integration tests
+        run: make integration
 
   e2e:
     name: CLI end-to-end smoke tests
@@ -114,40 +107,8 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Build CLI
-        run: go build -trimpath -o ./bin/repoctl ./cmd/repoctl
-
       - name: Exercise command boundary
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          ./bin/repoctl --help >/dev/null
-
-          assert_subcommand_help() {
-            local command="$1"
-            local output
-            local status
-
-            set +e
-            output="$(./bin/repoctl "$command" --help 2>&1)"
-            status=$?
-            set -e
-
-            if [ "$status" -ne 1 ]; then
-              printf '%s --help exited %d, want 1\n' "$command" "$status" >&2
-              printf '%s\n' "$output" >&2
-              return 1
-            fi
-            if [ -z "$output" ]; then
-              printf '%s --help produced no output\n' "$command" >&2
-              return 1
-            fi
-          }
-
-          assert_subcommand_help status
-          assert_subcommand_help plan
-          assert_subcommand_help apply
+        run: make e2e
 
   build:
     name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
@@ -177,5 +138,4 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: '0'
-        run: go build -trimpath ./...
+        run: make build-target
