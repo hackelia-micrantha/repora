@@ -1,4 +1,4 @@
-.PHONY: check format-check module-check vet test integration e2e build build-all
+.PHONY: check format-check module-check vet test integration e2e build build-target build-all
 
 check: format-check module-check vet test integration e2e build
 
@@ -26,7 +26,14 @@ build:
 	mkdir -p bin
 	go build -trimpath -o ./bin/repoctl ./cmd/repoctl
 
+build-target:
+	@test -n "$(GOOS)" || { echo 'GOOS is required' >&2; exit 2; }
+	@test -n "$(GOARCH)" || { echo 'GOARCH is required' >&2; exit 2; }
+	mkdir -p bin
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) \
+		go build -trimpath -o ./bin/repoctl-$(GOOS)-$(GOARCH) ./cmd/repoctl
+
 build-all:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath ./...
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath ./...
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath ./...
+	$(MAKE) build-target GOOS=linux GOARCH=amd64
+	$(MAKE) build-target GOOS=windows GOARCH=amd64
+	$(MAKE) build-target GOOS=darwin GOARCH=amd64
