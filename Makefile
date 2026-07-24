@@ -40,5 +40,5 @@ build-all:
 
 workflow-check:
 	go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
-	python3 -m unittest ./scripts/ci/test_workflow_policy.py
+	python3 -m unittest discover -s scripts/ci -p 'test_*.py'
 	python3 ./scripts/ci/workflow-policy.py
