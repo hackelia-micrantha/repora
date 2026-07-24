@@ -15,6 +15,7 @@ import (
 )
 
 func TestExecuteSynchronizesBehindMirrorUsingLocalGitRepos(t *testing.T) {
+	requireIntegration(t)
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git is required for integration test")
 	}
@@ -83,6 +84,13 @@ func TestExecuteSynchronizesBehindMirrorUsingLocalGitRepos(t *testing.T) {
 	}
 	if after.State != status.StateEqual {
 		t.Fatalf("state after apply = %s, want %s", after.State, status.StateEqual)
+	}
+}
+
+func requireIntegration(t *testing.T) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("integration test")
 	}
 }
 
