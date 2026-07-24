@@ -5,8 +5,8 @@ import re
 import sys
 
 DEFAULT_WORKFLOW_DIR = Path('.github/workflows')
-SHA_REF = re.compile(r'^\s*uses:\s*([^\s]+)@([0-9a-f]{40})\s+#\s+\S.*$')
-USES = re.compile(r'^\s*uses:\s*([^\s]+)@([^\s#]+)')
+SHA_REF = re.compile(r'^\s*-?\s*uses:\s*([^\s]+)@([0-9a-f]{40})\s+#\s+\S.*$')
+USES = re.compile(r'^\s*-?\s*uses:\s*([^\s]+)@([^\s#]+)')
 JOB = re.compile(r'^  ([A-Za-z0-9_-]+):\s*$')
 TIMEOUT = re.compile(r'^    timeout-minutes:\s*\d+\s*$')
 
