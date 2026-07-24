@@ -5,6 +5,8 @@ package planartifact
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"regexp"
 	"strings"
 
 	"repoctl/internal/plan"
@@ -13,6 +15,11 @@ import (
 const (
 	Version = 1
 	Kind    = "repora.io/reconciliation-plan"
+)
+
+var (
+	identifierPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
+	oidPattern        = regexp.MustCompile(`^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$`)
 )
 
 type Artifact struct {
@@ -28,12 +35,12 @@ type Repository struct {
 }
 
 type Action struct {
-	Type   string `json:"type"`
-	Source Ref    `json:"source"`
-	Target Ref    `json:"target"`
+	Type   string  `json:"type"`
+	Source Ref     `json:"source"`
+	Target Ref     `json:"target"`
 	Diff   RefDiff `json:"diff"`
-	Force  bool   `json:"force"`
-	Reason string `json:"reason"`
+	Force  bool    `json:"force"`
+	Reason string  `json:"reason"`
 }
 
 type Ref struct {
@@ -53,11 +60,11 @@ func FromPlans(plans ...plan.ReconciliationPlan) Artifact {
 		repo := Repository{UID: planned.UID, ID: planned.ID, Actions: make([]Action, 0, len(planned.Actions))}
 		for _, action := range planned.Actions {
 			repo.Actions = append(repo.Actions, Action{
-				Type: string(action.Type),
+				Type:   string(action.Type),
 				Source: Ref{Provider: action.Source.Provider, Remote: action.Source.Name, Branch: action.Source.Branch},
 				Target: Ref{Provider: action.Target.Provider, Remote: action.Target.Name, Branch: action.Target.Branch},
-				Diff: RefDiff{Observed: action.ExpectedOldTarget, Desired: action.ExpectedSource},
-				Force: action.Force,
+				Diff:   RefDiff{Observed: action.ExpectedOldTarget, Desired: action.ExpectedSource},
+				Force:  action.Force,
 				Reason: action.Reason,
 			})
 		}
@@ -75,13 +82,13 @@ func (a Artifact) Plans() ([]plan.ReconciliationPlan, error) {
 		planned := plan.ReconciliationPlan{UID: repo.UID, ID: repo.ID, Actions: make([]plan.PlannedAction, 0, len(repo.Actions))}
 		for _, action := range repo.Actions {
 			planned.Actions = append(planned.Actions, plan.PlannedAction{
-				Type: plan.ActionType(action.Type),
-				Source: plan.Remote{Provider: action.Source.Provider, Name: action.Source.Remote, Branch: action.Source.Branch},
-				Target: plan.Remote{Provider: action.Target.Provider, Name: action.Target.Remote, Branch: action.Target.Branch},
-				ExpectedSource: action.Diff.Desired,
+				Type:              plan.ActionType(action.Type),
+				Source:            plan.Remote{Provider: action.Source.Provider, Name: action.Source.Remote, Branch: action.Source.Branch},
+				Target:            plan.Remote{Provider: action.Target.Provider, Name: action.Target.Remote, Branch: action.Target.Branch},
+				ExpectedSource:    action.Diff.Desired,
 				ExpectedOldTarget: action.Diff.Observed,
-				Force: action.Force,
-				Reason: action.Reason,
+				Force:             action.Force,
+				Reason:            action.Reason,
 			})
 		}
 		plans = append(plans, planned)
@@ -103,6 +110,13 @@ func Parse(data []byte) (Artifact, error) {
 	if err := decoder.Decode(&artifact); err != nil {
 		return Artifact{}, fmt.Errorf("decode plan artifact: %w", err)
 	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return Artifact{}, fmt.Errorf("decode plan artifact: trailing JSON value")
+		}
+		return Artifact{}, fmt.Errorf("decode plan artifact: trailing data: %w", err)
+	}
 	if err := artifact.Validate(); err != nil {
 		return Artifact{}, err
 	}
@@ -117,11 +131,8 @@ func (a Artifact) Validate() error {
 		return fmt.Errorf("unsupported plan artifact kind %q", a.Kind)
 	}
 	for i, repo := range a.Repositories {
-		if strings.TrimSpace(repo.UID) == "" || strings.TrimSpace(repo.ID) == "" {
-			return fmt.Errorf("repository %d requires uid and id", i)
-		}
-		if unsafeValue(repo.UID) || unsafeValue(repo.ID) {
-			return fmt.Errorf("repository %d identity contains unsafe serialized data", i)
+		if !validIdentifier(repo.UID) || !validIdentifier(repo.ID) {
+			return fmt.Errorf("repository %d requires valid uid and id", i)
 		}
 		for j, action := range repo.Actions {
 			if action.Type != string(plan.ActionPushBranch) {
@@ -133,8 +144,8 @@ func (a Artifact) Validate() error {
 			if err := validateRef(action.Target); err != nil {
 				return fmt.Errorf("repository %d action %d target: %w", i, j, err)
 			}
-			if strings.TrimSpace(action.Diff.Observed) == "" || strings.TrimSpace(action.Diff.Desired) == "" {
-				return fmt.Errorf("repository %d action %d requires observed and desired refs", i, j)
+			if !oidPattern.MatchString(strings.TrimSpace(action.Diff.Observed)) || !oidPattern.MatchString(strings.TrimSpace(action.Diff.Desired)) {
+				return fmt.Errorf("repository %d action %d requires 40- or 64-character hexadecimal observed and desired object IDs", i, j)
 			}
 			if unsafeValue(action.Reason) {
 				return fmt.Errorf("repository %d action %d reason contains unsafe serialized data", i, j)
@@ -145,16 +156,37 @@ func (a Artifact) Validate() error {
 }
 
 func validateRef(ref Ref) error {
-	if strings.TrimSpace(ref.Provider) == "" || strings.TrimSpace(ref.Remote) == "" || strings.TrimSpace(ref.Branch) == "" {
-		return fmt.Errorf("provider, remote, and branch are required")
+	if !validIdentifier(ref.Provider) || !validIdentifier(ref.Remote) {
+		return fmt.Errorf("provider and remote must be symbolic identifiers")
 	}
-	if unsafeValue(ref.Provider) || unsafeValue(ref.Remote) || unsafeValue(ref.Branch) {
-		return fmt.Errorf("contains URL, credential, or local-path data")
+	if err := validateBranch(ref.Branch); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validIdentifier(value string) bool {
+	value = strings.TrimSpace(value)
+	return value != "" && identifierPattern.MatchString(value)
+}
+
+func validateBranch(branch string) error {
+	branch = strings.TrimSpace(branch)
+	if branch == "" || strings.HasPrefix(branch, "/") || strings.HasSuffix(branch, "/") || strings.HasSuffix(branch, ".") || strings.Contains(branch, "..") || strings.Contains(branch, "//") || strings.Contains(branch, "@{") {
+		return fmt.Errorf("branch is not a valid symbolic ref name")
+	}
+	if strings.ContainsAny(branch, " ~^:?*[\\") {
+		return fmt.Errorf("branch is not a valid symbolic ref name")
+	}
+	for _, segment := range strings.Split(branch, "/") {
+		if segment == "" || strings.HasPrefix(segment, ".") || strings.HasSuffix(segment, ".lock") {
+			return fmt.Errorf("branch is not a valid symbolic ref name")
+		}
 	}
 	return nil
 }
 
 func unsafeValue(value string) bool {
 	value = strings.ToLower(strings.TrimSpace(value))
-	return strings.Contains(value, "://") || strings.Contains(value, "token=") || strings.Contains(value, "password=") || strings.Contains(value, "\\") || strings.HasPrefix(value, "/") || strings.HasPrefix(value, "file:")
+	return strings.Contains(value, "://") || strings.Contains(value, "token=") || strings.Contains(value, "password=") || strings.Contains(value, "\\") || strings.HasPrefix(value, "/") || strings.HasPrefix(value, "file:") || strings.Contains(value, "@")
 }
