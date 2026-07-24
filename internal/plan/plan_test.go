@@ -123,10 +123,13 @@ func TestReconcileRejectsUnsupportedAndAmbiguousTopology(t *testing.T) {
 	}{
 		{name: "missing id", mutate: func(repo *config.Repo) { repo.ID = " " }, wantErr: "requires a repo id"},
 		{name: "unsupported canonical", mutate: func(repo *config.Repo) { repo.Canonical.Provider = "github" }, wantErr: "unsupported canonical provider"},
+		{name: "padded canonical", mutate: func(repo *config.Repo) { repo.Canonical.Provider = " gitlab " }, wantErr: "unsupported canonical provider"},
 		{name: "no mirror", mutate: func(repo *config.Repo) { repo.Mirrors = nil }, wantErr: "exactly one mirror, got 0"},
 		{name: "multiple mirrors", mutate: func(repo *config.Repo) { repo.Mirrors = append(repo.Mirrors, config.Endpoint{Provider: "gitlab"}) }, wantErr: "exactly one mirror, got 2"},
 		{name: "unsupported mirror", mutate: func(repo *config.Repo) { repo.Mirrors[0].Provider = "bitbucket" }, wantErr: "unsupported mirror provider"},
+		{name: "padded mirror", mutate: func(repo *config.Repo) { repo.Mirrors[0].Provider = " github " }, wantErr: "unsupported mirror provider"},
 		{name: "unsupported mode", mutate: func(repo *config.Repo) { repo.Mode = "sync" }, wantErr: "unsupported mode"},
+		{name: "padded mode", mutate: func(repo *config.Repo) { repo.Mode = " mirror " }, wantErr: "unsupported mode"},
 	}
 
 	for _, tt := range tests {
