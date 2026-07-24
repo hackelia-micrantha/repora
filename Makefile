@@ -1,4 +1,4 @@
-.PHONY: check format-check module-check vet test integration e2e build build-target build-all
+.PHONY: check format-check module-check vet test integration e2e build build-target build-all workflow-check
 
 check: format-check module-check vet test integration e2e build
 
@@ -37,3 +37,8 @@ build-all:
 	$(MAKE) build-target GOOS=linux GOARCH=amd64
 	$(MAKE) build-target GOOS=windows GOARCH=amd64
 	$(MAKE) build-target GOOS=darwin GOARCH=amd64
+
+workflow-check:
+	go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+	python3 -m unittest discover -s scripts/ci -p 'test_*.py'
+	python3 ./scripts/ci/workflow-policy.py
