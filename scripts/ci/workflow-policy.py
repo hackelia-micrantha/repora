@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import argparse
 import re
 import sys
 
-WORKFLOW_DIR = Path('.github/workflows')
-SHA_REF = re.compile(r'^\s*uses:\s*([^\s]+)@([0-9a-f]{40})(?:\s+#\s+.+)?\s*$')
+DEFAULT_WORKFLOW_DIR = Path('.github/workflows')
+SHA_REF = re.compile(r'^\s*uses:\s*([^\s]+)@([0-9a-f]{40})\s+#\s+\S.*$')
 USES = re.compile(r'^\s*uses:\s*([^\s]+)@([^\s#]+)')
 JOB = re.compile(r'^  ([A-Za-z0-9_-]+):\s*$')
 TIMEOUT = re.compile(r'^    timeout-minutes:\s*\d+\s*$')
 
 
-def main() -> int:
+def validate(workflow_dir: Path) -> list[str]:
     errors: list[str] = []
-    files = sorted(WORKFLOW_DIR.glob('*.y*ml'))
+    files = sorted(workflow_dir.glob('*.y*ml'))
     if not files:
-        errors.append('no workflow files found')
+        return ['no workflow files found']
 
     for path in files:
         lines = path.read_text(encoding='utf-8').splitlines()
@@ -55,6 +56,15 @@ def main() -> int:
         if current_job and not job_has_timeout:
             errors.append(f'{path}: job {current_job!r} lacks timeout-minutes')
 
+    return errors
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--workflow-dir', type=Path, default=DEFAULT_WORKFLOW_DIR)
+    args = parser.parse_args()
+
+    errors = validate(args.workflow_dir)
     if errors:
         for error in errors:
             print(error, file=sys.stderr)
