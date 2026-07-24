@@ -72,7 +72,7 @@ jobs:
         run: make vet
 
   unit:
-    name: Unit tests
+    name: Unit tests and coverage
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -85,8 +85,16 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Run unit tests with race detector
-        run: make test
+      - name: Run fast tests and report coverage
+        run: make coverage
+
+      - name: Upload coverage evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: go-coverage
+          path: artifacts/coverage/
+          if-no-files-found: error
+          retention-days: 7
 
   integration:
     name: Integration tests
@@ -137,10 +145,16 @@ jobs:
         include:
           - goos: linux
             goarch: amd64
+            binary: bin/repoctl-linux-amd64
           - goos: windows
             goarch: amd64
+            binary: bin/repoctl-windows-amd64.exe
           - goos: darwin
             goarch: amd64
+            binary: bin/repoctl-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            binary: bin/repoctl-darwin-arm64
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -151,8 +165,21 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Build
+      - name: Build verification binary
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: make build-target
+
+      - name: Smoke-test native Linux binary
+        if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
+        run: bash ./scripts/ci/cli-smoke.sh ./${{ matrix.binary }}
+
+      - name: Upload verification binary
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: repoctl-verification-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ${{ matrix.binary }}
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
