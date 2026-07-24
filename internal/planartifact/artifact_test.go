@@ -9,6 +9,11 @@ import (
 	"repoctl/internal/plan"
 )
 
+const (
+	testSourceOID = "1111111111111111111111111111111111111111"
+	testTargetOID = "2222222222222222222222222222222222222222"
+)
+
 func TestArtifactRoundTripPreservesPlan(t *testing.T) {
 	original := testPlan()
 	artifact := FromPlans(original)
@@ -55,8 +60,8 @@ func TestArtifactContainsVersionKindIdentityAndRefDiff(t *testing.T) {
 		`"version": 1`,
 		`"kind": "repora.io/reconciliation-plan"`,
 		`"uid": "repo.org.payments-api"`,
-		`"observed": "target123"`,
-		`"desired": "source123"`,
+		`"observed": "` + testTargetOID + `"`,
+		`"desired": "` + testSourceOID + `"`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("artifact missing %s:\n%s", want, text)
@@ -74,8 +79,8 @@ func TestArtifactRejectsInvalidEnvelopeAndAction(t *testing.T) {
 		{name: "kind", edit: func(a *Artifact) { a.Kind = "unknown" }, want: "kind"},
 		{name: "identity", edit: func(a *Artifact) { a.Repositories[0].UID = "" }, want: "uid and id"},
 		{name: "action type", edit: func(a *Artifact) { a.Repositories[0].Actions[0].Type = "DELETE" }, want: "unsupported type"},
-		{name: "source oid", edit: func(a *Artifact) { a.Repositories[0].Actions[0].Diff.Desired = "" }, want: "observed and desired"},
-		{name: "target oid", edit: func(a *Artifact) { a.Repositories[0].Actions[0].Diff.Observed = "" }, want: "observed and desired"},
+		{name: "source oid", edit: func(a *Artifact) { a.Repositories[0].Actions[0].Diff.Desired = "not-an-oid" }, want: "object IDs"},
+		{name: "target oid", edit: func(a *Artifact) { a.Repositories[0].Actions[0].Diff.Observed = "https://example.com/repo" }, want: "object IDs"},
 	}
 
 	for _, tt := range tests {
@@ -96,12 +101,26 @@ func TestArtifactRejectsUnknownJSONFields(t *testing.T) {
 	}
 }
 
+func TestArtifactRejectsTrailingData(t *testing.T) {
+	valid := `{"version":1,"kind":"repora.io/reconciliation-plan","repositories":[]}`
+	for _, suffix := range []string{
+		`{"extra":true}`,
+		` trailing`,
+	} {
+		_, err := Parse([]byte(valid + suffix))
+		if err == nil || !strings.Contains(err.Error(), "trailing") {
+			t.Fatalf("suffix %q error = %v, want trailing-data rejection", suffix, err)
+		}
+	}
+}
+
 func TestArtifactRejectsSensitiveOrRuntimeLocationData(t *testing.T) {
 	tests := []struct {
 		name string
 		edit func(*Artifact)
 	}{
 		{name: "tokenized URL", edit: func(a *Artifact) { a.Repositories[0].Actions[0].Source.Provider = "https://token@example.com" }},
+		{name: "scp URL", edit: func(a *Artifact) { a.Repositories[0].Actions[0].Source.Remote = "git@github.com:org/repo.git" }},
 		{name: "query token", edit: func(a *Artifact) { a.Repositories[0].Actions[0].Reason = "token=secret" }},
 		{name: "absolute path", edit: func(a *Artifact) { a.Repositories[0].Actions[0].Target.Remote = "/tmp/mirror" }},
 		{name: "file URL", edit: func(a *Artifact) { a.Repositories[0].ID = "file:///tmp/repo" }},
@@ -118,6 +137,17 @@ func TestArtifactRejectsSensitiveOrRuntimeLocationData(t *testing.T) {
 	}
 }
 
+func TestArtifactAcceptsConservativeSymbolicNames(t *testing.T) {
+	artifact := FromPlans(testPlan())
+	action := &artifact.Repositories[0].Actions[0]
+	action.Source.Provider = "gitlab-self_hosted"
+	action.Source.Remote = "canonical.prod"
+	action.Source.Branch = "release/2026-07"
+	if err := artifact.Validate(); err != nil {
+		t.Fatalf("Validate returned error: %v", err)
+	}
+}
+
 func testPlan() plan.ReconciliationPlan {
 	return plan.ReconciliationPlan{
 		ID:  "payments-api",
@@ -126,8 +156,8 @@ func testPlan() plan.ReconciliationPlan {
 			Type:              plan.ActionPushBranch,
 			Source:            plan.Remote{Provider: "gitlab", Name: "canonical", Branch: "main"},
 			Target:            plan.Remote{Provider: "github", Name: "mirror", Branch: "main"},
-			ExpectedSource:    "source123",
-			ExpectedOldTarget: "target123",
+			ExpectedSource:    testSourceOID,
+			ExpectedOldTarget: testTargetOID,
 			Force:             true,
 			Reason:            "mirror is diverged",
 		}},
