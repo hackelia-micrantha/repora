@@ -24,7 +24,7 @@ This runs formatting verification, module hygiene, `go vet`, fast race-enabled t
 | `make e2e` | Build the CLI and exercise its command boundary. |
 | `make build` | Build the native `repoctl` binary. |
 | `make build-all` | Verify the current cross-compilation targets. |
-| `make workflow-check` | Run `actionlint` and Repora's workflow security policy. |
+| `make workflow-check` | Run `actionlint`, workflow-policy regression tests, and Repora's workflow security policy. |
 
 ## Test classification
 
@@ -40,7 +40,9 @@ Integration tests must use `t.TempDir()` or another disposable workspace and mus
 
 ## Workflow policy
 
-Third-party GitHub Actions are pinned to full immutable commit SHAs. A version comment remains beside each SHA so Dependabot updates stay readable.
+`make workflow-check` requires Go, network access for the pinned `actionlint` module when it is not cached, and Python 3.10 or newer.
+
+Third-party GitHub Actions are pinned to full immutable commit SHAs. A non-empty readable version comment is mandatory beside each SHA so Dependabot updates remain reviewable.
 
 `make workflow-check` enforces the initial policy:
 
