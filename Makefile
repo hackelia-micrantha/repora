@@ -20,7 +20,7 @@ integration:
 	go test -race -count=1 ./internal/apply
 
 e2e: build
-	./scripts/ci/cli-smoke.sh ./bin/repoctl
+	bash ./scripts/ci/cli-smoke.sh ./bin/repoctl
 
 build:
 	mkdir -p bin
