@@ -20,11 +20,35 @@ This runs formatting verification, module hygiene, `go vet`, fast race-enabled t
 | `make module-check` | Run `go mod tidy` and fail if `go.mod` or `go.sum` changes. |
 | `make vet` | Run `go vet ./...`. |
 | `make test` | Run fast tests with `-race -count=1 -short`. |
+| `make coverage` | Run the fast test suite with race detection and write coverage profile and summary files under `artifacts/coverage/`. |
 | `make integration` | Run integration tests against disposable local Git repositories. |
 | `make e2e` | Build the CLI and exercise its command boundary. |
 | `make build` | Build the native `repoctl` binary. |
-| `make build-all` | Verify the current cross-compilation targets. |
+| `make build-all` | Verify all current native and cross-compilation targets. |
 | `make workflow-check` | Run `actionlint`, workflow-policy regression tests, and Repora's workflow security policy. |
+
+## Coverage evidence
+
+The unit-test CI job runs `make coverage`. The `go test` output reports coverage for each package, and `go tool cover -func` prints function-level detail and the repository total.
+
+CI retains both `coverage.out` and the text summary for 7 days in the `go-coverage` artifact. Coverage is evidence for review and trend analysis; no repository-wide percentage threshold is enforced.
+
+Coverage profiles contain repository-relative Go source paths and must not be augmented with credentials, environment dumps, or sensitive local paths.
+
+## Verification binaries and target status
+
+CI produces explicitly named binaries and retains each one for 7 days:
+
+| Target | Verification method | Runtime exercised in CI | Formal support status |
+| --- | --- | --- | --- |
+| Linux amd64 | Built natively on the Linux runner | Yes, through the CLI smoke boundary | No published release-support contract |
+| Windows amd64 | Cross-compiled from Linux | No | No published release-support contract |
+| macOS amd64 | Cross-compiled from Linux | No | No published release-support contract |
+| macOS arm64 | Cross-compiled from Linux | No | No published release-support contract |
+
+Artifact names include the target operating system and architecture. Windows binaries use the `.exe` suffix.
+
+These binaries are unsigned, short-lived, non-release verification artifacts. Successful cross-compilation demonstrates build compatibility only; it does not claim runtime validation or platform support. Releases, signing, provenance attestations, and a formal support matrix require separate work.
 
 ## Test classification
 
@@ -58,4 +82,4 @@ Dependabot checks GitHub Actions and Go modules weekly in separate groups. Minor
 
 ## GitHub-specific checks
 
-CodeQL, vulnerability scanning, and cross-platform CI remain separate from `make check`. They are GitHub-hosted or intentionally isolated because they have different runtime and dependency characteristics.
+CodeQL, vulnerability scanning, coverage artifacts, and cross-platform CI remain separate from `make check`. They are GitHub-hosted or intentionally isolated because they have different runtime, retention, and dependency characteristics.
