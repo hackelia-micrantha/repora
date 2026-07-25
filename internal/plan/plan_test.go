@@ -81,7 +81,7 @@ func TestReconcileIsDeterministicAndDoesNotMutateInputs(t *testing.T) {
 	}
 }
 
-func TestReconcileActionFieldOrderIsStable(t *testing.T) {
+func TestReconcileProducesStableAction(t *testing.T) {
 	got, err := Reconcile(testRepo(), status.Result{State: status.StateBehind}, testObservation(), false)
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +95,7 @@ func TestReconcileActionFieldOrderIsStable(t *testing.T) {
 		Reason:            "mirror is behind",
 	}}
 	if !reflect.DeepEqual(got.Actions, want) {
-		t.Fatalf("actions = %#v, want stable ordered actions %#v", got.Actions, want)
+		t.Fatalf("actions = %#v, want stable action %#v", got.Actions, want)
 	}
 }
 
