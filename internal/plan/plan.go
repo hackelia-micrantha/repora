@@ -103,6 +103,10 @@ func RequiresRefObservation(result status.Result) bool {
 func Reconcile(repo config.Repo, result status.Result, observed Observation, force bool) (ReconciliationPlan, error) {
 	repoPlan := ReconciliationPlan{ID: repo.ID, UID: repo.DurableID(), Actions: []PlannedAction{}}
 
+	if err := validatePlanningTopology(repo); err != nil {
+		return repoPlan, err
+	}
+
 	switch result.State {
 	case status.StateEqual:
 		return repoPlan, nil
@@ -110,10 +114,6 @@ func Reconcile(repo config.Repo, result status.Result, observed Observation, for
 		// Continue below.
 	default:
 		return repoPlan, fmt.Errorf("unsupported state %q for repo %q", result.State, repo.ID)
-	}
-
-	if len(repo.Mirrors) == 0 {
-		return repoPlan, fmt.Errorf("repo %q has no configured mirror", repo.ID)
 	}
 
 	sourceBranch := strings.TrimSpace(observed.CanonicalBranch)
@@ -148,6 +148,9 @@ func Reconcile(repo config.Repo, result status.Result, observed Observation, for
 		Reason:            fmt.Sprintf("mirror is %s", strings.ToLower(string(result.State))),
 	}
 
+	// The supported topology has exactly one mirror, so a reconciliation plan
+	// contains at most one action. This is the stable action-ordering contract
+	// until multi-mirror planning is introduced explicitly.
 	if result.State == status.StateBehind {
 		repoPlan.Actions = append(repoPlan.Actions, action)
 		return repoPlan, nil
@@ -159,6 +162,26 @@ func Reconcile(repo config.Repo, result status.Result, observed Observation, for
 		return repoPlan, fmt.Errorf("repo %q is %s; rerun with --force to overwrite mirror default branch using a lease against %s", repo.ID, result.State, shortOID(action.ExpectedOldTarget))
 	}
 	return repoPlan, nil
+}
+
+func validatePlanningTopology(repo config.Repo) error {
+	if strings.TrimSpace(repo.ID) == "" {
+		return fmt.Errorf("planner requires a non-empty repo id")
+	}
+	if repo.Canonical.Provider != "gitlab" {
+		return fmt.Errorf("repo %q has unsupported canonical provider %q: planner supports gitlab", repo.ID, repo.Canonical.Provider)
+	}
+	if len(repo.Mirrors) != 1 {
+		return fmt.Errorf("repo %q has ambiguous mirror topology: planner requires exactly one mirror, got %d", repo.ID, len(repo.Mirrors))
+	}
+	mirrorProvider := repo.Mirrors[0].Provider
+	if mirrorProvider != "github" && mirrorProvider != "gitlab" {
+		return fmt.Errorf("repo %q has unsupported mirror provider %q: planner supports github and gitlab", repo.ID, mirrorProvider)
+	}
+	if repo.Mode != "" && repo.Mode != "mirror" {
+		return fmt.Errorf("repo %q has unsupported mode %q: planner supports mirror", repo.ID, repo.Mode)
+	}
+	return nil
 }
 
 func shortOID(oid string) string {
