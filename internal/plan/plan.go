@@ -112,8 +112,11 @@ func Reconcile(repo config.Repo, result status.Result, observed Observation, for
 		return repoPlan, fmt.Errorf("unsupported state %q for repo %q", result.State, repo.ID)
 	}
 
-	if len(repo.Mirrors) == 0 {
-		return repoPlan, fmt.Errorf("repo %q has no configured mirror", repo.ID)
+	if len(repo.Mirrors) != 1 {
+		return repoPlan, fmt.Errorf("repo %q requires exactly one configured mirror, got %d", repo.ID, len(repo.Mirrors))
+	}
+	if strings.TrimSpace(repo.Canonical.Provider) == "" || strings.TrimSpace(repo.Mirrors[0].Provider) == "" {
+		return repoPlan, fmt.Errorf("repo %q requires canonical and mirror providers", repo.ID)
 	}
 
 	sourceBranch := strings.TrimSpace(observed.CanonicalBranch)
