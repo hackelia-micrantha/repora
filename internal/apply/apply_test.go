@@ -132,8 +132,8 @@ func TestExecutePlannerFailureDoesNotMutate(t *testing.T) {
 	if err == nil {
 		t.Fatal("Execute returned nil error, want planner failure")
 	}
-	if !strings.Contains(err.Error(), "exactly one mirror, got 0") {
-		t.Fatalf("error = %q, want missing mirror topology error", err.Error())
+	if !strings.Contains(err.Error(), "exactly one configured mirror") {
+		t.Fatalf("error = %q, want mirror topology planner error", err.Error())
 	}
 	assertNoMutation(t, git)
 }
