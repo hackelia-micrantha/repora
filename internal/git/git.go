@@ -138,29 +138,48 @@ func (Client) ForcePushBranchWithLease(repoPath, remote, srcRef, dstBranch, expe
 }
 
 func run(repoPath string, args ...string) error {
-	cmd, cancel := gitCommand(repoPath, args...)
+	return runContext(context.Background(), repoPath, args...)
+}
+
+func runContext(parent context.Context, repoPath string, args ...string) error {
+	ctx, cancel := context.WithTimeout(parent, gitTimeout)
 	defer cancel()
+
+	cmd := gitCommandContext(ctx, repoPath, args...)
 	_, err := cmd.CombinedOutput()
 	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return fmt.Errorf("git %s: %w", strings.Join(args, " "), ctxErr)
+		}
 		return fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
 	}
 	return nil
 }
 
 func output(repoPath string, args ...string) (string, error) {
-	cmd, cancel := gitCommand(repoPath, args...)
+	return outputContext(context.Background(), repoPath, args...)
+}
+
+func outputContext(parent context.Context, repoPath string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(parent, gitTimeout)
 	defer cancel()
+
+	cmd := gitCommandContext(ctx, repoPath, args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), ctxErr)
+		}
 		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, bytes.TrimSpace(out))
 	}
 	return string(out), nil
 }
 
-func gitCommand(repoPath string, args ...string) (*exec.Cmd, context.CancelFunc) {
-	ctx, cancel := context.WithTimeout(context.Background(), gitTimeout)
+func gitCommandContext(ctx context.Context, repoPath string, args ...string) *exec.Cmd {
 	if repoPath != "" {
 		args = append([]string{"-C", repoPath}, args...)
 	}
-	return exec.CommandContext(ctx, "git", args...), cancel
+	cmd := exec.CommandContext(ctx, "git", args...)
+	configureGitCommand(cmd)
+	return cmd
 }
