@@ -12,10 +12,17 @@ import (
 	"repoctl/internal/status"
 )
 
+const (
+	OutputKind    = "repora.plan"
+	OutputVersion = 1
+)
+
 // Output is the existing user-facing plan command model. Its serialized shape
 // is intentionally kept separate from the in-memory reconciliation model below.
 type Output struct {
-	Plan []RepoPlan `json:"plan"`
+	Kind    string     `json:"kind"`
+	Version int        `json:"version"`
+	Plan    []RepoPlan `json:"plan"`
 }
 
 type RepoPlan struct {
@@ -32,7 +39,7 @@ type Action struct {
 }
 
 func NewOutput(spec config.Spec, results []status.Result, ok []bool) Output {
-	out := Output{Plan: make([]RepoPlan, 0, len(spec.Repos))}
+	out := Output{Kind: OutputKind, Version: OutputVersion, Plan: make([]RepoPlan, 0, len(spec.Repos))}
 	for i, repo := range spec.Repos {
 		if !ok[i] {
 			continue
