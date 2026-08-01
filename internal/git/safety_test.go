@@ -2,6 +2,7 @@ package git
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -140,7 +141,7 @@ func writeWindowsFakeGit(t *testing.T, binDir, source string) {
 	if err := os.WriteFile(sourcePath, []byte(source), 0o600); err != nil {
 		t.Fatalf("write fake git source: %v", err)
 	}
-	cmd := execCommand("go", "build", "-o", filepath.Join(binDir, "git.exe"), sourcePath)
+	cmd := exec.Command("go", "build", "-o", filepath.Join(binDir, "git.exe"), sourcePath)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build fake git: %v: %s", err, out)
 	}
