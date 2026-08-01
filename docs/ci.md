@@ -22,6 +22,8 @@ This runs formatting verification, module hygiene, `go vet`, fast race-enabled t
 | `make test` | Run fast tests with `-race -count=1 -short`. |
 | `make coverage` | Run the fast test suite with race detection and write coverage profile and summary files under `artifacts/coverage/`. |
 | `make integration` | Run integration tests against disposable local Git repositories. |
+| `make deep-repeat` | Repeat the fast race-enabled suite, reporting the failing iteration. |
+| `make deep-integration` | Run all tests, including integration tests, under the race detector. |
 | `make e2e` | Build the CLI and exercise its command boundary. |
 | `make build` | Build the native `repoctl` binary. |
 | `make build-all` | Verify all current native and cross-compilation targets. |
@@ -62,6 +64,42 @@ The guard skips the test when `go test -short` is active. Adding or renaming an 
 
 Integration tests must use `t.TempDir()` or another disposable workspace and must not access real remotes or developer repositories.
 
+## Scheduled deep validation
+
+`.github/workflows/deep-validation.yml` runs every Sunday at 08:17 UTC and can also be started manually. It is non-blocking for commits that have already merged. Each job is a separate failure boundary:
+
+- **Repeated fast tests** runs the race-enabled short suite ten times. The log records the exact command, package pattern, iteration count, and failing iteration.
+- **Full integration race tests** runs every Go test without `-short` under the race detector. Fixtures remain disposable and do not contact provider-hosted remotes.
+- **Go compatibility** runs the portable validation contract on Go 1.22.x and the repository's current CI toolchain, Go 1.25.8.
+
+Go 1.22 is the minimum supported toolchain line declared by `go.mod`. Go 1.25.8 is the current validated toolchain. Compatibility jobs are scheduled evidence, not release artifacts.
+
+Reachable-vulnerability scanning and CodeQL are intentionally not duplicated. The scheduled `security` workflow owns those checks.
+
+The repository currently has no Go fuzz targets. Bounded fuzzing is deferred until a reviewed `Fuzz...` target exists with a stable corpus boundary. When added, failures must retain the generated corpus input or seed and print a local reproduction command.
+
+### Local reproduction
+
+```sh
+REPEAT_COUNT=10 make deep-repeat
+make deep-integration
+make check
+```
+
+`REPEAT_COUNT` must be a positive integer. The repeated-test runner stops at the first failure and reports the failing iteration.
+
+### Failure ownership and triage
+
+The repository maintainer reviewing automation failures owns initial triage. Scheduled failures are not dismissed as transient without investigation.
+
+1. Record the workflow run, commit SHA, job name, command, and failing iteration or Go version.
+2. Reproduce with the documented command using the same commit and toolchain.
+3. If reproducible, open a focused issue with logs stripped of credentials and sensitive local paths.
+4. If not immediately reproducible, rerun once and file a flake issue containing both results.
+5. Fix product or test defects through normal review. Do not weaken timeouts, race coverage, or assertions solely to make the schedule green.
+
+Scheduled workflows use read-only repository permissions, explicit job timeouts, concurrency cancellation, fake Git identities, and no secrets.
+
 ## Workflow policy
 
 `make workflow-check` requires Go, network access for the pinned `actionlint` module when it is not cached, and Python 3.10 or newer.
@@ -82,4 +120,4 @@ Dependabot checks GitHub Actions and Go modules weekly in separate groups. Minor
 
 ## GitHub-specific checks
 
-CodeQL, vulnerability scanning, coverage artifacts, and cross-platform CI remain separate from `make check`. They are GitHub-hosted or intentionally isolated because they have different runtime, retention, and dependency characteristics.
+CodeQL, vulnerability scanning, coverage artifacts, cross-platform CI, and scheduled deep validation remain separate from `make check`. They are GitHub-hosted or intentionally isolated because they have different runtime, retention, and dependency characteristics.
