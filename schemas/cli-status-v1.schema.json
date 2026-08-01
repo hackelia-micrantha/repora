@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/cli-status-v1.schema.json",
+  "title": "Repora status output v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "repos"],
+  "properties": {
+    "kind": { "const": "repora.status" },
+    "version": { "const": 1 },
+    "repos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "uid", "canonical", "mirrors"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "uid": { "type": "string", "minLength": 1 },
+          "canonical": { "$ref": "#/$defs/ref" },
+          "mirrors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["provider", "ref", "commit", "state", "ahead", "behind"],
+              "properties": {
+                "provider": { "enum": ["github", "gitlab"] },
+                "ref": { "type": "string", "minLength": 1 },
+                "commit": { "type": "string" },
+                "state": { "enum": ["EQUAL", "BEHIND", "AHEAD", "DIVERGED"] },
+                "ahead": { "type": "integer", "minimum": 0 },
+                "behind": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "commit"],
+      "properties": {
+        "ref": { "type": "string", "minLength": 1 },
+        "commit": { "type": "string" }
+      }
+    }
+  }
+}
