@@ -66,7 +66,7 @@ func (Client) EnsureMirror(path, canonicalURL string) error {
 			if valid {
 				return nil
 			}
-			if err := os.RemoveAll(path); err != nil {
+			if err := removeMirrorPath(path); err != nil {
 				return fmt.Errorf("remove corrupted mirror cache: %w", err)
 			}
 		}
@@ -78,7 +78,7 @@ func (Client) EnsureMirror(path, canonicalURL string) error {
 		return fmt.Errorf("create mirror cache: %w", err)
 	}
 	if err := run("", "clone", "--mirror", canonicalURL, path); err != nil {
-		if cleanupErr := os.RemoveAll(path); cleanupErr != nil {
+		if cleanupErr := removeMirrorPath(path); cleanupErr != nil {
 			return fmt.Errorf("clone mirror: %w; cleanup incomplete mirror: %v", err, cleanupErr)
 		}
 		return fmt.Errorf("clone mirror: %w", err)
@@ -111,6 +111,13 @@ func rejectSymlinkComponents(path string) error {
 		}
 	}
 	return nil
+}
+
+func removeMirrorPath(path string) error {
+	if err := rejectSymlinkComponents(path); err != nil {
+		return err
+	}
+	return os.RemoveAll(path)
 }
 
 func isValidMirror(path string) (bool, error) {
