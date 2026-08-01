@@ -1,0 +1,24 @@
+{
+  "kind": "repora.status",
+  "version": 1,
+  "repos": [
+    {
+      "id": "payments-api",
+      "uid": "repo.org.payments-api",
+      "canonical": {
+        "ref": "HEAD",
+        "commit": "abc1234"
+      },
+      "mirrors": [
+        {
+          "provider": "github",
+          "ref": "HEAD",
+          "commit": "def5678",
+          "state": "BEHIND",
+          "ahead": 0,
+          "behind": 3
+        }
+      ]
+    }
+  ]
+}
