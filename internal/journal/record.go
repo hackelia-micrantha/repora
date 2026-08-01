@@ -45,13 +45,13 @@ var (
 
 // Record is the durable evidence envelope for one repository execution.
 type Record struct {
-	Version     int         `json:"version"`
-	Kind        string      `json:"kind"`
-	ExecutionID string      `json:"execution_id"`
-	Mode        Mode        `json:"mode"`
-	Plan        PlanRef     `json:"plan"`
-	Repository  Repository  `json:"repository"`
-	Actions     []Action    `json:"actions"`
+	Version     int        `json:"version"`
+	Kind        string     `json:"kind"`
+	ExecutionID string     `json:"execution_id"`
+	Mode        Mode       `json:"mode"`
+	Plan        PlanRef    `json:"plan"`
+	Repository  Repository `json:"repository"`
+	Actions     []Action   `json:"actions"`
 }
 
 // PlanRef identifies the exact serialized plan artifact used for the run.
@@ -75,16 +75,16 @@ type Ref struct {
 // Action records planned ref state and the eventual execution outcome. After is
 // optional until a mutation has produced a verified resulting object ID.
 type Action struct {
-	Index    int     `json:"index"`
-	Type     string  `json:"type"`
-	Source   Ref     `json:"source"`
-	Target   Ref     `json:"target"`
-	Before   string  `json:"before"`
-	Desired  string  `json:"desired"`
-	After    string  `json:"after,omitempty"`
-	Force    bool    `json:"force"`
-	Outcome  Outcome `json:"outcome"`
-	Error    string  `json:"error,omitempty"`
+	Index   int     `json:"index"`
+	Type    string  `json:"type"`
+	Source  Ref     `json:"source"`
+	Target  Ref     `json:"target"`
+	Before  string  `json:"before"`
+	Desired string  `json:"desired"`
+	After   string  `json:"after,omitempty"`
+	Force   bool    `json:"force"`
+	Outcome Outcome `json:"outcome"`
+	Error   string  `json:"error,omitempty"`
 }
 
 // FromPlan creates deterministic planned evidence for exactly one repository.
@@ -230,8 +230,21 @@ func validateRef(ref Ref) error {
 	if !validIdentifier(ref.Provider) || !validIdentifier(ref.Remote) {
 		return fmt.Errorf("provider and remote must be symbolic identifiers")
 	}
-	if strings.TrimSpace(ref.Branch) == "" || unsafeValue(ref.Branch) {
-		return fmt.Errorf("branch must be a safe symbolic ref")
+	return validateBranch(ref.Branch)
+}
+
+func validateBranch(branch string) error {
+	branch = strings.TrimSpace(branch)
+	if branch == "" || strings.HasPrefix(branch, "/") || strings.HasSuffix(branch, "/") || strings.HasSuffix(branch, ".") || strings.Contains(branch, "..") || strings.Contains(branch, "//") || strings.Contains(branch, "@{") {
+		return fmt.Errorf("branch is not a valid symbolic ref name")
+	}
+	if strings.ContainsAny(branch, " ~^:?*[\\") {
+		return fmt.Errorf("branch is not a valid symbolic ref name")
+	}
+	for _, segment := range strings.Split(branch, "/") {
+		if segment == "" || strings.HasPrefix(segment, ".") || strings.HasSuffix(segment, ".lock") {
+			return fmt.Errorf("branch is not a valid symbolic ref name")
+		}
 	}
 	return nil
 }
