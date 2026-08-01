@@ -8,9 +8,9 @@ Repora shall evolve toward a unified diff model capable of representing
 differences across multiple domains, including Git refs, file content,
 workflows, and artifacts, using a common abstraction layer.
 
-The first implementation slice defines a narrow, versioned reconciliation plan
-artifact for Git ref updates. It is an internal durable representation and does
-not yet replace the existing CLI plan or apply output.
+The first implementation slices define a narrow, versioned reconciliation plan
+artifact for Git ref updates and make that artifact the executor input boundary.
+The existing CLI plan and apply output remain unchanged.
 
 ## Core Abstraction
 
@@ -61,6 +61,23 @@ The artifact excludes resolved transport URLs, credentials, and local checkout
 paths. Validation rejects unsupported versions, kinds, action types, missing
 identity or safety fields, unknown JSON fields, and values that look like URLs,
 credentials, or absolute local paths.
+
+## Execution Boundary
+
+Apply constructs the artifact from the exact in-memory plan used to render its
+compatibility output. The executor validates the artifact, requires exactly one
+repository for the current single-repository execution path, converts it to the
+internal action model, and only then performs structural and stale-ref preflight
+checks.
+
+Invalid artifacts and invalid repository cardinality fail before any Git ref
+reads or mutations. Stale-input validation, ordered execution, force-with-lease,
+and partial runtime-failure results retain their existing behavior after the
+artifact handoff.
+
+The single-repository constraint belongs to the current executor invocation, not
+to the artifact format. Multi-repository orchestration can later partition or
+coordinate a validated artifact without changing version 1 action semantics.
 
 ## Domain Mapping
 
@@ -115,15 +132,16 @@ Action {
 ```
 
 For the current ref-only slice, the artifact converts losslessly to and from the
-existing in-memory `plan.ReconciliationPlan`. Executor consumption of the
-validated artifact is a follow-up slice.
+existing in-memory `plan.ReconciliationPlan`. The executor consumes the validated
+artifact rather than accepting a raw reconciliation plan from its caller.
 
 ## Rationale
 
 - Enables a single reconciliation engine across heterogeneous domains
 - Avoids duplicating diff logic for refs vs files vs workflows
 - Supports incremental expansion without redesigning the core planner
-- Creates a reviewable and testable boundary before changing executor or CLI behavior
+- Creates a reviewable and testable boundary between planning and mutation
+- Ensures artifact compatibility and safety checks run on every apply execution
 
 ## Consequences
 
@@ -132,3 +150,4 @@ validated artifact is a follow-up slice.
 - Provides long-term extensibility and consistency
 - Version and kind changes require explicit compatibility handling
 - Artifact safety validation is intentionally stricter than arbitrary Git metadata
+- Current executor calls accept exactly one repository artifact
