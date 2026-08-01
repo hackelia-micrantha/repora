@@ -7,6 +7,7 @@ import (
 	"repoctl/internal/executor"
 	gitwrap "repoctl/internal/git"
 	"repoctl/internal/plan"
+	"repoctl/internal/planartifact"
 	"repoctl/internal/status"
 )
 
@@ -67,7 +68,8 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 		return result, nil
 	}
 
-	executed, err := executor.Execute(built.path, built.planned, git)
+	artifact := planartifact.FromPlans(built.planned)
+	executed, err := executor.Execute(built.path, artifact, git)
 	if err != nil {
 		return result, fmt.Errorf("execute plan for repo %q: %w", repo.ID, err)
 	}
@@ -77,7 +79,8 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 
 // buildPlan is the single observation-to-plan path used by both dry-run and
 // real apply. Compatibility actions are projected from that exact plan once;
-// execution receives the same in-memory plan without rebuilding decisions.
+// execution receives a validated artifact created from the same plan without
+// rebuilding decisions.
 func buildPlan(repo config.Repo, st status.Result, git Git, force bool) (builtPlan, error) {
 	built := builtPlan{actions: []Action{}}
 
