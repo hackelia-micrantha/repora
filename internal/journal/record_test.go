@@ -97,6 +97,8 @@ func TestRecordRejectsInvalidEnvelopeAndSafetyFields(t *testing.T) {
 		{name: "applied without after", edit: func(r *Record) { r.Actions[0].Outcome = OutcomeApplied }, want: "requires after"},
 		{name: "secret error", edit: func(r *Record) { r.Actions[0].Outcome = OutcomeFailed; r.Actions[0].Error = "token=secret" }, want: "unsafe"},
 		{name: "transport ref", edit: func(r *Record) { r.Actions[0].Target.Remote = "git@github.com:org/repo" }, want: "symbolic"},
+		{name: "branch with spaces", edit: func(r *Record) { r.Actions[0].Target.Branch = "release candidate" }, want: "symbolic ref"},
+		{name: "branch traversal", edit: func(r *Record) { r.Actions[0].Target.Branch = "release..next" }, want: "symbolic ref"},
 	}
 
 	for _, tt := range tests {
