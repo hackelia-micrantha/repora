@@ -11,14 +11,13 @@ A stabilized output includes:
 - repository `uid`: durable identity for correlation across renames or topology moves;
 - repository `id`: the current human-facing alias.
 
-The first stabilized contracts are:
+The stabilized contracts are:
 
 | Command | Kind | Version | Schema |
 | --- | --- | ---: | --- |
+| `repoctl status --json` | `repora.status` | 1 | `schemas/cli-status-v1.schema.json` |
 | `repoctl plan --json` | `repora.plan` | 1 | `schemas/cli-plan-v1.schema.json` |
 | `repoctl apply --json` and `repoctl sync --json` | `repora.apply` | 1 | `schemas/cli-apply-v1.schema.json` |
-
-`status --json` remains an explicitly unstabilized legacy shape in this slice. It will receive its own envelope and schema before issue #3 closes.
 
 ## Compatibility rules
 
@@ -33,6 +32,12 @@ Within one `kind` and `version`:
 A breaking change requires a new integer `version` and a new schema file. Additive fields may remain within a version only when they are optional and do not change existing interpretation. Repora currently uses strict schemas for the stabilized v1 documents, so additions should normally be introduced through a new version until an explicit extension policy is adopted.
 
 Human-readable output is not covered by these JSON schemas.
+
+## Validation
+
+Representative complete documents are checked against committed golden fixtures. Contract changes therefore require an explicit schema, fixture, test, and compatibility review rather than silently following internal Go struct changes.
+
+Downstream consumers should inspect `kind` and `version` before decoding the command-specific payload and validate documents against the corresponding schema when strict compatibility matters.
 
 ## Scope boundaries
 
