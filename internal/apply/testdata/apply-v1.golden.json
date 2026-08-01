@@ -1,0 +1,21 @@
+{
+  "kind": "repora.apply",
+  "version": 1,
+  "results": [
+    {
+      "id": "payments-api",
+      "uid": "repo.org.payments-api",
+      "state": "BEHIND",
+      "applied": false,
+      "dry_run": true,
+      "actions": [
+        {
+          "type": "PUSH_BRANCH",
+          "source": "canonical/main",
+          "target": "github/main",
+          "force": false
+        }
+      ]
+    }
+  ]
+}
