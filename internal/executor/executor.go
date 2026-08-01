@@ -1,8 +1,7 @@
 // Package executor owns reconciliation side effects.
 //
-// It executes planner-produced actions without inspecting repository status or
-// re-deciding reconciliation policy. Callers must provide an already-built,
-// validated in-memory plan.
+// It consumes validated, versioned plan artifacts without inspecting repository
+// status or re-deciding reconciliation policy.
 package executor
 
 import (
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"repoctl/internal/plan"
+	"repoctl/internal/planartifact"
 )
 
 // Git contains the reference reads and mutation operations required to execute
@@ -55,10 +55,23 @@ func (r Result) AllApplied() bool {
 	return true
 }
 
-// Execute applies every action in planned order. It validates the complete plan
-// and verifies every expected source and target reference before invoking a Git
-// mutation. Malformed or stale plans therefore fail closed without mutation.
-func Execute(repoPath string, planned plan.ReconciliationPlan, git Git) (Result, error) {
+// Execute validates and consumes exactly one repository plan from a versioned
+// artifact. Invalid artifacts fail closed before reference reads or mutation.
+func Execute(repoPath string, artifact planartifact.Artifact, git Git) (Result, error) {
+	plans, err := artifact.Plans()
+	if err != nil {
+		return Result{}, fmt.Errorf("validate plan artifact: %w", err)
+	}
+	if len(plans) != 1 {
+		return Result{}, fmt.Errorf("plan artifact requires exactly one repository, got %d", len(plans))
+	}
+	return executePlan(repoPath, plans[0], git)
+}
+
+// executePlan applies every action in planned order. It validates the complete
+// plan and verifies every expected source and target reference before invoking a
+// Git mutation. Malformed or stale plans therefore fail closed without mutation.
+func executePlan(repoPath string, planned plan.ReconciliationPlan, git Git) (Result, error) {
 	result := Result{Actions: make([]ActionResult, len(planned.Actions))}
 	for i, action := range planned.Actions {
 		result.Actions[i] = ActionResult{Index: i, Action: action, Outcome: OutcomeSkipped}
