@@ -19,11 +19,9 @@ const defaultGitTimeout = 30 * time.Second
 
 var gitTimeout = defaultGitTimeout
 
-var (
-	urlCredentialPattern = regexp.MustCompile(`(?i)([a-z][a-z0-9+.-]*://)([^/@\s]+)@`)
-	scpCredentialPattern = regexp.MustCompile(`(?i)([^\s/@:]+):([^\s/@]+)@([a-z0-9.-]+)`)
-	credentialValuePattern = regexp.MustCompile(`(?i)\b(password|passwd|token|access_token|oauth2)=([^\s&]+)`)
-)
+var urlCredentialPattern = regexp.MustCompile(`(?i)([a-z][a-z0-9+.-]*://)([^/@\s]+)@`)
+var scpCredentialPattern = regexp.MustCompile(`(?i)([^\s/@:]+):([^\s/@]+)@([a-z0-9.-]+)`)
+var credentialValuePattern = regexp.MustCompile(`(?i)\b(password|passwd|token|access_token|oauth2)=([^\s&]+)`)
 
 func MirrorPath(identity string) (string, error) {
 	home, err := os.UserHomeDir()
