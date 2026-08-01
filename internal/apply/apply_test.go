@@ -9,6 +9,8 @@ import (
 	"repoctl/internal/status"
 )
 
+const testOID = "1111111111111111111111111111111111111111"
+
 type fakeGit struct {
 	resolveRemoteHeadBranchCalls []string
 	resolveRevisionCalls         []string
@@ -32,7 +34,7 @@ func (f *fakeGit) ResolveRemoteHeadBranch(repoPath, remote string) (string, erro
 
 func (f *fakeGit) ResolveRevision(repoPath, rev string) (string, error) {
 	f.resolveRevisionCalls = append(f.resolveRevisionCalls, rev)
-	return "abc123456789", nil
+	return testOID, nil
 }
 
 func (f *fakeGit) PushBranch(repoPath, remote, srcRef, dstBranch string) error {
@@ -152,7 +154,7 @@ func TestExecuteDryRunReportsPlannedActionWithoutMutation(t *testing.T) {
 		t.Fatalf("actions = %#v, want one planner action", got.Actions)
 	}
 	action := got.Actions[0]
-	if action.Type != "PUSH_BRANCH" || action.Source != "canonical/main" || action.Target != "github/main" || !action.Force || action.ExpectedOldTarget != "abc123456789" {
+	if action.Type != "PUSH_BRANCH" || action.Source != "canonical/main" || action.Target != "github/main" || !action.Force || action.ExpectedOldTarget != testOID {
 		t.Fatalf("action = %#v, want planner-derived forced branch action", action)
 	}
 }
