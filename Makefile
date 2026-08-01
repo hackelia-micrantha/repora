@@ -1,4 +1,4 @@
-.PHONY: check format-check module-check vet test coverage integration e2e build build-target build-all workflow-check
+.PHONY: check format-check module-check vet test coverage integration e2e build build-target build-all workflow-check deep-repeat deep-integration
 
 check: format-check module-check vet test integration e2e build
 
@@ -25,6 +25,12 @@ coverage:
 
 integration:
 	go test -race -count=1 ./internal/apply
+
+deep-repeat:
+	REPEAT_COUNT="$${REPEAT_COUNT:-10}" bash ./scripts/ci/repeat-tests.sh ./...
+
+deep-integration:
+	go test -race -count=1 ./...
 
 e2e: build
 	bash ./scripts/ci/cli-smoke.sh ./bin/repoctl
