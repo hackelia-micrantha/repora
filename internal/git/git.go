@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -17,6 +18,12 @@ type Client struct{}
 const defaultGitTimeout = 30 * time.Second
 
 var gitTimeout = defaultGitTimeout
+
+var (
+	urlCredentialPattern = regexp.MustCompile(`(?i)([a-z][a-z0-9+.-]*://)([^/@\s]+)@`)
+	scpCredentialPattern = regexp.MustCompile(`(?i)([^\s/@:]+):([^\s/@]+)@([a-z0-9.-]+)`)
+	credentialValuePattern = regexp.MustCompile(`(?i)\b(password|passwd|token|access_token|oauth2)=([^\s&]+)`)
+)
 
 func MirrorPath(identity string) (string, error) {
 	home, err := os.UserHomeDir()
@@ -39,7 +46,14 @@ func SafePathSegment(identity string) (string, error) {
 }
 
 func (Client) EnsureMirror(path, canonicalURL string) error {
-	if info, err := os.Stat(path); err == nil {
+	if err := rejectSymlinkComponents(path); err != nil {
+		return fmt.Errorf("validate mirror path: %w", err)
+	}
+
+	if info, err := os.Lstat(path); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("validate mirror path: symlink component %q is not allowed", path)
+		}
 		if !info.IsDir() {
 			if err := os.Remove(path); err != nil {
 				return fmt.Errorf("remove invalid mirror path: %w", err)
@@ -63,7 +77,40 @@ func (Client) EnsureMirror(path, canonicalURL string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("create mirror cache: %w", err)
 	}
-	return run("", "clone", "--mirror", canonicalURL, path)
+	if err := run("", "clone", "--mirror", canonicalURL, path); err != nil {
+		if cleanupErr := os.RemoveAll(path); cleanupErr != nil {
+			return fmt.Errorf("clone mirror: %w; cleanup incomplete mirror: %v", err, cleanupErr)
+		}
+		return fmt.Errorf("clone mirror: %w", err)
+	}
+	return nil
+}
+
+func rejectSymlinkComponents(path string) error {
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("resolve absolute path: %w", err)
+	}
+	volume := filepath.VolumeName(absolute)
+	current := volume + string(os.PathSeparator)
+	remainder := strings.TrimPrefix(absolute, current)
+	for _, component := range strings.Split(remainder, string(os.PathSeparator)) {
+		if component == "" {
+			continue
+		}
+		current = filepath.Join(current, component)
+		info, err := os.Lstat(current)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("inspect %q: %w", current, err)
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("symlink component %q is not allowed", current)
+		}
+	}
+	return nil
 }
 
 func isValidMirror(path string) (bool, error) {
@@ -146,12 +193,17 @@ func runContext(parent context.Context, repoPath string, args ...string) error {
 	defer cancel()
 
 	cmd := gitCommandContext(ctx, repoPath, args...)
-	_, err := cmd.CombinedOutput()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
+		command := redactSensitive(strings.Join(args, " "))
 		if ctxErr := ctx.Err(); ctxErr != nil {
-			return fmt.Errorf("git %s: %w", strings.Join(args, " "), ctxErr)
+			return fmt.Errorf("git %s: %w", command, ctxErr)
 		}
-		return fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+		detail := strings.TrimSpace(redactSensitive(string(out)))
+		if detail != "" {
+			return fmt.Errorf("git %s: %w: %s", command, err, detail)
+		}
+		return fmt.Errorf("git %s: %w", command, err)
 	}
 	return nil
 }
@@ -167,12 +219,19 @@ func outputContext(parent context.Context, repoPath string, args ...string) (str
 	cmd := gitCommandContext(ctx, repoPath, args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		command := redactSensitive(strings.Join(args, " "))
 		if ctxErr := ctx.Err(); ctxErr != nil {
-			return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), ctxErr)
+			return "", fmt.Errorf("git %s: %w", command, ctxErr)
 		}
-		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, bytes.TrimSpace(out))
+		return "", fmt.Errorf("git %s: %w: %s", command, err, bytes.TrimSpace([]byte(redactSensitive(string(out)))))
 	}
 	return string(out), nil
+}
+
+func redactSensitive(value string) string {
+	value = urlCredentialPattern.ReplaceAllString(value, `${1}[REDACTED]@`)
+	value = scpCredentialPattern.ReplaceAllString(value, `[REDACTED]@$3`)
+	return credentialValuePattern.ReplaceAllString(value, `$1=[REDACTED]`)
 }
 
 func gitCommandContext(ctx context.Context, repoPath string, args ...string) *exec.Cmd {
