@@ -11,7 +11,14 @@ import (
 	"repoctl/internal/status"
 )
 
+const (
+	OutputKind    = "repora.apply"
+	OutputVersion = 1
+)
+
 type Output struct {
+	Kind    string   `json:"kind"`
+	Version int      `json:"version"`
 	Results []Result `json:"results"`
 }
 

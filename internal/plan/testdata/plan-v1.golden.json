@@ -1,0 +1,18 @@
+{
+  "kind": "repora.plan",
+  "version": 1,
+  "plan": [
+    {
+      "id": "payments-api",
+      "uid": "repo.org.payments-api",
+      "actions": [
+        {
+          "type": "PUSH_MIRROR",
+          "target": "github",
+          "behind": 3,
+          "destructive": false
+        }
+      ]
+    }
+  ]
+}

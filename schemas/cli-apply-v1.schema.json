@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/cli-apply-v1.schema.json",
+  "title": "Repora apply output v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "results"],
+  "properties": {
+    "kind": { "const": "repora.apply" },
+    "version": { "const": 1 },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "uid", "state", "applied", "dry_run", "actions"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "uid": { "type": "string", "minLength": 1 },
+          "state": { "enum": ["EQUAL", "BEHIND", "AHEAD", "DIVERGED"] },
+          "applied": { "type": "boolean" },
+          "dry_run": { "type": "boolean" },
+          "error": { "type": "string" },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "source", "target", "force"],
+              "properties": {
+                "type": { "const": "PUSH_BRANCH" },
+                "source": { "type": "string", "minLength": 1 },
+                "target": { "type": "string", "minLength": 1 },
+                "force": { "type": "boolean" },
+                "expected_old_target": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

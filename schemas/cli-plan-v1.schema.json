@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/cli-plan-v1.schema.json",
+  "title": "Repora plan output v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "plan"],
+  "properties": {
+    "kind": { "const": "repora.plan" },
+    "version": { "const": 1 },
+    "plan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "uid", "actions"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "uid": { "type": "string", "minLength": 1 },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "target", "behind", "destructive"],
+              "properties": {
+                "type": { "const": "PUSH_MIRROR" },
+                "target": { "type": "string", "minLength": 1 },
+                "behind": { "type": "integer", "minimum": 0 },
+                "destructive": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
