@@ -144,7 +144,8 @@ func TestParseRejectsUnknownFieldsAndTrailingData(t *testing.T) {
 		t.Fatalf("error = %v, want unknown-field rejection", err)
 	}
 	for _, suffix := range []string{`{"extra":true}`, ` trailing`} {
-		if _, err := Parse(append(encoded, suffix...)); err == nil || !strings.Contains(err.Error(), "trailing") {
+		payload := append(append([]byte(nil), encoded...), []byte(suffix)...)
+		if _, err := Parse(payload); err == nil || !strings.Contains(err.Error(), "trailing") {
 			t.Fatalf("suffix %q error = %v, want trailing-data rejection", suffix, err)
 		}
 	}
