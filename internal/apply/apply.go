@@ -45,65 +45,102 @@ type Git interface {
 	ResolveRemoteHeadBranch(repoPath, remote string) (string, error)
 }
 
-type builtPlan struct {
-	path    string
-	planned plan.ReconciliationPlan
-	actions []Action
-}
-
 // IsUnsafe is retained for callers that need to identify states requiring a
 // mirror-head observation. The planner owns that classification.
 func IsUnsafe(result status.Result) bool {
 	return plan.RequiresMirrorHeadObservation(result)
 }
 
+// BuildArtifact is the single observation-to-plan boundary used by plan,
+// dry-run, and convenience apply. The returned artifact is the exact durable
+// representation accepted by ExecuteArtifact and executor.Execute.
+func BuildArtifact(repo config.Repo, st status.Result, git Git, force bool) (planartifact.Artifact, error) {
+	planned, err := buildPlan(repo, st, git, force)
+	if err != nil {
+		return planartifact.Artifact{}, err
+	}
+	artifact := planartifact.FromPlans(planned)
+	if err := artifact.Validate(); err != nil {
+		return planartifact.Artifact{}, fmt.Errorf("validate plan artifact for repo %q: %w", repo.ID, err)
+	}
+	return artifact, nil
+}
+
+// Execute is the convenience observe-plan-execute path. It delegates to the
+// same artifact boundary exposed to operators rather than executing an
+// in-memory plan through a separate path.
 func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun bool) (Result, error) {
-	result := Result{
+	artifact, err := BuildArtifact(repo, st, git, force)
+	if err != nil {
+		return newResult(repo, st, dryRun), err
+	}
+	return ExecuteArtifact(repo, st, artifact, git, force, dryRun)
+}
+
+// ExecuteArtifact consumes an already-built artifact without recomputing
+// reconciliation intent. It validates repository topology and explicit force
+// authorization before the executor performs stale-ref preflight and mutation.
+func ExecuteArtifact(repo config.Repo, st status.Result, artifact planartifact.Artifact, git Git, allowForce bool, dryRun bool) (Result, error) {
+	result := newResult(repo, st, dryRun)
+	planned, err := planForRepository(repo, artifact, allowForce)
+	if err != nil {
+		return result, err
+	}
+	result.Actions = compatibilityActions(planned)
+	if dryRun || len(planned.Actions) == 0 {
+		return result, nil
+	}
+
+	path, err := gitwrap.MirrorPath(repo.DurableID())
+	if err != nil {
+		return result, err
+	}
+	executed, err := executor.Execute(path, artifact, git)
+	if err != nil {
+		return result, fmt.Errorf("execute plan artifact for repo %q: %w", repo.ID, err)
+	}
+	result.Applied = executed.AllApplied()
+	return result, nil
+}
+
+func ArtifactRequiresForce(artifact planartifact.Artifact) (bool, error) {
+	plans, err := artifact.Plans()
+	if err != nil {
+		return false, err
+	}
+	for _, planned := range plans {
+		for _, action := range planned.Actions {
+			if action.Force {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
+func newResult(repo config.Repo, st status.Result, dryRun bool) Result {
+	return Result{
 		ID:      repo.ID,
 		UID:     repo.DurableID(),
 		State:   st.State,
 		DryRun:  dryRun,
 		Actions: []Action{},
 	}
-
-	built, err := buildPlan(repo, st, git, force)
-	result.Actions = built.actions
-	if err != nil {
-		return result, err
-	}
-	if dryRun || len(built.planned.Actions) == 0 {
-		return result, nil
-	}
-
-	artifact := planartifact.FromPlans(built.planned)
-	executed, err := executor.Execute(built.path, artifact, git)
-	if err != nil {
-		return result, fmt.Errorf("execute plan for repo %q: %w", repo.ID, err)
-	}
-	result.Applied = executed.AllApplied()
-	return result, nil
 }
 
-// buildPlan is the single observation-to-plan path used by both dry-run and
-// real apply. Compatibility actions are projected from that exact plan once;
-// execution receives a validated artifact created from the same plan without
-// rebuilding decisions.
-func buildPlan(repo config.Repo, st status.Result, git Git, force bool) (builtPlan, error) {
-	built := builtPlan{actions: []Action{}}
-
+func buildPlan(repo config.Repo, st status.Result, git Git, force bool) (plan.ReconciliationPlan, error) {
 	path, err := gitwrap.MirrorPath(repo.DurableID())
 	if err != nil {
-		return built, err
+		return plan.ReconciliationPlan{}, err
 	}
-	built.path = path
 
 	srcBranch, err := git.ResolveRemoteHeadBranch(path, "canonical")
 	if err != nil {
-		return built, fmt.Errorf("resolve canonical HEAD for repo %q: %w", repo.ID, err)
+		return plan.ReconciliationPlan{}, fmt.Errorf("resolve canonical HEAD for repo %q: %w", repo.ID, err)
 	}
 	dstBranch, err := git.ResolveRemoteHeadBranch(path, "mirror")
 	if err != nil {
-		return built, fmt.Errorf("resolve mirror HEAD for repo %q: %w", repo.ID, err)
+		return plan.ReconciliationPlan{}, fmt.Errorf("resolve mirror HEAD for repo %q: %w", repo.ID, err)
 	}
 	if dstBranch == "" {
 		dstBranch = srcBranch
@@ -114,23 +151,47 @@ func buildPlan(repo config.Repo, st status.Result, git Git, force bool) (builtPl
 		srcRef := "refs/remotes/canonical/" + srcBranch
 		sourceOID, err := git.ResolveRevision(path, srcRef)
 		if err != nil {
-			return built, fmt.Errorf("resolve canonical branch for repo %q: %w", repo.ID, err)
+			return plan.ReconciliationPlan{}, fmt.Errorf("resolve canonical branch for repo %q: %w", repo.ID, err)
 		}
 		dstRef := "refs/remotes/mirror/" + dstBranch
 		targetOID, err := git.ResolveRevision(path, dstRef)
 		if err != nil {
-			return built, fmt.Errorf("resolve mirror branch for repo %q: %w", repo.ID, err)
+			return plan.ReconciliationPlan{}, fmt.Errorf("resolve mirror branch for repo %q: %w", repo.ID, err)
 		}
 		observation.CanonicalHeadOID = sourceOID
 		observation.MirrorHeadOID = targetOID
 	}
 
-	built.planned, err = plan.Reconcile(repo, st, observation, force)
-	built.actions = compatibilityActions(built.planned)
+	return plan.Reconcile(repo, st, observation, force)
+}
+
+func planForRepository(repo config.Repo, artifact planartifact.Artifact, allowForce bool) (plan.ReconciliationPlan, error) {
+	plans, err := artifact.Plans()
 	if err != nil {
-		return built, err
+		return plan.ReconciliationPlan{}, fmt.Errorf("validate plan artifact: %w", err)
 	}
-	return built, nil
+	if len(plans) != 1 {
+		return plan.ReconciliationPlan{}, fmt.Errorf("plan artifact requires exactly one repository, got %d", len(plans))
+	}
+	planned := plans[0]
+	if planned.UID != repo.DurableID() {
+		return plan.ReconciliationPlan{}, fmt.Errorf("plan repository uid %q does not match configured uid %q", planned.UID, repo.DurableID())
+	}
+	if len(repo.Mirrors) != 1 {
+		return plan.ReconciliationPlan{}, fmt.Errorf("repo %q requires exactly one configured mirror, got %d", repo.ID, len(repo.Mirrors))
+	}
+	for i, action := range planned.Actions {
+		if action.Source.Provider != repo.Canonical.Provider || action.Source.Name != "canonical" {
+			return plan.ReconciliationPlan{}, fmt.Errorf("plan action %d source does not match configured canonical repository", i)
+		}
+		if action.Target.Provider != repo.Mirrors[0].Provider || action.Target.Name != "mirror" {
+			return plan.ReconciliationPlan{}, fmt.Errorf("plan action %d target does not match configured mirror repository", i)
+		}
+		if action.Force && !allowForce {
+			return plan.ReconciliationPlan{}, fmt.Errorf("repo %q plan contains a forced action; rerun with --force", repo.ID)
+		}
+	}
+	return planned, nil
 }
 
 func compatibilityActions(planned plan.ReconciliationPlan) []Action {
