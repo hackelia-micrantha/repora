@@ -2,10 +2,12 @@ package journal
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -47,6 +49,44 @@ func TestWriterPersistsValidatedRecordAppendOnly(t *testing.T) {
 	}
 	if collisionReference != wantReference {
 		t.Fatalf("collision reference = %q, want %q", collisionReference, wantReference)
+	}
+}
+
+func TestWriterInitializesDirectoriesConcurrently(t *testing.T) {
+	root := t.TempDir()
+	const count = 8
+
+	start := make(chan struct{})
+	errorsCh := make(chan error, count)
+	var wg sync.WaitGroup
+	wg.Add(count)
+	for i := 0; i < count; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			<-start
+			record, err := FromPlan(fmt.Sprintf("run-%03d", i), ModePlan, testArtifact())
+			if err == nil {
+				_, err = (Writer{Root: root}).Write(record)
+			}
+			errorsCh <- err
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(errorsCh)
+
+	for err := range errorsCh {
+		if err != nil {
+			t.Fatalf("concurrent Write returned error: %v", err)
+		}
+	}
+	entries, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(DirectoryName)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != count {
+		t.Fatalf("journal entry count = %d, want %d", len(entries), count)
 	}
 }
 
