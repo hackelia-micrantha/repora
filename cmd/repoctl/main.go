@@ -258,11 +258,7 @@ func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool,
 			}
 		}
 	}
-	output, err := applyRepos(spec, summary, force, dryRun, parallel, !jsonFlag)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "repoctl: %v\n", err)
-		return 1
-	}
+	output, applyErr := applyRepos(spec, summary, force, dryRun, parallel, !jsonFlag)
 	if jsonFlag {
 		if err := json.NewEncoder(os.Stdout).Encode(output); err != nil {
 			fmt.Fprintf(os.Stderr, "repoctl: write json: %v\n", err)
@@ -270,6 +266,10 @@ func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool,
 		}
 	} else {
 		printApply(output)
+	}
+	if applyErr != nil {
+		fmt.Fprintf(os.Stderr, "repoctl: %v\n", applyErr)
+		return 1
 	}
 	return 0
 }
@@ -301,10 +301,12 @@ func applyRepos(spec config.Spec, summary checkSummary, force bool, dryRun bool,
 		close(resultsCh)
 	}()
 	ordered := make([]apply.Result, len(spec.Repos))
+	orderedErrors := make([]error, len(spec.Repos))
 	ok := make([]bool, len(spec.Repos))
 	for res := range resultsCh {
 		if res.err != nil {
 			res.result.Error = res.err.Error()
+			orderedErrors[res.index] = res.err
 		}
 		ordered[res.index] = res.result
 		ok[res.index] = true
@@ -314,6 +316,24 @@ func applyRepos(spec config.Spec, summary checkSummary, force bool, dryRun bool,
 		if ok[i] {
 			output.Results = append(output.Results, res)
 		}
+	}
+	var firstErr error
+	failedCount := 0
+	for _, err := range orderedErrors {
+		if err == nil {
+			continue
+		}
+		failedCount++
+		if firstErr == nil {
+			firstErr = err
+		}
+	}
+	if firstErr != nil {
+		noun := "repositories"
+		if failedCount == 1 {
+			noun = "repository"
+		}
+		return output, fmt.Errorf("%d %s failed during apply: %w", failedCount, noun, firstErr)
 	}
 	return output, nil
 }
@@ -380,17 +400,17 @@ func printApply(output apply.Output) {
 		fmt.Println(result.ID)
 		if len(result.Actions) == 0 {
 			fmt.Println("  no changes")
-			continue
-		}
-		for _, action := range result.Actions {
-			mode := "apply"
-			if result.DryRun {
-				mode = "dry-run"
-			}
-			if action.Force {
-				fmt.Printf("  %s %s %s -> %s (force)\n", mode, action.Type, action.Source, action.Target)
-			} else {
-				fmt.Printf("  %s %s %s -> %s\n", mode, action.Type, action.Source, action.Target)
+		} else {
+			for _, action := range result.Actions {
+				mode := "apply"
+				if result.DryRun {
+					mode = "dry-run"
+				}
+				if action.Force {
+					fmt.Printf("  %s %s %s -> %s (force)\n", mode, action.Type, action.Source, action.Target)
+				} else {
+					fmt.Printf("  %s %s %s -> %s\n", mode, action.Type, action.Source, action.Target)
+				}
 			}
 		}
 		if result.Error != "" {
