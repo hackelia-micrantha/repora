@@ -78,6 +78,30 @@ func TestExecuteArtifactRejectsMultipleActionsForCurrentScope(t *testing.T) {
 	assertNoMutation(t, git)
 }
 
+func TestExecuteArtifactRejectsNoopWhenCurrentStateDrifted(t *testing.T) {
+	git := &fakeGit{}
+	repo := testRepo()
+	planned := plan.ReconciliationPlan{ID: repo.ID, UID: repo.DurableID(), Actions: []plan.PlannedAction{}}
+
+	_, err := ExecuteArtifact(repo, status.Result{State: status.StateBehind}, planartifact.FromPlans(planned), git, false, true)
+	if err == nil || !strings.Contains(err.Error(), "BEHIND requires one non-forced action") {
+		t.Fatalf("error = %v, want stale no-op rejection", err)
+	}
+	assertNoMutation(t, git)
+}
+
+func TestExecuteArtifactRejectsActionThatDoesNotMatchCurrentState(t *testing.T) {
+	git := &fakeGit{}
+	repo := testRepo()
+	artifact := planartifact.FromPlans(exactPlan(repo, "main"))
+
+	_, err := ExecuteArtifact(repo, status.Result{State: status.StateDiverged}, artifact, git, true, false)
+	if err == nil || !strings.Contains(err.Error(), "DIVERGED requires one forced action") {
+		t.Fatalf("error = %v, want current-state policy rejection", err)
+	}
+	assertNoMutation(t, git)
+}
+
 func TestExecuteArtifactRequiresForceAuthorizationAndPreservesAction(t *testing.T) {
 	git := &fakeGit{}
 	repo := testRepo()
@@ -91,6 +115,23 @@ func TestExecuteArtifactRequiresForceAuthorizationAndPreservesAction(t *testing.
 	}
 	if len(got.Actions) != 1 || !got.Actions[0].Force || got.Actions[0].ExpectedOldTarget != testOID {
 		t.Fatalf("actions = %#v, want exact forced action preserved", got.Actions)
+	}
+	assertNoMutation(t, git)
+}
+
+func TestExecuteArtifactAllowsForcedDryRunWithoutAuthorization(t *testing.T) {
+	git := &fakeGit{}
+	repo := testRepo()
+	planned := exactPlan(repo, "main")
+	planned.Actions[0].Force = true
+	planned.Actions[0].Reason = "mirror is ahead"
+
+	got, err := ExecuteArtifact(repo, status.Result{State: status.StateAhead}, planartifact.FromPlans(planned), git, false, true)
+	if err != nil {
+		t.Fatalf("ExecuteArtifact returned error: %v", err)
+	}
+	if len(got.Actions) != 1 || !got.Actions[0].Force || !got.DryRun {
+		t.Fatalf("result = %#v, want forced dry-run preview", got)
 	}
 	assertNoMutation(t, git)
 }
