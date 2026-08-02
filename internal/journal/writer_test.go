@@ -11,44 +11,68 @@ import (
 	"testing"
 )
 
-func TestWriterPersistsValidatedRecordAppendOnly(t *testing.T) {
+func TestWriterPersistsIntentAndResultAppendOnly(t *testing.T) {
 	root := t.TempDir()
-	record, err := FromPlan("run-001", ModePlan, testArtifact())
+	intent, err := FromPlan("run-001", ModeDryRun, testArtifact())
 	if err != nil {
 		t.Fatal(err)
 	}
+	result := intent
+	result.Actions = append([]Action(nil), intent.Actions...)
+	result.Phase = PhaseResult
+	result.Actions[0].Outcome = OutcomeValidated
 
+	intentRef, err := (Writer{Root: root}).Write(intent)
+	if err != nil {
+		t.Fatalf("write intent: %v", err)
+	}
+	resultRef, err := (Writer{Root: root}).Write(result)
+	if err != nil {
+		t.Fatalf("write result: %v", err)
+	}
+	wantIntent := ".repora/journal/" + intent.Repository.UID + "--run-001--intent.json"
+	wantResult := ".repora/journal/" + intent.Repository.UID + "--run-001--result.json"
+	if intentRef != wantIntent || resultRef != wantResult {
+		t.Fatalf("references = %q / %q, want %q / %q", intentRef, resultRef, wantIntent, wantResult)
+	}
+
+	for _, reference := range []string{intentRef, resultRef} {
+		if filepath.IsAbs(reference) || strings.Contains(reference, "..") {
+			t.Fatalf("reference is not safe: %q", reference)
+		}
+		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(reference)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Parse(data); err != nil {
+			t.Fatalf("persisted record does not parse: %v", err)
+		}
+	}
+
+	collisionReference, err := (Writer{Root: root}).Write(intent)
+	if !errors.Is(err, ErrRecordExists) {
+		t.Fatalf("second intent error = %v, want ErrRecordExists", err)
+	}
+	if collisionReference != wantIntent {
+		t.Fatalf("collision reference = %q, want %q", collisionReference, wantIntent)
+	}
+}
+
+func TestWriterRetainsLegacyFilename(t *testing.T) {
+	root := t.TempDir()
+	record, err := FromPlan("run-legacy", ModePlan, testArtifact())
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Version = LegacyVersion
+	record.Phase = ""
 	reference, err := (Writer{Root: root}).Write(record)
 	if err != nil {
-		t.Fatalf("Write returned error: %v", err)
-	}
-	wantReference := ".repora/journal/" + record.Repository.UID + "--run-001.json"
-	if reference != wantReference {
-		t.Fatalf("reference = %q, want %q", reference, wantReference)
-	}
-	if filepath.IsAbs(reference) || strings.Contains(reference, "..") {
-		t.Fatalf("reference is not safe: %q", reference)
-	}
-
-	path := filepath.Join(root, filepath.FromSlash(reference))
-	data, err := os.ReadFile(path)
-	if err != nil {
 		t.Fatal(err)
 	}
-	decoded, err := Parse(data)
-	if err != nil {
-		t.Fatalf("persisted record does not parse: %v", err)
-	}
-	if decoded.ExecutionID != record.ExecutionID || decoded.Plan.SHA256 != record.Plan.SHA256 {
-		t.Fatalf("persisted record = %#v, want %#v", decoded, record)
-	}
-
-	collisionReference, err := (Writer{Root: root}).Write(record)
-	if !errors.Is(err, ErrRecordExists) {
-		t.Fatalf("second Write error = %v, want ErrRecordExists", err)
-	}
-	if collisionReference != wantReference {
-		t.Fatalf("collision reference = %q, want %q", collisionReference, wantReference)
+	want := ".repora/journal/" + record.Repository.UID + "--run-legacy.json"
+	if reference != want {
+		t.Fatalf("reference = %q, want %q", reference, want)
 	}
 }
 

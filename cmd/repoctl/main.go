@@ -76,6 +76,14 @@ var artifactApplyExecute = func(repo config.Repo, result status.Result, artifact
 	return apply.ExecuteArtifact(repo, result, artifact, gitwrap.Client{}, force, dryRun)
 }
 
+var auditedApplyExecute = func(repo config.Repo, result status.Result, force, dryRun bool, audit apply.Audit) (apply.Result, error) {
+	return apply.ExecuteAudited(repo, result, gitwrap.Client{}, force, dryRun, audit)
+}
+
+var auditedArtifactApplyExecute = func(repo config.Repo, result status.Result, artifact planartifact.Artifact, force, dryRun bool, audit apply.Audit) (apply.Result, error) {
+	return apply.ExecuteArtifactAudited(repo, result, artifact, gitwrap.Client{}, force, dryRun, audit)
+}
+
 var progressf = func(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, format, args...)
 }
@@ -181,7 +189,7 @@ func run(args []string) int {
 	case "plan":
 		return runPlan(spec, summary, *jsonFlag, *artifactFlag, *force)
 	case "apply", "sync":
-		return runApply(spec, summary, *jsonFlag, *force, *dryRun, parallel, inputArtifact)
+		return runApply(spec, summary, *jsonFlag, *force, *dryRun, parallel, inputArtifact, *configPath)
 	default:
 		panic("unreachable command validation")
 	}
@@ -377,7 +385,7 @@ func buildPlanArtifact(spec config.Spec, summary checkSummary) (planartifact.Art
 	return artifact, results, firstErr, failedCount
 }
 
-func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool, dryRun bool, parallel int, artifact *planartifact.Artifact) int {
+func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool, dryRun bool, parallel int, artifact *planartifact.Artifact, configPath string) int {
 	var output apply.Output
 	var applyErr error
 
@@ -395,7 +403,6 @@ func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool,
 			fmt.Fprintln(os.Stderr, "repoctl: plan artifact contains a forced action; rerun apply with --force")
 			return 2
 		}
-		output, applyErr = applyArtifactRepos(spec, summary, *artifact, force, dryRun, parallel, !jsonFlag)
 	} else {
 		if summary.firstErr != nil && !force {
 			fmt.Fprintf(os.Stderr, "repoctl: %d repos failed; refusing apply\n", summary.failedCount)
@@ -409,7 +416,17 @@ func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool,
 				}
 			}
 		}
-		output, applyErr = applyRepos(spec, summary, force, dryRun, parallel, !jsonFlag)
+	}
+
+	audit, err := newAudit(configPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "repoctl: initialize execution journal: %v\n", err)
+		return 1
+	}
+	if artifact != nil {
+		output, applyErr = applyArtifactRepos(spec, summary, *artifact, force, dryRun, parallel, !jsonFlag, audit)
+	} else {
+		output, applyErr = applyRepos(spec, summary, force, dryRun, parallel, !jsonFlag, audit)
 	}
 
 	if jsonFlag {
@@ -427,13 +444,16 @@ func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool,
 	return 0
 }
 
-func applyRepos(spec config.Spec, summary checkSummary, force bool, dryRun bool, parallel int, progress bool) (apply.Output, error) {
+func applyRepos(spec config.Spec, summary checkSummary, force bool, dryRun bool, parallel int, progress bool, audit *apply.Audit) (apply.Output, error) {
 	return collectApplyResults(spec, summary, parallel, progress, func(i int, repo config.Repo) (apply.Result, error) {
-		return applyExecute(repo, summary.results[i], force, dryRun)
+		if audit == nil {
+			return applyExecute(repo, summary.results[i], force, dryRun)
+		}
+		return auditedApplyExecute(repo, summary.results[i], force, dryRun, *audit)
 	})
 }
 
-func applyArtifactRepos(spec config.Spec, summary checkSummary, artifact planartifact.Artifact, force bool, dryRun bool, parallel int, progress bool) (apply.Output, error) {
+func applyArtifactRepos(spec config.Spec, summary checkSummary, artifact planartifact.Artifact, force bool, dryRun bool, parallel int, progress bool, audit *apply.Audit) (apply.Output, error) {
 	if len(artifact.Repositories) != len(spec.Repos) {
 		return apply.Output{}, fmt.Errorf("plan artifact contains %d repositories for %d selected configuration repositories", len(artifact.Repositories), len(spec.Repos))
 	}
@@ -443,7 +463,10 @@ func applyArtifactRepos(spec config.Spec, summary checkSummary, artifact planart
 			Kind:         artifact.Kind,
 			Repositories: []planartifact.Repository{artifact.Repositories[i]},
 		}
-		return artifactApplyExecute(repo, summary.results[i], single, force, dryRun)
+		if audit == nil {
+			return artifactApplyExecute(repo, summary.results[i], single, force, dryRun)
+		}
+		return auditedArtifactApplyExecute(repo, summary.results[i], single, force, dryRun, *audit)
 	})
 }
 
@@ -589,6 +612,12 @@ func printApply(output apply.Output) {
 				} else {
 					fmt.Printf("  %s %s %s -> %s\n", mode, action.Type, action.Source, action.Target)
 				}
+			}
+		}
+		if result.Journal != nil {
+			fmt.Printf("  journal intent: %s\n", result.Journal.Intent)
+			if result.Journal.Result != "" {
+				fmt.Printf("  journal result: %s\n", result.Journal.Result)
 			}
 		}
 		if result.Error != "" {

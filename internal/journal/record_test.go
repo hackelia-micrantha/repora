@@ -2,6 +2,7 @@ package journal
 
 import (
 	"bytes"
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
@@ -15,7 +16,7 @@ const (
 	testTargetOID = "2222222222222222222222222222222222222222"
 )
 
-func TestFromPlanCreatesDeterministicReferenceAndActions(t *testing.T) {
+func TestFromPlanCreatesDeterministicIntentAndActions(t *testing.T) {
 	artifact := testArtifact()
 	first, err := FromPlan("run-001", ModeDryRun, artifact)
 	if err != nil {
@@ -27,6 +28,9 @@ func TestFromPlanCreatesDeterministicReferenceAndActions(t *testing.T) {
 	}
 	if !reflect.DeepEqual(first, second) {
 		t.Fatalf("records differ:\n%#v\n%#v", first, second)
+	}
+	if first.Version != Version || first.Phase != PhaseIntent {
+		t.Fatalf("envelope = version %d phase %q, want v%d INTENT", first.Version, first.Phase, Version)
 	}
 	if first.Plan.SHA256 == "" || len(first.Plan.SHA256) != 64 {
 		t.Fatalf("plan digest = %q, want SHA-256", first.Plan.SHA256)
@@ -65,6 +69,26 @@ func TestRecordSerializationIsDeterministicAndRoundTrips(t *testing.T) {
 	}
 }
 
+func TestParseRetainsLegacyV1Compatibility(t *testing.T) {
+	record, err := FromPlan("run-legacy", ModeApply, testArtifact())
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Version = LegacyVersion
+	record.Phase = ""
+	encoded, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := Parse(encoded)
+	if err != nil {
+		t.Fatalf("Parse legacy record: %v", err)
+	}
+	if decoded.Version != LegacyVersion || decoded.Phase != "" {
+		t.Fatalf("legacy envelope = %#v", decoded)
+	}
+}
+
 func TestFromPlanRejectsInvalidOrMultiRepositoryArtifact(t *testing.T) {
 	invalid := testArtifact()
 	invalid.Version = 99
@@ -84,9 +108,10 @@ func TestRecordRejectsInvalidEnvelopeAndSafetyFields(t *testing.T) {
 		edit func(*Record)
 		want string
 	}{
-		{name: "version", edit: func(r *Record) { r.Version = 2 }, want: "version"},
+		{name: "version", edit: func(r *Record) { r.Version = 3 }, want: "version"},
 		{name: "kind", edit: func(r *Record) { r.Kind = "unknown" }, want: "kind"},
 		{name: "execution id", edit: func(r *Record) { r.ExecutionID = "/tmp/run" }, want: "execution_id"},
+		{name: "phase", edit: func(r *Record) { r.Phase = "UNKNOWN" }, want: "phase"},
 		{name: "mode", edit: func(r *Record) { r.Mode = "UNKNOWN" }, want: "mode"},
 		{name: "digest", edit: func(r *Record) { r.Plan.SHA256 = "not-a-digest" }, want: "plan reference"},
 		{name: "identity", edit: func(r *Record) { r.Repository.UID = "https://example.com/repo" }, want: "uid and id"},
@@ -94,8 +119,12 @@ func TestRecordRejectsInvalidEnvelopeAndSafetyFields(t *testing.T) {
 		{name: "before oid", edit: func(r *Record) { r.Actions[0].Before = "not-an-oid" }, want: "object IDs"},
 		{name: "after oid", edit: func(r *Record) { r.Actions[0].After = "not-an-oid" }, want: "after object ID"},
 		{name: "outcome", edit: func(r *Record) { r.Actions[0].Outcome = "UNKNOWN" }, want: "outcome"},
-		{name: "applied without after", edit: func(r *Record) { r.Actions[0].Outcome = OutcomeApplied }, want: "requires after"},
-		{name: "secret error", edit: func(r *Record) { r.Actions[0].Outcome = OutcomeFailed; r.Actions[0].Error = "token=secret" }, want: "unsafe"},
+		{name: "intent result", edit: func(r *Record) { r.Actions[0].Outcome = OutcomeSkipped }, want: "intent entry"},
+		{name: "secret error", edit: func(r *Record) {
+			r.Phase = PhaseResult
+			r.Actions[0].Outcome = OutcomeFailed
+			r.Actions[0].Error = "token=secret"
+		}, want: "unsafe"},
 		{name: "transport ref", edit: func(r *Record) { r.Actions[0].Target.Remote = "git@github.com:org/repo" }, want: "symbolic"},
 		{name: "branch with spaces", edit: func(r *Record) { r.Actions[0].Target.Branch = "release candidate" }, want: "symbolic ref"},
 		{name: "branch traversal", edit: func(r *Record) { r.Actions[0].Target.Branch = "release..next" }, want: "symbolic ref"},
@@ -115,19 +144,33 @@ func TestRecordRejectsInvalidEnvelopeAndSafetyFields(t *testing.T) {
 	}
 }
 
-func TestAppliedActionRequiresAndPreservesAfterOID(t *testing.T) {
+func TestResultPhaseRules(t *testing.T) {
 	record, err := FromPlan("run-001", ModeApply, testArtifact())
 	if err != nil {
 		t.Fatal(err)
 	}
+	record.Phase = PhaseResult
 	record.Actions[0].Outcome = OutcomeApplied
 	record.Actions[0].After = testSourceOID
 	encoded, err := record.Marshal()
 	if err != nil {
 		t.Fatalf("Marshal returned error: %v", err)
 	}
-	if !strings.Contains(string(encoded), `"after": "`+testSourceOID+`"`) {
-		t.Fatalf("record missing after OID:\n%s", encoded)
+	if !strings.Contains(string(encoded), `"phase": "RESULT"`) || !strings.Contains(string(encoded), `"after": "`+testSourceOID+`"`) {
+		t.Fatalf("record missing result evidence:\n%s", encoded)
+	}
+
+	dryRun := record
+	dryRun.Mode = ModeDryRun
+	if err := dryRun.Validate(); err == nil || !strings.Contains(err.Error(), "dry-run") {
+		t.Fatalf("dry-run applied error = %v", err)
+	}
+
+	applyValidated := record
+	applyValidated.Actions[0].Outcome = OutcomeValidated
+	applyValidated.Actions[0].After = ""
+	if err := applyValidated.Validate(); err == nil || !strings.Contains(err.Error(), "apply result") {
+		t.Fatalf("apply validated error = %v", err)
 	}
 }
 
