@@ -38,7 +38,7 @@ A v0.1-quality controller must:
 | Executable plan artifact | Partially complete | Schema, validation, conversion, and executor consumption exist; the public `plan` command does not yet emit the exact artifact. |
 | Execution results | Partially complete | Executor preserves detailed outcomes; public apply results still collapse them. |
 | Apply exit semantics | Complete | Repository execution failures preserve output and return non-zero. |
-| Journal record model | Partially complete | Versioned records and executor projection exist; apply integration and required persistence do not. |
+| Journal persistence substrate | Partially complete | Versioned records, executor projection, and a safe append-only writer exist; apply integration and required pre/post persistence do not. |
 | Branch/ref policy | Not started | Current force flag remains transitional. |
 | Multi-mirror runtime | Deferred until policy/evidence gates | Read-side status must precede apply expansion. |
 | Release packaging | Not started | CI builds verification binaries but does not publish supported releases. |
