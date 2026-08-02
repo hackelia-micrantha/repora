@@ -31,10 +31,12 @@ const (
 // ActionResult records the outcome of one planned action. This is an internal
 // execution result, not a stabilized public serialization contract.
 type ActionResult struct {
-	Index   int
-	Action  plan.PlannedAction
-	Outcome Outcome
-	Error   string
+	Index    int
+	Action   plan.PlannedAction
+	Outcome  Outcome
+	AfterOID string
+	Stale    bool
+	Error    string
 }
 
 // Result contains one action result for every planned action in deterministic
@@ -79,12 +81,12 @@ func executePlan(repoPath string, planned plan.ReconciliationPlan, git Git) (Res
 
 	for i, action := range planned.Actions {
 		if err := validateAction(action); err != nil {
-			return failPreflight(result, i, fmt.Errorf("validate action %d: %w", i, err))
+			return failPreflight(result, i, false, fmt.Errorf("validate action %d: %w", i, err))
 		}
 	}
 	for i, action := range planned.Actions {
 		if err := validateCurrentRefs(repoPath, action, git); err != nil {
-			return failPreflight(result, i, fmt.Errorf("stale action %d: %w", i, err))
+			return failPreflight(result, i, true, fmt.Errorf("stale action %d: %w", i, err))
 		}
 	}
 
@@ -102,12 +104,14 @@ func executePlan(repoPath string, planned plan.ReconciliationPlan, git Git) (Res
 			return result, fmt.Errorf("execute action %d: %w", i, err)
 		}
 		result.Actions[i].Outcome = OutcomeApplied
+		result.Actions[i].AfterOID = action.ExpectedSource
 	}
 	return result, nil
 }
 
-func failPreflight(result Result, index int, err error) (Result, error) {
+func failPreflight(result Result, index int, stale bool, err error) (Result, error) {
 	result.Actions[index].Outcome = OutcomeFailed
+	result.Actions[index].Stale = stale
 	result.Actions[index].Error = err.Error()
 	return result, err
 }
