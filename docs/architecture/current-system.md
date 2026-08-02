@@ -57,7 +57,7 @@ configuration
 | --- | --- | --- |
 | `internal/config` | YAML decoding, durable repository identity, topology validation, supported provider/cardinality constraints | Runtime URL derivation or Git operations |
 | `internal/transport` | Runtime conversion from provider/path endpoints to transport URLs | Durable identity, credentials, planning, or mutation |
-| `internal/status` | Cache preparation, remote configuration/fetch, remote HEAD setup, divergence classification, short commit observations | Mutation decisions or pushes |
+| `internal/status` | Cache preparation, remote configuration/fetch, remote HEAD setup, divergence classification, and canonical/mirror commit evidence | Mutation decisions or pushes |
 | `internal/plan` | Deterministic reconciliation decisions and action preconditions | Git reads, Git writes, or durable serialization policy |
 | `internal/planartifact` | Versioned durable representation, strict parsing, validation, and conversion of reconciliation plans | Repository observation or execution policy |
 | `internal/executor` | Complete plan validation, stale-ref preflight, ordered mutation, and action outcomes | Recomputing status or reconciliation decisions |
@@ -80,7 +80,7 @@ Resolved URLs are not durable identity and must not be serialized into plans or 
 
 ## Observation and planning
 
-`status.Check` prepares the local bare cache, fetches canonical and mirror remotes, sets their remote HEAD references, and classifies the default-branch relationship.
+`status.Check` prepares the local bare cache, fetches canonical and mirror remotes, sets their remote HEAD references, classifies the default-branch relationship, and resolves the canonical and mirror commits used by human and JSON output. Classification and commit evidence are one result boundary: failure to resolve either commit fails the repository check rather than returning a successful result with blank evidence.
 
 Apply then resolves the branch names and full source/target OIDs required to build stale-safe actions. `plan.Reconcile` produces zero or one `PUSH_BRANCH` action for the current single-mirror implementation.
 
@@ -153,7 +153,6 @@ The highest-priority gaps are:
 2. preserve detailed executor outcomes through public apply results;
 3. integrate pre/post execution journaling with fail-closed write behavior;
 4. define and enforce explicit branch/ref policy;
-5. remove silently ignored observation evidence failures;
-6. expand to multi-mirror status before multi-mirror apply.
+5. expand to multi-mirror status before multi-mirror apply.
 
 Managed artifacts, advanced document routing, repository assessments, and Anthesis integration remain deferred product tracks. They must reuse the plan, policy, execution, and evidence boundaries rather than introduce independent mutation paths.
