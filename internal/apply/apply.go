@@ -53,8 +53,10 @@ func IsUnsafe(result status.Result) bool {
 
 // BuildArtifact is the single observation-to-plan boundary used by plan,
 // dry-run, and convenience apply. Planning describes required destructive
-// intent; execution separately authorizes it.
-func BuildArtifact(repo config.Repo, st status.Result, git Git) (planartifact.Artifact, error) {
+// intent; execution separately authorizes it. The allowForce argument is
+// retained at this internal call boundary for compatibility but does not alter
+// the generated artifact.
+func BuildArtifact(repo config.Repo, st status.Result, git Git, _ bool) (planartifact.Artifact, error) {
 	planned, err := buildPlan(repo, st, git)
 	if err != nil {
 		return planartifact.Artifact{}, err
@@ -70,7 +72,7 @@ func BuildArtifact(repo config.Repo, st status.Result, git Git) (planartifact.Ar
 // same artifact boundary exposed to operators rather than executing an
 // in-memory plan through a separate path.
 func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun bool) (Result, error) {
-	artifact, err := BuildArtifact(repo, st, git)
+	artifact, err := BuildArtifact(repo, st, git, force)
 	if err != nil {
 		return newResult(repo, st, dryRun), err
 	}
