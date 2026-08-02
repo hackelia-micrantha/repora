@@ -6,15 +6,13 @@ import (
 	"os"
 	"testing"
 
-	"repoctl/internal/config"
 	"repoctl/internal/status"
 )
 
 func TestOutputJSONIncludesContractMetadata(t *testing.T) {
 	output := NewOutput(
-		config.Spec{Repos: []config.Repo{testRepo()}},
+		[]ReconciliationPlan{{ID: "payments-api", UID: "repo.org.payments-api", Actions: []PlannedAction{}}},
 		[]status.Result{{State: status.StateEqual}},
-		[]bool{true},
 	)
 	data, err := json.Marshal(output)
 	if err != nil {
@@ -34,9 +32,15 @@ func TestOutputJSONIncludesContractMetadata(t *testing.T) {
 
 func TestOutputJSONMatchesGoldenContract(t *testing.T) {
 	output := NewOutput(
-		config.Spec{Repos: []config.Repo{testRepo()}},
+		[]ReconciliationPlan{{
+			ID:  "payments-api",
+			UID: "repo.org.payments-api",
+			Actions: []PlannedAction{{
+				Type:   ActionPushBranch,
+				Target: Remote{Provider: "github", Name: "mirror", Branch: "main"},
+			}},
+		}},
 		[]status.Result{{State: status.StateBehind, Behind: 3}},
-		[]bool{true},
 	)
 	got, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
