@@ -62,7 +62,7 @@ configuration
 | `internal/planartifact` | Versioned durable representation, strict parsing, validation, and conversion of reconciliation plans | Repository observation or execution policy |
 | `internal/executor` | Complete plan validation, stale-ref preflight, ordered mutation, and action outcomes | Recomputing status or reconciliation decisions |
 | `internal/apply` | Observation-to-plan orchestration, compatibility output projection, artifact handoff, and repository-level result assembly | Independent reconciliation policy |
-| `internal/journal` | Versioned execution evidence and projection from exact plan/executor results | Mutation authority, replay authority, or current apply orchestration |
+| `internal/journal` | Versioned execution evidence, executor-result projection, and append-only local persistence of validated records | Mutation authority, replay authority, or current apply orchestration |
 | `internal/git` | Bounded Git subprocess execution, cache filesystem safety, ref reads, pushes, lease enforcement, timeout/cancellation, and diagnostic redaction | Product policy or repository identity |
 | `cmd/repoctl` | CLI parsing, multi-repository concurrency, output rendering, and process exit semantics | Git mechanics or duplicated planning logic |
 
@@ -107,15 +107,16 @@ Mutation stops after the first runtime failure. Earlier successes remain `APPLIE
 
 ## Journal boundary
 
-The merged journal implementation defines:
+The journal implementation defines:
 
 - a versioned `repora.io/execution-record` model;
 - an exact SHA-256 reference to the serialized plan artifact;
 - repository identity and ordered before/desired/after action evidence;
 - `PLANNED`, `APPLIED`, `FAILED`, `SKIPPED`, and `STALE` outcomes;
-- validated projection from executor results with diagnostic redaction.
+- validated projection from executor results with diagnostic redaction;
+- append-only filesystem persistence for an already validated record beneath a caller-owned root.
 
-Apply does not yet require, persist, or expose execution records. A standalone filesystem writer may land before integration, but writer availability alone does not make apply audited. A journal record is evidence of intent and outcome, never authority to replay a stale operation.
+The writer provides a safe relative reference, restrictive permissions, no-replace publication, symlink-component rejection, and explicit post-publication error semantics. Apply does not yet require, persist, or expose execution records, so writer availability alone does not make apply audited. A journal record is evidence of intent and outcome, never authority to replay a stale operation.
 
 ## Concurrency model
 
