@@ -18,6 +18,7 @@ func TestWriterPersistsIntentAndResultAppendOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := intent
+	result.Actions = append([]Action(nil), intent.Actions...)
 	result.Phase = PhaseResult
 	result.Actions[0].Outcome = OutcomeValidated
 
