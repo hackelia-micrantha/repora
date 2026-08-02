@@ -307,18 +307,19 @@ func runPlan(spec config.Spec, summary checkSummary, jsonFlag bool, artifactFlag
 		fmt.Fprintf(os.Stderr, "repoctl: validate generated plan artifact: %v\n", err)
 		return 1
 	}
+	planOutput := plan.NewOutput(plans, plannedResults)
 	if artifactFlag {
 		if err := json.NewEncoder(os.Stdout).Encode(artifact); err != nil {
 			fmt.Fprintf(os.Stderr, "repoctl: write plan artifact: %v\n", err)
 			return 1
 		}
 	} else if jsonFlag {
-		if err := json.NewEncoder(os.Stdout).Encode(plan.NewOutput(plans, plannedResults)); err != nil {
+		if err := json.NewEncoder(os.Stdout).Encode(planOutput); err != nil {
 			fmt.Fprintf(os.Stderr, "repoctl: write json: %v\n", err)
 			return 1
 		}
 	} else {
-		printPlanArtifact(artifact)
+		printPlan(planOutput)
 	}
 
 	if buildErr != nil {
@@ -555,22 +556,15 @@ func printHuman(result status.Result) {
 	}
 }
 
-func printPlanArtifact(artifact planartifact.Artifact) {
-	for _, repo := range artifact.Repositories {
-		fmt.Println(repo.ID)
-		if len(repo.Actions) == 0 {
+func printPlan(output plan.Output) {
+	for _, repoPlan := range output.Plan {
+		fmt.Println(repoPlan.ID)
+		if len(repoPlan.Actions) == 0 {
 			fmt.Println("  no changes")
 			continue
 		}
-		for _, action := range repo.Actions {
-			force := ""
-			if action.Force {
-				force = " (force)"
-			}
-			fmt.Printf("  %s %s:%s/%s -> %s:%s/%s%s\n", action.Type, action.Source.Provider, action.Source.Remote, action.Source.Branch, action.Target.Provider, action.Target.Remote, action.Target.Branch, force)
-			fmt.Printf("    observed: %s\n", action.Diff.Observed)
-			fmt.Printf("    desired:  %s\n", action.Diff.Desired)
-			fmt.Printf("    reason:   %s\n", action.Reason)
+		for _, action := range repoPlan.Actions {
+			fmt.Printf("  push mirror %s: %d commits\n", action.Target, action.Behind)
 		}
 	}
 }
