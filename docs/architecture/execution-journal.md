@@ -1,16 +1,34 @@
 # Execution journal
 
-Repora execution journals provide durable, local-first evidence for planned and attempted repository mutations.
+Status: Current
 
-## Current implementation boundary
+Repora execution journals provide durable, local-first evidence for dry-run validation and repository mutation.
 
-The implementation defines a versioned internal record model, an in-memory projection from executor results, and an append-only local filesystem writer. Apply and CLI flows do not require or expose journal records yet.
+## Apply integration
+
+CLI `apply` and `sync` operations are journaled by default. The journal root is anchored beside the loaded configuration file:
+
+```text
+<config-directory>/.repora/journal/
+```
+
+One command-level execution ID is shared across all selected repositories. Each repository writes two immutable entries:
+
+```text
+<uid>--<execution-id>--intent.json
+<uid>--<execution-id>--result.json
+```
+
+Human and `repora.apply` version 2 JSON output expose safe relative references to the entries.
+
+## Version 2 record model
 
 ```text
 ExecutionRecord {
-  version: 1
+  version: 2
   kind: repora.io/execution-record
   execution_id: symbolic identifier
+  phase: INTENT | RESULT
   mode: PLAN | DRY_RUN | APPLY
   plan:
     version: plan artifact version
@@ -29,90 +47,113 @@ ActionRecord {
   target: symbolic provider, remote, and branch
   before: observed target OID
   desired: planned source OID
-  after: resulting OID reported for a successful mutation
+  after: resulting OID for an applied mutation
   force: bool
-  outcome: PLANNED | APPLIED | FAILED | SKIPPED | STALE
+  outcome: PLANNED | VALIDATED | APPLIED | FAILED | SKIPPED | STALE
   error: optional sanitized diagnostic
 }
 ```
 
-## Executor projection
+Version 1 records remain parseable and retain the historical filename `<uid>--<execution-id>.json`. New writes use version 2.
 
-The journal adapter accepts the exact plan artifact and the executor result produced from that artifact. It fails closed when action counts, indexes, or action values do not match the referenced plan.
+## Transaction boundary
 
-Executor evidence maps as follows:
+The audited execution sequence is:
 
-- successful mutations become `APPLIED` and retain the resulting OID;
-- stale preflight failures become `STALE`;
-- mutation and validation failures become `FAILED`;
-- actions not attempted after a failure remain `SKIPPED`;
-- unsafe diagnostic strings are replaced with a stable redacted diagnostic.
+```text
+configuration and artifact validation
+  -> current-state and default-branch validation
+  -> persist INTENT
+  -> executor stale-ref preflight
+  -> mutate when not dry-run
+  -> persist RESULT
+  -> render references and return status
+```
 
-Partial execution is preserved in plan order. An earlier successful action therefore remains `APPLIED` when a later action fails.
+Required behavior:
+
+- intent persistence occurs before executor preflight can reach mutation;
+- intent-write failure is fail-closed and performs no mutation;
+- dry-run writes a result containing `VALIDATED`, `STALE`, `FAILED`, or `SKIPPED` outcomes;
+- real apply writes `APPLIED`, `STALE`, `FAILED`, or `SKIPPED` outcomes;
+- runtime failure still attempts final result persistence;
+- result-write failure returns nonzero even when a mutation completed;
+- an intent record is evidence of authorized intent, not evidence that mutation occurred;
+- a missing result entry means the final outcome must be reconciled against current Git state.
+
+## Plan correlation
+
+Every entry references the exact serialized reconciliation artifact through a SHA-256 digest. Intent and result entries for one repository share:
+
+- execution ID;
+- mode;
+- plan digest;
+- durable repository UID;
+- deterministic action ordering and before/desired values.
+
+Result projection fails closed when executor actions do not exactly match the referenced plan.
 
 ## Local persistence
 
-`journal.Writer` accepts only a validated `Record` and writes one JSON file beneath:
-
-```text
-<root>/.repora/journal/<repository-uid>--<execution-id>.json
-```
-
-The returned reference is relative to the supplied root and always uses slash separators. Absolute paths are not exposed by the writer.
+`journal.Writer` accepts only a validated record and writes beneath the caller-owned existing root.
 
 Persistence properties:
 
-- the caller-owned root must already exist and be a directory;
 - `.repora` and `journal` are created one component at a time with mode `0700`;
-- existing symlink or non-directory components are rejected before any descendant is created;
+- existing symlink or non-directory components are rejected before descendant creation;
 - journal files use mode `0600`;
-- records are written and synced through a temporary file;
-- publication uses an atomic no-replace link, so an existing execution record is never overwritten;
+- content is written and synced through a temporary file;
+- publication uses an atomic no-replace link;
+- an existing phase entry is never overwritten;
 - the journal directory is synced after publication;
-- invalid records are rejected before directories are created;
-- the resolved journal directory must remain beneath the resolved caller-owned root.
+- returned references are relative and slash-separated;
+- invalid records are rejected before directories are created.
 
-The caller owns selection and lifecycle of the root directory. Retention remains operator-managed.
+Before the no-replace link succeeds, an error means no final record was published by that call. After publication, the final reference is returned even if temporary-file cleanup or directory synchronization fails; callers treat this as uncertain durability rather than absence.
 
-### Publication outcomes
+## Failure evidence
 
-Before the no-replace link succeeds, an error means no final journal record was published by that call.
+Executor evidence maps as follows:
 
-After the link succeeds, the final reference is returned even if temporary-file cleanup or directory synchronization fails. The accompanying error explicitly states that publication occurred. Callers must not blindly retry with a new execution identifier; they should inspect the returned reference and treat directory-sync failure as uncertain durability rather than absence.
+- successful dry-run preflight becomes `VALIDATED`;
+- successful mutation becomes `APPLIED` with the resulting OID;
+- stale preflight becomes `STALE`;
+- mutation or validation failure becomes `FAILED`;
+- unattempted later actions remain `SKIPPED`;
+- unsafe diagnostics are replaced with a stable redacted message.
 
-A collision returns both `ErrRecordExists` and the existing safe reference. The writer never overwrites or invents a replacement identifier.
+Partial execution remains ordered. An earlier successful action therefore remains `APPLIED` when a later action fails.
 
-## Determinism
+## Security boundary
 
-The plan reference is a SHA-256 digest of the exact validated plan artifact serialization. Repository and action ordering are preserved. The record model deliberately excludes timestamps and generated filesystem paths so identical inputs and execution identifiers serialize identically in tests.
+Records exclude:
 
-Filesystem uniqueness is provided by the validated repository UID and execution ID.
+- runtime transport URLs;
+- credentials, tokens, authorization headers, and secret environment values;
+- raw command lines;
+- absolute cache or checkout paths.
 
-## Safety and validation
+Validation rejects URL-like, credential-like, authorization-bearing, and absolute-path-like diagnostics.
 
-Records fail validation when they contain:
+Component-by-component path checks protect against already-present `.repora` or `journal` symlinks. They do not claim a hostile multi-process filesystem sandbox; stronger adversarial filesystem isolation would require platform-specific descriptor-relative operations.
 
-- unsupported versions, kinds, modes, action types, or outcomes;
-- invalid repository or execution identifiers;
-- malformed plan digests;
-- missing or malformed Git object IDs;
-- non-sequential action indexes;
-- applied actions without a resulting OID;
-- URL-like, credential-like, authorization-bearing, or absolute-path-like diagnostic data.
+## Retention and recovery
 
-Plan artifacts are validated before journal records are constructed. Journal parsing also rejects unknown JSON fields and trailing data.
+Retention is operator-managed. Repora does not automatically delete, compact, upload, sign, or index journal entries.
 
-The component-by-component path checks prevent an already-present `.repora` or `journal` symlink from redirecting directory creation outside the root. They do not claim a hostile multi-process filesystem sandbox; a stronger adversarial boundary would require platform-specific descriptor-relative operations.
+Safe recovery after a failed or incomplete execution is:
 
-## Deferred integration
+1. inspect the intent and result references returned by the CLI;
+2. compare current repository state with the recorded before/desired values;
+3. rerun status and produce a new exact artifact;
+4. review and apply the new artifact.
 
-Follow-up slices own:
+Journal records are evidence, never replay authority. Do not edit expected OIDs or replay an old artifact after current state has changed.
 
-1. fail-closed apply integration when a required journal write fails;
-2. persistence of both pre-mutation intent and final execution outcome;
-3. independent post-push ref verification where required by policy;
-4. CLI output of safe journal references;
-5. public JSON schema coordination under issue #3;
-6. retention, cleanup, and runtime timestamp policy.
+## Deferred capabilities
 
-Recovery continues to require re-planning from current repository state. A journal record is evidence of intent and outcome, not authority to replay stale mutations.
+- retention automation and indexing;
+- cryptographic signing or provenance envelopes;
+- remote journal storage;
+- approval metadata;
+- independent post-push provider verification where policy requires more than local remote-tracking evidence.
