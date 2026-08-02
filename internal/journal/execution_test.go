@@ -1,6 +1,7 @@
 package journal
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -8,6 +9,37 @@ import (
 	"repoctl/internal/plan"
 	"repoctl/internal/planartifact"
 )
+
+func TestFromPreflightProjectsValidatedResult(t *testing.T) {
+	artifact := testArtifact()
+	planned := testPlan().Actions[0]
+	record, err := FromPreflight("run-dry", artifact, executor.Result{Actions: []executor.ActionResult{{
+		Index:   0,
+		Action:  planned,
+		Outcome: executor.OutcomeSkipped,
+	}}}, nil)
+	if err != nil {
+		t.Fatalf("FromPreflight returned error: %v", err)
+	}
+	if record.Phase != PhaseResult || record.Mode != ModeDryRun || record.Actions[0].Outcome != OutcomeValidated {
+		t.Fatalf("record = %#v, want validated dry-run result", record)
+	}
+}
+
+func TestFromPreflightProjectsStaleAndSkippedResults(t *testing.T) {
+	planned := twoActionPlan()
+	artifact := planartifact.FromPlans(planned)
+	record, err := FromPreflight("run-stale", artifact, executor.Result{Actions: []executor.ActionResult{
+		{Index: 0, Action: planned.Actions[0], Outcome: executor.OutcomeFailed, Stale: true, Error: "stale action 0: target changed"},
+		{Index: 1, Action: planned.Actions[1], Outcome: executor.OutcomeSkipped},
+	}}, errors.New("stale action"))
+	if err != nil {
+		t.Fatalf("FromPreflight returned error: %v", err)
+	}
+	if record.Actions[0].Outcome != OutcomeStale || record.Actions[1].Outcome != OutcomeSkipped {
+		t.Fatalf("outcomes = %q, %q, want STALE, SKIPPED", record.Actions[0].Outcome, record.Actions[1].Outcome)
+	}
+}
 
 func TestFromExecutionProjectsAppliedResult(t *testing.T) {
 	artifact := testArtifact()
@@ -21,8 +53,8 @@ func TestFromExecutionProjectsAppliedResult(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FromExecution returned error: %v", err)
 	}
-	if record.Mode != ModeApply || record.Actions[0].Outcome != OutcomeApplied || record.Actions[0].After != testSourceOID {
-		t.Fatalf("record = %#v, want applied evidence with after OID", record)
+	if record.Phase != PhaseResult || record.Mode != ModeApply || record.Actions[0].Outcome != OutcomeApplied || record.Actions[0].After != testSourceOID {
+		t.Fatalf("record = %#v, want applied result evidence with after OID", record)
 	}
 }
 
@@ -75,7 +107,7 @@ func TestFromExecutionRedactsUnsafeDiagnostic(t *testing.T) {
 	}
 }
 
-func TestFromExecutionRejectsIncompleteOrMismatchedEvidence(t *testing.T) {
+func TestResultProjectionRejectsIncompleteOrMismatchedEvidence(t *testing.T) {
 	planned := testPlan().Actions[0]
 	tests := []struct {
 		name   string
