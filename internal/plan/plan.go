@@ -17,8 +17,9 @@ const (
 	OutputVersion = 1
 )
 
-// Output is the existing user-facing plan command model. Its serialized shape
-// is intentionally kept separate from the in-memory reconciliation model below.
+// Output is the stabilized v1 CLI compatibility view. It is projected from
+// exact reconciliation plans and must never make independent mutation
+// decisions.
 type Output struct {
 	Kind    string     `json:"kind"`
 	Version int        `json:"version"`
@@ -38,25 +39,26 @@ type Action struct {
 	Destructive bool   `json:"destructive"`
 }
 
-func NewOutput(spec config.Spec, results []status.Result, ok []bool) Output {
-	out := Output{Kind: OutputKind, Version: OutputVersion, Plan: make([]RepoPlan, 0, len(spec.Repos))}
-	for i, repo := range spec.Repos {
-		if !ok[i] {
-			continue
-		}
-		out.Plan = append(out.Plan, NewRepoPlan(repo, results[i]))
+func NewOutput(plans []ReconciliationPlan, results []status.Result) Output {
+	count := len(plans)
+	if len(results) < count {
+		count = len(results)
+	}
+	out := Output{Kind: OutputKind, Version: OutputVersion, Plan: make([]RepoPlan, 0, count)}
+	for i := 0; i < count; i++ {
+		out.Plan = append(out.Plan, NewRepoPlan(plans[i], results[i]))
 	}
 	return out
 }
 
-func NewRepoPlan(repo config.Repo, result status.Result) RepoPlan {
-	repoPlan := RepoPlan{ID: repo.ID, UID: repo.DurableID(), Actions: []Action{}}
-	if result.State == status.StateBehind {
+func NewRepoPlan(planned ReconciliationPlan, result status.Result) RepoPlan {
+	repoPlan := RepoPlan{ID: planned.ID, UID: planned.UID, Actions: []Action{}}
+	for _, action := range planned.Actions {
 		repoPlan.Actions = append(repoPlan.Actions, Action{
 			Type:        "PUSH_MIRROR",
-			Target:      repo.Mirrors[0].Provider,
+			Target:      action.Target.Provider,
 			Behind:      result.Behind,
-			Destructive: false,
+			Destructive: action.Force,
 		})
 	}
 	return repoPlan
