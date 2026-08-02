@@ -57,37 +57,43 @@ func (r Result) AllApplied() bool {
 	return true
 }
 
-// Execute validates and consumes exactly one repository plan from a versioned
-// artifact. Invalid artifacts fail closed before reference reads or mutation.
-func Execute(repoPath string, artifact planartifact.Artifact, git Git) (Result, error) {
-	plans, err := artifact.Plans()
+// Preflight validates an exact artifact and verifies every expected source and
+// target reference without mutating a remote.
+func Preflight(repoPath string, artifact planartifact.Artifact, git Git) (Result, error) {
+	planned, err := onePlan(artifact)
 	if err != nil {
-		return Result{}, fmt.Errorf("validate plan artifact: %w", err)
+		return Result{}, err
 	}
-	if len(plans) != 1 {
-		return Result{}, fmt.Errorf("plan artifact requires exactly one repository, got %d", len(plans))
-	}
-	return executePlan(repoPath, plans[0], git)
+	return preflightPlan(repoPath, planned, git)
 }
 
-// executePlan applies every action in planned order. It validates the complete
-// plan and verifies every expected source and target reference before invoking a
-// Git mutation. Malformed or stale plans therefore fail closed without mutation.
-func executePlan(repoPath string, planned plan.ReconciliationPlan, git Git) (Result, error) {
-	result := Result{Actions: make([]ActionResult, len(planned.Actions))}
-	for i, action := range planned.Actions {
-		result.Actions[i] = ActionResult{Index: i, Action: action, Outcome: OutcomeSkipped}
+// Execute validates and consumes exactly one repository plan from a versioned
+// artifact. Invalid or stale artifacts fail closed before mutation.
+func Execute(repoPath string, artifact planartifact.Artifact, git Git) (Result, error) {
+	planned, err := onePlan(artifact)
+	if err != nil {
+		return Result{}, err
 	}
+	return executePlan(repoPath, planned, git)
+}
 
-	for i, action := range planned.Actions {
-		if err := validateAction(action); err != nil {
-			return failPreflight(result, i, false, fmt.Errorf("validate action %d: %w", i, err))
-		}
+func onePlan(artifact planartifact.Artifact) (plan.ReconciliationPlan, error) {
+	plans, err := artifact.Plans()
+	if err != nil {
+		return plan.ReconciliationPlan{}, fmt.Errorf("validate plan artifact: %w", err)
 	}
-	for i, action := range planned.Actions {
-		if err := validateCurrentRefs(repoPath, action, git); err != nil {
-			return failPreflight(result, i, true, fmt.Errorf("stale action %d: %w", i, err))
-		}
+	if len(plans) != 1 {
+		return plan.ReconciliationPlan{}, fmt.Errorf("plan artifact requires exactly one repository, got %d", len(plans))
+	}
+	return plans[0], nil
+}
+
+// executePlan remains the plan-level execution boundary used by focused tests.
+// Artifact callers reach it only after strict artifact parsing and conversion.
+func executePlan(repoPath string, planned plan.ReconciliationPlan, git Git) (Result, error) {
+	result, err := preflightPlan(repoPath, planned, git)
+	if err != nil {
+		return result, err
 	}
 
 	for i, action := range planned.Actions {
@@ -105,6 +111,25 @@ func executePlan(repoPath string, planned plan.ReconciliationPlan, git Git) (Res
 		}
 		result.Actions[i].Outcome = OutcomeApplied
 		result.Actions[i].AfterOID = action.ExpectedSource
+	}
+	return result, nil
+}
+
+func preflightPlan(repoPath string, planned plan.ReconciliationPlan, git Git) (Result, error) {
+	result := Result{Actions: make([]ActionResult, len(planned.Actions))}
+	for i, action := range planned.Actions {
+		result.Actions[i] = ActionResult{Index: i, Action: action, Outcome: OutcomeSkipped}
+	}
+
+	for i, action := range planned.Actions {
+		if err := validateAction(action); err != nil {
+			return failPreflight(result, i, false, fmt.Errorf("validate action %d: %w", i, err))
+		}
+	}
+	for i, action := range planned.Actions {
+		if err := validateCurrentRefs(repoPath, action, git); err != nil {
+			return failPreflight(result, i, true, fmt.Errorf("stale action %d: %w", i, err))
+		}
 	}
 	return result, nil
 }

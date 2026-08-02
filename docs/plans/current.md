@@ -17,7 +17,7 @@ A v0.1-quality controller must:
 - observe one canonical and one mirror default branch;
 - classify equal, behind, ahead, and diverged state;
 - produce one deterministic executable plan artifact;
-- render the exact executable plan for review;
+- export and execute that exact artifact;
 - reject invalid or stale plans before mutation;
 - enforce explicit destructive-change policy;
 - execute with lease protection;
@@ -32,10 +32,10 @@ A v0.1-quality controller must:
 | Durable `uid` identity | Complete | Cache and durable artifacts use logical identity rather than location. |
 | Provider/path topology | Complete for built-in GitHub/GitLab HTTPS | Configurable bases and transport selection remain outside the current slice. |
 | Status classification | Complete for one mirror/default branch | Classification and canonical/mirror commit evidence fail together when required refs cannot be resolved. |
-| Planner/executor separation | Complete | Dry-run and apply share the internal observation-to-plan path. |
+| Planner/executor separation | Complete | Planning is deterministic and the executor does not recompute policy. |
+| Exact executable plan artifact | Complete for current scope | `plan --artifact` exports the exact artifact; `apply --plan-file` consumes it without rebuilding intent. |
 | Stale-plan validation | Complete | Complete action preflight occurs before action zero. |
-| Public CLI JSON envelopes | Complete for status, plan, and apply | Versioned schemas and representative golden contracts exist. |
-| Executable plan artifact | Partially complete | Schema, validation, conversion, and executor consumption exist; the public `plan` command does not yet emit the exact artifact. |
+| Public CLI JSON envelopes | Complete for status, compatibility plan, and apply | Versioned schemas and representative golden contracts exist. |
 | Execution results | Partially complete | Executor preserves detailed outcomes; public apply results still collapse them. |
 | Apply exit semantics | Complete | Repository execution failures preserve output and return non-zero. |
 | Journal persistence substrate | Partially complete | Versioned records, executor projection, and a safe append-only writer exist; apply integration and required pre/post persistence do not. |
@@ -45,26 +45,7 @@ A v0.1-quality controller must:
 
 ## Immediate sequence
 
-### 1. Establish documentation authority
-
-Exit condition:
-
-- one index identifies current, proposed, and historical sources;
-- one current-system document matches merged source;
-- failure and recovery semantics are explicit;
-- one active plan replaces duplicate roadmap/checklist interpretation;
-- ADR lifecycle and supersession rules are documented.
-
-### 2. Make review and execution share one artifact
-
-Exit condition:
-
-- `repoctl plan` renders or exports the exact validated reconciliation artifact;
-- apply accepts that artifact boundary without rebuilding intent;
-- public preview and executable action types no longer represent independent decisions;
-- forced actions and OID preconditions are reviewable without exposing secrets.
-
-### 3. Integrate execution evidence vertically
+### 1. Integrate execution evidence vertically
 
 Exit condition:
 
@@ -74,7 +55,7 @@ Exit condition:
 - human and JSON output expose a safe relative journal reference;
 - retention and filesystem ownership are documented.
 
-### 4. Define explicit ref policy
+### 2. Define explicit ref policy
 
 Exit condition:
 
@@ -84,7 +65,7 @@ Exit condition:
 - planner explains allowed, skipped, and rejected refs;
 - executor rejects policy-invalid artifacts defensively.
 
-### 5. Expose detailed execution outcomes
+### 3. Expose detailed execution outcomes
 
 Exit condition:
 
@@ -93,7 +74,7 @@ Exit condition:
 - partial success and retry guidance are machine-readable;
 - compatibility changes use an explicit JSON contract version.
 
-### 6. Expand read-side topology
+### 4. Expand read-side topology
 
 Exit condition:
 
@@ -102,7 +83,7 @@ Exit condition:
 - aggregate status semantics are deterministic;
 - stable mirror targeting identity is defined before mutation expansion.
 
-### 7. Add multi-mirror apply
+### 5. Add multi-mirror apply
 
 Exit condition:
 
@@ -111,7 +92,7 @@ Exit condition:
 - no cross-remote atomicity is implied;
 - partial failure is journaled and retry-safe through re-planning.
 
-### 8. Package v0.1
+### 6. Package v0.1
 
 Exit condition:
 

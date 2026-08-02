@@ -8,9 +8,9 @@ Repora controls durable Git state. Failures must therefore be explicit in human 
 
 | Code | Meaning |
 | --- | --- |
-| `0` | The requested operation completed successfully. For dry-run, planning completed without mutation. |
-| `1` | Configuration, observation, planning, execution, serialization, or other operational failure. |
-| `2` | Repository state requires explicit destructive authorization, such as an ahead or diverged mirror without an accepted force path. |
+| `0` | The requested operation completed successfully. For dry-run, validation and stale-ref preflight completed without mutation. |
+| `1` | Configuration, observation, planning, artifact validation, stale input, execution, serialization, or other operational failure. |
+| `2` | A real mutation requires explicit destructive authorization, such as an ahead or diverged mirror without `--force`. |
 
 A command must not return `0` merely because it successfully serialized or printed a failed result.
 
@@ -20,10 +20,10 @@ A command must not return `0` merely because it successfully serialized or print
 load configuration
   -> observe repository state
   -> classify relationship
-  -> build plan
-  -> validate executable artifact
+  -> build exact plan artifact
+  -> validate configuration, state, scope, and authorization
   -> stale-ref preflight
-  -> mutate
+  -> mutate when not dry-run
   -> aggregate results
   -> render output
   -> return exit status
@@ -46,47 +46,59 @@ Credential-bearing HTTP URLs, unsupported providers, unsupported topology cardin
 
 ## Observation failures
 
-Observation includes cache preparation, remote configuration, fetch, remote HEAD setup, and divergence classification.
+Observation includes cache preparation, remote configuration, fetch, remote HEAD setup, divergence classification, and commit evidence resolution.
 
 Without `--continue-on-error`, observation still completes through the bounded worker set, but normal command output is suppressed after any repository observation fails and the command returns `1`.
 
 With `--continue-on-error`:
 
-- independently observed repositories remain available for output;
+- independently observed repositories remain available for status or compatibility plan output;
 - failed repository observations are omitted from normal result collections;
-- status and plan return non-zero;
-- apply refuses to proceed unless the existing force path explicitly permits processing only successfully observed repositories.
+- status and compatibility plan return non-zero;
+- an exact executable artifact is not emitted when selected planning is incomplete;
+- exact artifact apply refuses partial observation.
 
-Observation failure and destructive-state refusal are different conditions. Current status/plan aggregation may return `2` when both occur because the unsafe-state code has precedence. This should be revisited when the CLI error taxonomy is stabilized.
+Observation failure and destructive-state refusal are different conditions. Current status/plan aggregation may return `2` when both occur because the unsafe-state code has precedence. This can be revisited when the broader CLI error taxonomy is stabilized.
 
 ## Planning failures
 
-Planning must be pure with respect to remotes.
+Planning must be pure with respect to remotes and must describe destructive intent independently of mutation authorization.
 
 A planning failure:
 
 - performs no mutation;
 - returns the repository identity and available compatibility result context where possible;
-- returns exit code `1` from apply;
+- suppresses exact artifact export when any selected repository plan is incomplete;
+- returns exit code `1`;
 - requires correction or a fresh observation before retry.
 
-Planning must fail closed for unsupported state, ambiguous topology, missing branches, missing OIDs, or force-required state without authorization.
+Planning fails closed for unsupported state, ambiguous topology, missing default branches, missing OIDs, or invalid artifact construction. Ahead and diverged state produce an explicit forced action; `--force` is checked only when real mutation is requested.
 
 ## Artifact validation failures
 
 The executor accepts only a validated versioned reconciliation artifact.
 
-Invalid version, kind, repository cardinality, action type, symbolic ref, OID, or sensitive serialized value fails before Git reference reads or mutation.
+Invalid version, kind, repository identity, action type, symbolic ref, OID, sensitive serialized value, or repository cardinality fails before mutation.
 
-Artifact validation failure returns exit code `1`. The artifact must not be repaired or partially interpreted by the executor.
+Imported v1 artifacts are additionally checked against current configuration and observation:
+
+- durable `uid` must identify a configured repository;
+- canonical and mirror provider/remote ownership must match configuration;
+- each repository may contain at most one action;
+- action branches must match current canonical and mirror default branches;
+- current `EQUAL` state requires no action;
+- current `BEHIND` state requires one non-forced action;
+- current `AHEAD` or `DIVERGED` state requires one forced action.
+
+A mismatch is treated as stale or policy-invalid input and returns exit code `1`. The artifact must not be repaired or partially interpreted by the executor.
 
 ## Stale-plan failures
 
-Immediately before mutation, the executor re-resolves every planned source and target ref.
+Dry-run and real apply re-resolve every planned source and target ref after current repository observation.
 
 If any current OID differs from its planned value, or any required ref cannot be resolved:
 
-- no action in the execution is attempted;
+- no action in the repository execution is attempted;
 - the offending action is marked failed and stale internally;
 - all other actions remain skipped;
 - apply returns exit code `1`;
@@ -110,7 +122,7 @@ There is no rollback or cross-action transaction. Recovery starts by re-observin
 
 ## Multi-repository aggregation
 
-Configured repositories execute independently and may complete out of order. Aggregate output is restored to configuration order.
+Configured repositories execute independently and may complete out of order. Aggregate output is restored to configuration or artifact order.
 
 When one repository execution fails:
 
@@ -118,39 +130,43 @@ When one repository execution fails:
 - the failed repository result includes its error;
 - JSON output remains a complete valid document;
 - human output shows the repository error even when no action was constructed;
-- the aggregate diagnostic selects the first failed repository in configuration order;
+- the aggregate diagnostic selects the first failed repository in deterministic order;
 - the process returns exit code `1`.
 
 This preserves diagnostic evidence without allowing automation to interpret partial failure as success.
 
 ## Dry-run
 
-Dry-run follows the same observation and planning path as real apply but performs no executor mutation.
+Dry-run uses the same exact artifact boundary as real apply and performs no mutation.
 
-Dry-run may still fail because configuration, observation, branch/OID resolution, topology, or planning is invalid.
+Convenience dry-run observes current state, builds the artifact, validates configuration and current-state intent, validates current default-branch scope, and performs source/target stale-ref preflight.
 
-Current behavior has one inconsistency: non-dry apply rejects ahead or diverged state before planning and returns `2`, while dry-run reaches the planner and currently returns `1` when force authorization is absent. The CLI error taxonomy should normalize this without weakening the planner's fail-closed behavior.
+Imported-artifact dry-run performs the same checks without rebuilding intent. A forced action is visible and preflighted without requiring `--force`, because no mutation is authorized or attempted.
 
-Dry-run output is preview evidence, not proof that later apply remains safe. Real apply repeats stale-ref validation.
+Dry-run may still fail because configuration, observation, artifact structure, current state, default-branch scope, or OID preconditions are invalid. A successful dry-run is current validation evidence, not a durable guarantee; real apply repeats current observation and stale-ref preflight.
 
 ## Force behavior
 
-`--force` currently authorizes overwrite planning for ahead or diverged default-branch mirrors. The actual mutation uses force-with-lease.
+`--force` authorizes real mutation for an exact action already marked `force: true`. It does not cause the planner to invent or hide destructive intent.
+
+Actual destructive mutation uses force-with-lease against the artifact's observed target OID.
 
 Force does not bypass:
 
 - configuration validation;
 - artifact validation;
+- current-state/action consistency;
+- default-branch scope validation;
 - source or target stale checks;
 - lease validation;
 - Git execution failures;
 - process failure status.
 
-The force path is transitional until explicit branch/ref policy exists.
+The force flag remains a transitional authorization mechanism until explicit branch/ref policy exists.
 
 ## Journal failures
 
-Merged `main` can construct journal records in memory but does not yet require or persist them during apply.
+The journal package can construct and persist validated records, but apply does not yet require or expose pre/post execution records.
 
 When persistence becomes part of apply, the required behavior is:
 
@@ -174,17 +190,20 @@ Safe retry follows this sequence:
 
 1. inspect the returned repository and action results;
 2. rerun status against current remotes;
-3. produce a new plan from current observations;
+3. produce a new exact artifact from current observations;
 4. review destructive or policy-relevant changes again;
-5. apply the new plan.
+5. apply the new artifact.
 
-Do not retry by replaying an old in-memory plan, editing expected OIDs, or weakening lease/stale checks.
+Do not retry by editing expected OIDs, weakening force/lease/stale checks, or replaying an artifact after validation reports drift.
 
 ## Test obligations
 
 Changes to reconciliation must test the relevant failure boundary:
 
 - invalid input causes zero Git operations;
+- current state and artifact intent must agree;
+- non-default or excess actions fail before stale-ref reads;
+- dry-run performs stale-ref preflight without mutation;
 - stale later actions prevent action zero from mutating;
 - partial runtime failure preserves applied/failed/skipped order;
 - failed repository execution produces non-zero process status;

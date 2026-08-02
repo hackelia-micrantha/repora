@@ -13,8 +13,8 @@ Usage:
 
 Commands:
   status   inspect canonical and mirror default-branch state
-  plan     show planned mirror updates
-  apply    apply planned default-branch updates
+  plan     show planned mirror updates or export an executable artifact
+  apply    apply current observations or an exact plan artifact
   sync     alias for apply
   help     show this help
 
@@ -22,7 +22,11 @@ Options:
   -f string
         path to SCHEMA-0001 YAML config (default "repora.yaml")
   --json
-        print JSON
+        print stabilized command JSON
+  --artifact
+        with plan, print the exact executable plan artifact as JSON
+  --plan-file string
+        with apply or sync, execute the exact artifact from this file
   --parallel int
         maximum concurrent repository operations (default 5)
   --continue-on-error
