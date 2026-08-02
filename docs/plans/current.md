@@ -31,7 +31,7 @@ A v0.1-quality controller must:
 | --- | --- | --- |
 | Durable `uid` identity | Complete | Cache and durable artifacts use logical identity rather than location. |
 | Provider/path topology | Complete for built-in GitHub/GitLab HTTPS | Configurable bases and transport selection remain outside the current slice. |
-| Status classification | Complete for one mirror/default branch | Short commit evidence failures are not yet surfaced consistently. |
+| Status classification | Complete for one mirror/default branch | Classification and canonical/mirror commit evidence fail together when required refs cannot be resolved. |
 | Planner/executor separation | Complete | Dry-run and apply share the internal observation-to-plan path. |
 | Stale-plan validation | Complete | Complete action preflight occurs before action zero. |
 | Public CLI JSON envelopes | Complete for status, plan, and apply | Versioned schemas and representative golden contracts exist. |

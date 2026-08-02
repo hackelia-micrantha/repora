@@ -1,6 +1,7 @@
 package status
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -20,8 +21,10 @@ type fakeGitClient struct {
 	setRemoteHeadCalls []struct {
 		repoPath, name string
 	}
-	revListOutput string
-	revParseShort string
+	revParseShortCalls  []string
+	revParseShortErrors map[string]error
+	revListOutput       string
+	revParseShort       string
 }
 
 func (f *fakeGitClient) EnsureMirror(path, canonicalURL string) error {
@@ -57,6 +60,10 @@ func (f *fakeGitClient) RevListLeftRightCount(repoPath, left, right string) (str
 }
 
 func (f *fakeGitClient) RevParseShort(repoPath, rev string) (string, error) {
+	f.revParseShortCalls = append(f.revParseShortCalls, rev)
+	if err := f.revParseShortErrors[rev]; err != nil {
+		return "", err
+	}
 	return f.revParseShort, nil
 }
 
@@ -101,14 +108,7 @@ func TestCheckReturnsEqualState(t *testing.T) {
 		revParseShort: "abc123",
 	}
 
-	repo := config.Repo{
-		ID:        "payments-api",
-		UID:       "repo.org.payments-api",
-		Canonical: config.Endpoint{Provider: "gitlab", URL: "git@gitlab.com:org/payments-api.git"},
-		Mirrors:   []config.Endpoint{{Provider: "github", URL: "git@github.com:org/payments-api.git"}},
-		Mode:      "mirror",
-	}
-
+	repo := testRepo()
 	result, err := Check(repo, git)
 	if err != nil {
 		t.Fatalf("Check returned unexpected error: %v", err)
@@ -136,15 +136,7 @@ func TestCheckReturnsBehindState(t *testing.T) {
 		revParseShort: "abc123",
 	}
 
-	repo := config.Repo{
-		ID:        "payments-api",
-		UID:       "repo.org.payments-api",
-		Canonical: config.Endpoint{Provider: "gitlab", URL: "git@gitlab.com:org/payments-api.git"},
-		Mirrors:   []config.Endpoint{{Provider: "github", URL: "git@github.com:org/payments-api.git"}},
-		Mode:      "mirror",
-	}
-
-	result, err := Check(repo, git)
+	result, err := Check(testRepo(), git)
 	if err != nil {
 		t.Fatalf("Check returned unexpected error: %v", err)
 	}
@@ -153,5 +145,53 @@ func TestCheckReturnsBehindState(t *testing.T) {
 	}
 	if result.Behind != 4 {
 		t.Fatalf("behind = %d, want 4", result.Behind)
+	}
+}
+
+func TestCheckFailsWhenCanonicalCommitEvidenceCannotBeResolved(t *testing.T) {
+	git := &fakeGitClient{
+		revListOutput:       "0\t0\n",
+		revParseShort:       "abc123",
+		revParseShortErrors: map[string]error{"canonical/HEAD": errors.New("missing canonical ref")},
+	}
+
+	result, err := Check(testRepo(), git)
+	if err == nil || !strings.Contains(err.Error(), `resolve canonical commit evidence for repo "payments-api": missing canonical ref`) {
+		t.Fatalf("Check error = %v, want contextual canonical evidence error", err)
+	}
+	if result != (Result{}) {
+		t.Fatalf("result = %#v, want zero result on incomplete evidence", result)
+	}
+	if len(git.revParseShortCalls) != 1 || git.revParseShortCalls[0] != "canonical/HEAD" {
+		t.Fatalf("rev-parse calls = %#v, want canonical only", git.revParseShortCalls)
+	}
+}
+
+func TestCheckFailsWhenMirrorCommitEvidenceCannotBeResolved(t *testing.T) {
+	git := &fakeGitClient{
+		revListOutput:       "0\t0\n",
+		revParseShort:       "abc123",
+		revParseShortErrors: map[string]error{"mirror/HEAD": errors.New("missing mirror ref")},
+	}
+
+	result, err := Check(testRepo(), git)
+	if err == nil || !strings.Contains(err.Error(), `resolve mirror commit evidence for repo "payments-api": missing mirror ref`) {
+		t.Fatalf("Check error = %v, want contextual mirror evidence error", err)
+	}
+	if result != (Result{}) {
+		t.Fatalf("result = %#v, want zero result on incomplete evidence", result)
+	}
+	if len(git.revParseShortCalls) != 2 || git.revParseShortCalls[0] != "canonical/HEAD" || git.revParseShortCalls[1] != "mirror/HEAD" {
+		t.Fatalf("rev-parse calls = %#v, want canonical then mirror", git.revParseShortCalls)
+	}
+}
+
+func testRepo() config.Repo {
+	return config.Repo{
+		ID:        "payments-api",
+		UID:       "repo.org.payments-api",
+		Canonical: config.Endpoint{Provider: "gitlab", URL: "git@gitlab.com:org/payments-api.git"},
+		Mirrors:   []config.Endpoint{{Provider: "github", URL: "git@github.com:org/payments-api.git"}},
+		Mode:      "mirror",
 	}
 }

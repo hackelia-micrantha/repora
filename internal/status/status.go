@@ -88,10 +88,16 @@ func Check(repo config.Repo, git Git) (Result, error) {
 	result.ID = repo.ID
 	result.UID = repo.DurableID()
 
-	result.Canonical, _ = git.RevParseShort(path, "canonical/HEAD")
-	result.Mirror, _ = git.RevParseShort(path, "mirror/HEAD")
-	result.Canonical = strings.TrimSpace(result.Canonical)
-	result.Mirror = strings.TrimSpace(result.Mirror)
+	canonicalCommit, err := git.RevParseShort(path, "canonical/HEAD")
+	if err != nil {
+		return Result{}, fmt.Errorf("resolve canonical commit evidence for repo %q: %w", repo.ID, err)
+	}
+	mirrorCommit, err := git.RevParseShort(path, "mirror/HEAD")
+	if err != nil {
+		return Result{}, fmt.Errorf("resolve mirror commit evidence for repo %q: %w", repo.ID, err)
+	}
+	result.Canonical = strings.TrimSpace(canonicalCommit)
+	result.Mirror = strings.TrimSpace(mirrorCommit)
 	return result, nil
 }
 
