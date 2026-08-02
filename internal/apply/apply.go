@@ -2,6 +2,7 @@ package apply
 
 import (
 	"fmt"
+	"strings"
 
 	"repoctl/internal/config"
 	"repoctl/internal/executor"
@@ -80,9 +81,9 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 }
 
 // ExecuteArtifact consumes an already-built artifact without recomputing
-// reconciliation intent. It validates repository topology, projects the exact
-// actions for output, then checks explicit force authorization before stale-ref
-// preflight and mutation.
+// reconciliation intent. It validates repository topology, current default-
+// branch scope, and explicit force authorization before stale-ref preflight and
+// mutation. Dry-run performs the same stale-ref preflight without mutation.
 func ExecuteArtifact(repo config.Repo, st status.Result, artifact planartifact.Artifact, git Git, allowForce bool, dryRun bool) (Result, error) {
 	result := newResult(repo, st, dryRun)
 	planned, err := planForRepository(repo, artifact)
@@ -93,7 +94,7 @@ func ExecuteArtifact(repo config.Repo, st status.Result, artifact planartifact.A
 	if planRequiresForce(planned) && !allowForce {
 		return result, fmt.Errorf("repo %q plan contains a forced action; rerun with --force", repo.ID)
 	}
-	if dryRun || len(planned.Actions) == 0 {
+	if len(planned.Actions) == 0 {
 		return result, nil
 	}
 
@@ -101,6 +102,16 @@ func ExecuteArtifact(repo config.Repo, st status.Result, artifact planartifact.A
 	if err != nil {
 		return result, err
 	}
+	if err := validateDefaultBranchScope(path, planned, git); err != nil {
+		return result, fmt.Errorf("validate plan scope for repo %q: %w", repo.ID, err)
+	}
+	if dryRun {
+		if _, err := executor.Preflight(path, artifact, git); err != nil {
+			return result, fmt.Errorf("preflight plan artifact for repo %q: %w", repo.ID, err)
+		}
+		return result, nil
+	}
+
 	executed, err := executor.Execute(path, artifact, git)
 	if err != nil {
 		return result, fmt.Errorf("execute plan artifact for repo %q: %w", repo.ID, err)
@@ -186,6 +197,9 @@ func planForRepository(repo config.Repo, artifact planartifact.Artifact) (plan.R
 	if len(repo.Mirrors) != 1 {
 		return plan.ReconciliationPlan{}, fmt.Errorf("repo %q requires exactly one configured mirror, got %d", repo.ID, len(repo.Mirrors))
 	}
+	if len(planned.Actions) > 1 {
+		return plan.ReconciliationPlan{}, fmt.Errorf("repo %q plan supports at most one default-branch action, got %d", repo.ID, len(planned.Actions))
+	}
 	for i, action := range planned.Actions {
 		if action.Source.Provider != repo.Canonical.Provider || action.Source.Name != "canonical" {
 			return plan.ReconciliationPlan{}, fmt.Errorf("plan action %d source does not match configured canonical repository", i)
@@ -195,6 +209,28 @@ func planForRepository(repo config.Repo, artifact planartifact.Artifact) (plan.R
 		}
 	}
 	return planned, nil
+}
+
+func validateDefaultBranchScope(repoPath string, planned plan.ReconciliationPlan, git Git) error {
+	canonicalBranch, err := git.ResolveRemoteHeadBranch(repoPath, "canonical")
+	if err != nil {
+		return fmt.Errorf("resolve current canonical HEAD: %w", err)
+	}
+	mirrorBranch, err := git.ResolveRemoteHeadBranch(repoPath, "mirror")
+	if err != nil {
+		return fmt.Errorf("resolve current mirror HEAD: %w", err)
+	}
+	canonicalBranch = strings.TrimSpace(canonicalBranch)
+	mirrorBranch = strings.TrimSpace(mirrorBranch)
+	if mirrorBranch == "" {
+		mirrorBranch = canonicalBranch
+	}
+	for i, action := range planned.Actions {
+		if action.Source.Branch != canonicalBranch || action.Target.Branch != mirrorBranch {
+			return fmt.Errorf("action %d targets %s/%s but current default branches are %s/%s", i, action.Source.Branch, action.Target.Branch, canonicalBranch, mirrorBranch)
+		}
+	}
+	return nil
 }
 
 func planRequiresForce(planned plan.ReconciliationPlan) bool {
