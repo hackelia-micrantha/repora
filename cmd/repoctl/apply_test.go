@@ -127,7 +127,7 @@ func TestApplyRequiresForceForDivergedMirror(t *testing.T) {
 	}
 }
 
-func TestApplyExecutionFailureRendersResultAndReturnsFailure(t *testing.T) {
+func TestApplyPreActionFailureRendersResultAndReturnsFailure(t *testing.T) {
 	configPath := writeConfig(t, `repos:
   - id: payments-api
     canonical:
@@ -144,15 +144,7 @@ func TestApplyExecutionFailureRendersResultAndReturnsFailure(t *testing.T) {
 		return status.Result{ID: repo.ID, State: status.StateBehind, Behind: 1}, nil
 	}
 	applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
-		return apply.Result{
-			ID:    repo.ID,
-			State: result.State,
-			Actions: []apply.Action{{
-				Type:   "PUSH_BRANCH",
-				Source: "canonical/main",
-				Target: "github/main",
-			}},
-		}, errors.New("remote rejected update")
+		return apply.Result{ID: repo.ID, State: result.State}, errors.New("resolve canonical HEAD")
 	}
 	t.Cleanup(func() {
 		statusCheck = oldCheck
@@ -171,14 +163,14 @@ func TestApplyExecutionFailureRendersResultAndReturnsFailure(t *testing.T) {
 	}
 	for _, want := range []string{
 		"payments-api\n",
-		"  apply PUSH_BRANCH canonical/main -> github/main\n",
-		"  error: remote rejected update\n",
+		"  no changes\n",
+		"  error: resolve canonical HEAD\n",
 	} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("stdout = %q, missing %q", stdout.String(), want)
 		}
 	}
-	if !strings.Contains(stderr.String(), "1 repository failed during apply: remote rejected update") {
+	if !strings.Contains(stderr.String(), "1 repository failed during apply: resolve canonical HEAD") {
 		t.Fatalf("stderr = %q, want aggregate apply failure", stderr.String())
 	}
 }
