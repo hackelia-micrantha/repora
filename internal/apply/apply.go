@@ -52,10 +52,10 @@ func IsUnsafe(result status.Result) bool {
 }
 
 // BuildArtifact is the single observation-to-plan boundary used by plan,
-// dry-run, and convenience apply. The returned artifact is the exact durable
-// representation accepted by ExecuteArtifact and executor.Execute.
-func BuildArtifact(repo config.Repo, st status.Result, git Git, force bool) (planartifact.Artifact, error) {
-	planned, err := buildPlan(repo, st, git, force)
+// dry-run, and convenience apply. Planning describes required destructive
+// intent; execution separately authorizes it.
+func BuildArtifact(repo config.Repo, st status.Result, git Git) (planartifact.Artifact, error) {
+	planned, err := buildPlan(repo, st, git)
 	if err != nil {
 		return planartifact.Artifact{}, err
 	}
@@ -70,7 +70,7 @@ func BuildArtifact(repo config.Repo, st status.Result, git Git, force bool) (pla
 // same artifact boundary exposed to operators rather than executing an
 // in-memory plan through a separate path.
 func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun bool) (Result, error) {
-	artifact, err := BuildArtifact(repo, st, git, force)
+	artifact, err := BuildArtifact(repo, st, git)
 	if err != nil {
 		return newResult(repo, st, dryRun), err
 	}
@@ -78,15 +78,19 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 }
 
 // ExecuteArtifact consumes an already-built artifact without recomputing
-// reconciliation intent. It validates repository topology and explicit force
-// authorization before the executor performs stale-ref preflight and mutation.
+// reconciliation intent. It validates repository topology, projects the exact
+// actions for output, then checks explicit force authorization before stale-ref
+// preflight and mutation.
 func ExecuteArtifact(repo config.Repo, st status.Result, artifact planartifact.Artifact, git Git, allowForce bool, dryRun bool) (Result, error) {
 	result := newResult(repo, st, dryRun)
-	planned, err := planForRepository(repo, artifact, allowForce)
+	planned, err := planForRepository(repo, artifact)
 	if err != nil {
 		return result, err
 	}
 	result.Actions = compatibilityActions(planned)
+	if planRequiresForce(planned) && !allowForce {
+		return result, fmt.Errorf("repo %q plan contains a forced action; rerun with --force", repo.ID)
+	}
 	if dryRun || len(planned.Actions) == 0 {
 		return result, nil
 	}
@@ -109,10 +113,8 @@ func ArtifactRequiresForce(artifact planartifact.Artifact) (bool, error) {
 		return false, err
 	}
 	for _, planned := range plans {
-		for _, action := range planned.Actions {
-			if action.Force {
-				return true, nil
-			}
+		if planRequiresForce(planned) {
+			return true, nil
 		}
 	}
 	return false, nil
@@ -128,7 +130,7 @@ func newResult(repo config.Repo, st status.Result, dryRun bool) Result {
 	}
 }
 
-func buildPlan(repo config.Repo, st status.Result, git Git, force bool) (plan.ReconciliationPlan, error) {
+func buildPlan(repo config.Repo, st status.Result, git Git) (plan.ReconciliationPlan, error) {
 	path, err := gitwrap.MirrorPath(repo.DurableID())
 	if err != nil {
 		return plan.ReconciliationPlan{}, err
@@ -162,10 +164,12 @@ func buildPlan(repo config.Repo, st status.Result, git Git, force bool) (plan.Re
 		observation.MirrorHeadOID = targetOID
 	}
 
-	return plan.Reconcile(repo, st, observation, force)
+	// Planning must describe destructive intent even before execution is
+	// authorized. ExecuteArtifact owns the explicit --force gate.
+	return plan.Reconcile(repo, st, observation, true)
 }
 
-func planForRepository(repo config.Repo, artifact planartifact.Artifact, allowForce bool) (plan.ReconciliationPlan, error) {
+func planForRepository(repo config.Repo, artifact planartifact.Artifact) (plan.ReconciliationPlan, error) {
 	plans, err := artifact.Plans()
 	if err != nil {
 		return plan.ReconciliationPlan{}, fmt.Errorf("validate plan artifact: %w", err)
@@ -187,11 +191,17 @@ func planForRepository(repo config.Repo, artifact planartifact.Artifact, allowFo
 		if action.Target.Provider != repo.Mirrors[0].Provider || action.Target.Name != "mirror" {
 			return plan.ReconciliationPlan{}, fmt.Errorf("plan action %d target does not match configured mirror repository", i)
 		}
-		if action.Force && !allowForce {
-			return plan.ReconciliationPlan{}, fmt.Errorf("repo %q plan contains a forced action; rerun with --force", repo.ID)
-		}
 	}
 	return planned, nil
+}
+
+func planRequiresForce(planned plan.ReconciliationPlan) bool {
+	for _, action := range planned.Actions {
+		if action.Force {
+			return true
+		}
+	}
+	return false
 }
 
 func compatibilityActions(planned plan.ReconciliationPlan) []Action {
