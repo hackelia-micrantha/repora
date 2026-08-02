@@ -1,35 +1,28 @@
-# ADR-0010: Unified Diff Model
+# ADR-0010: Versioned Domain-Specific Plan Artifacts
 
-Status: Draft
+Status: Accepted
+
+Decision date: 2026-08-02
+
+Last reviewed: 2026-08-02
+
+Supersedes: the draft universal diff abstraction previously described by ADR-0010
+
+Implemented by: planner/executor artifact slices through PRs #42, #60, #62, #67, and the exact CLI artifact boundary under issue #8
+
+Related issues: #3, #8, #22, #1, #6
+
+## Context
+
+Repora needs a reviewable, serializable, and executable boundary between planning and mutation. That boundary must preserve repository identity, exact ref preconditions, force intent, deterministic ordering, and safe recovery from stale input.
+
+The earlier draft proposed one universal state/diff abstraction for Git refs, files, workflows, and artifacts. Repora currently has implemented experience only for Git ref reconciliation. Imposing one cross-domain model before those other domains exist would add abstraction and coupling without evidence that their identity, comparison, policy, or execution semantics are actually shared.
 
 ## Decision
 
-Repora shall evolve toward a unified diff model capable of representing
-differences across multiple domains, including Git refs, file content,
-workflows, and artifacts, using a common abstraction layer.
+Repora uses versioned, domain-specific plan artifacts.
 
-The first implementation slices define a narrow, versioned reconciliation plan
-artifact for Git ref updates and make that artifact the executor input boundary.
-The existing CLI plan and apply output remain unchanged.
-
-## Core Abstraction
-
-All differences are represented as state objects with the following structure:
-
-```text
-StateObject {
-  domain: refs | files | workflows | artifacts
-  identity: string
-  desired: any
-  observed: any
-  diff: structured delta
-  state: EQUAL | DRIFT | DIVERGED | UNKNOWN
-}
-```
-
-## Plan Artifact v1
-
-The initial serialized envelope is:
+The first accepted artifact is:
 
 ```text
 Artifact {
@@ -54,100 +47,91 @@ Action {
 }
 ```
 
-Repository and action order are preserved. Struct-backed JSON encoding makes
-repeated serialization deterministic for identical ordered inputs.
+The exact validated artifact is both:
 
-The artifact excludes resolved transport URLs, credentials, and local checkout
-paths. Validation rejects unsupported versions, kinds, action types, missing
-identity or safety fields, unknown JSON fields, and values that look like URLs,
-credentials, or absolute local paths.
+- exportable from `repoctl plan --artifact` for operator review;
+- accepted by `repoctl apply --plan-file` without rebuilding reconciliation intent.
 
-## Execution Boundary
+Convenience apply builds the same artifact internally and delegates to the same artifact execution function.
 
-Apply constructs the artifact from the exact in-memory plan used to render its
-compatibility output. The executor validates the artifact, requires exactly one
-repository for the current single-repository execution path, converts it to the
-internal action model, and only then performs structural and stale-ref preflight
-checks.
+The stabilized `repora.plan` version 1 CLI response remains a compatibility projection from the exact reconciliation plans. It is not a second decision model.
 
-Invalid artifacts and invalid repository cardinality fail before any Git ref
-reads or mutations. Stale-input validation, ordered execution, force-with-lease,
-and partial runtime-failure results retain their existing behavior after the
-artifact handoff.
+## Shared conventions
 
-The single-repository constraint belongs to the current executor invocation, not
-to the artifact format. Multi-repository orchestration can later partition or
-coordinate a validated artifact without changing version 1 action semantics.
+Future plan domains should reuse conventions only where they are demonstrably common:
 
-## Domain Mapping
+- explicit `kind` and integer `version`;
+- durable repository `uid` and human-facing `id`;
+- deterministic ordered serialization;
+- strict parsing and unknown-field rejection;
+- exclusion and redaction of credentials, resolved URLs, and unnecessary local paths;
+- explicit observed and desired state;
+- explicit destructive or force intent;
+- validation before side effects;
+- stale-input rejection and re-planning recovery.
 
-### Refs (v0.1)
+These conventions do not require one universal state object or action vocabulary.
 
-```text
-identity: <remote>/<ref>
-diff: observed target OID -> desired source OID
-```
+## Rejected universal abstraction
 
-### Files (future)
+Repora does not currently adopt this generic model:
 
 ```text
-identity: path/to/file
-diff: textual or semantic diff
-```
-
-### Workflows (future)
-
-```text
-identity: workflow identifier
-diff: structural YAML/JSON diff
-```
-
-### Artifacts (future)
-
-```text
-identity: registry/image:tag or model version
-diff: version mismatch or missing artifact
-```
-
-## Diff Classification
-
-All domains normalize into:
-
-- `EQUAL`
-- `DRIFT` (unidirectional difference, safe to reconcile)
-- `DIVERGED` (bidirectional difference, requires policy/force)
-- `UNKNOWN` (unable to determine)
-
-## Planner Integration
-
-The planner shall operate over state objects, producing actions such as:
-
-```text
-Action {
-  type: SYNC | UPDATE | CREATE | DELETE
+StateObject {
   domain: refs | files | workflows | artifacts
-  target: identity
-  destructive: bool
+  identity: string
+  desired: any
+  observed: any
+  diff: structured delta
+  state: EQUAL | DRIFT | DIVERGED | UNKNOWN
 }
 ```
 
-For the current ref-only slice, the artifact converts losslessly to and from the
-existing in-memory `plan.ReconciliationPlan`. The executor consumes the validated
-artifact rather than accepting a raw reconciliation plan from its caller.
+It also does not require all domains to normalize into generic `SYNC`, `UPDATE`, `CREATE`, or `DELETE` actions.
 
-## Rationale
+The model may be reconsidered only after at least two implemented domains demonstrate shared semantics that reduce code and policy complexity rather than merely sharing field names.
 
-- Enables a single reconciliation engine across heterogeneous domains
-- Avoids duplicating diff logic for refs vs files vs workflows
-- Supports incremental expansion without redesigning the core planner
-- Creates a reviewable and testable boundary between planning and mutation
-- Ensures artifact compatibility and safety checks run on every apply execution
+## Execution boundary
+
+The executor validates the artifact, converts it to the internal ref-action model, validates every action, and re-resolves every expected source and target OID before action zero mutates a remote.
+
+Invalid artifacts, unsupported repository cardinality for an executor invocation, topology mismatches, missing force authorization, and stale refs fail closed.
+
+A force-with-lease push is defense in depth after complete stale-ref preflight. It does not authorize replay of an old artifact.
+
+Multi-repository orchestration may partition one validated artifact into single-repository executor calls. There is no cross-repository transaction or implied atomicity.
+
+## Identity and safety
+
+The artifact uses durable repository `uid` for configuration matching. Human-facing `id` may change without redefining durable identity.
+
+The artifact excludes:
+
+- runtime transport URLs;
+- credentials and authorization material;
+- raw command lines and environments;
+- local cache or checkout paths.
+
+Validation rejects malformed versions, kinds, identifiers, symbolic refs, OIDs, action types, unknown fields, and unsafe serialized values.
 
 ## Consequences
 
-- Requires domain-specific adapters for diff generation
-- Increases abstraction complexity
-- Provides long-term extensibility and consistency
-- Version and kind changes require explicit compatibility handling
-- Artifact safety validation is intentionally stricter than arbitrary Git metadata
-- Current executor calls accept exactly one repository artifact
+### Positive
+
+- The reviewed plan can be the exact executor input.
+- Planner and executor can be tested independently.
+- Stale and destructive operations remain explicit.
+- The current Git-ref model stays small and understandable.
+- Other domains can evolve without being forced into ref-specific semantics.
+- Compatibility output can remain stable as a projection.
+
+### Costs
+
+- Each new mutation domain needs its own action and schema design.
+- Shared tooling must dispatch on artifact kind or tagged action type.
+- Compatibility and schema evolution remain deliberate maintenance work.
+- Operators must re-plan when current refs no longer match the artifact.
+
+## Future decision rule
+
+A shared cross-domain abstraction requires a later ADR with evidence from implemented consumers. Similar vocabulary alone is insufficient; the abstraction must demonstrate simpler validation, policy, execution, and recovery behavior across those domains.
