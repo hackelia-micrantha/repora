@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/cli-apply-v2.schema.json",
+  "title": "Repora apply output v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "results"],
+  "properties": {
+    "kind": { "const": "repora.apply" },
+    "version": { "const": 2 },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "uid", "state", "applied", "dry_run", "actions"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "uid": { "type": "string", "minLength": 1 },
+          "state": { "enum": ["EQUAL", "BEHIND", "AHEAD", "DIVERGED"] },
+          "applied": { "type": "boolean" },
+          "dry_run": { "type": "boolean" },
+          "error": { "type": "string" },
+          "journal": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["execution_id"],
+            "properties": {
+              "execution_id": { "type": "string", "minLength": 1 },
+              "intent": { "type": "string" },
+              "result": { "type": "string" }
+            }
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "source", "target", "force"],
+              "properties": {
+                "type": { "const": "PUSH_BRANCH" },
+                "source": { "type": "string", "minLength": 1 },
+                "target": { "type": "string", "minLength": 1 },
+                "force": { "type": "boolean" },
+                "expected_old_target": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
