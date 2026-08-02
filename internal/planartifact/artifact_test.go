@@ -2,6 +2,8 @@ package planartifact
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -32,6 +34,20 @@ func TestArtifactRoundTripPreservesPlan(t *testing.T) {
 	}
 	if len(plans) != 1 || !reflect.DeepEqual(plans[0], original) {
 		t.Fatalf("round trip = %#v, want %#v", plans, original)
+	}
+}
+
+func TestArtifactMatchesGoldenContract(t *testing.T) {
+	got, err := FromPlans(testPlan()).Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := os.ReadFile(filepath.Join("testdata", "reconciliation-plan-v1.golden.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(append(got, '\n'), want) {
+		t.Fatalf("plan artifact contract changed:\n%s\nwant:\n%s", got, want)
 	}
 }
 
