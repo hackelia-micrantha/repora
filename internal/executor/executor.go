@@ -60,14 +60,38 @@ func (r Result) AllApplied() bool {
 // Preflight validates an exact artifact and verifies every expected source and
 // target reference without mutating a remote.
 func Preflight(repoPath string, artifact planartifact.Artifact, git Git) (Result, error) {
-	result, _, err := prepare(repoPath, artifact, git)
-	return result, err
+	planned, err := onePlan(artifact)
+	if err != nil {
+		return Result{}, err
+	}
+	return preflightPlan(repoPath, planned, git)
 }
 
 // Execute validates and consumes exactly one repository plan from a versioned
 // artifact. Invalid or stale artifacts fail closed before mutation.
 func Execute(repoPath string, artifact planartifact.Artifact, git Git) (Result, error) {
-	result, planned, err := prepare(repoPath, artifact, git)
+	planned, err := onePlan(artifact)
+	if err != nil {
+		return Result{}, err
+	}
+	return executePlan(repoPath, planned, git)
+}
+
+func onePlan(artifact planartifact.Artifact) (plan.ReconciliationPlan, error) {
+	plans, err := artifact.Plans()
+	if err != nil {
+		return plan.ReconciliationPlan{}, fmt.Errorf("validate plan artifact: %w", err)
+	}
+	if len(plans) != 1 {
+		return plan.ReconciliationPlan{}, fmt.Errorf("plan artifact requires exactly one repository, got %d", len(plans))
+	}
+	return plans[0], nil
+}
+
+// executePlan remains the plan-level execution boundary used by focused tests.
+// Artifact callers reach it only after strict artifact parsing and conversion.
+func executePlan(repoPath string, planned plan.ReconciliationPlan, git Git) (Result, error) {
+	result, err := preflightPlan(repoPath, planned, git)
 	if err != nil {
 		return result, err
 	}
@@ -91,15 +115,7 @@ func Execute(repoPath string, artifact planartifact.Artifact, git Git) (Result, 
 	return result, nil
 }
 
-func prepare(repoPath string, artifact planartifact.Artifact, git Git) (Result, plan.ReconciliationPlan, error) {
-	plans, err := artifact.Plans()
-	if err != nil {
-		return Result{}, plan.ReconciliationPlan{}, fmt.Errorf("validate plan artifact: %w", err)
-	}
-	if len(plans) != 1 {
-		return Result{}, plan.ReconciliationPlan{}, fmt.Errorf("plan artifact requires exactly one repository, got %d", len(plans))
-	}
-	planned := plans[0]
+func preflightPlan(repoPath string, planned plan.ReconciliationPlan, git Git) (Result, error) {
 	result := Result{Actions: make([]ActionResult, len(planned.Actions))}
 	for i, action := range planned.Actions {
 		result.Actions[i] = ActionResult{Index: i, Action: action, Outcome: OutcomeSkipped}
@@ -107,17 +123,15 @@ func prepare(repoPath string, artifact planartifact.Artifact, git Git) (Result, 
 
 	for i, action := range planned.Actions {
 		if err := validateAction(action); err != nil {
-			failed, failure := failPreflight(result, i, false, fmt.Errorf("validate action %d: %w", i, err))
-			return failed, plan.ReconciliationPlan{}, failure
+			return failPreflight(result, i, false, fmt.Errorf("validate action %d: %w", i, err))
 		}
 	}
 	for i, action := range planned.Actions {
 		if err := validateCurrentRefs(repoPath, action, git); err != nil {
-			failed, failure := failPreflight(result, i, true, fmt.Errorf("stale action %d: %w", i, err))
-			return failed, plan.ReconciliationPlan{}, failure
+			return failPreflight(result, i, true, fmt.Errorf("stale action %d: %w", i, err))
 		}
 	}
-	return result, planned, nil
+	return result, nil
 }
 
 func failPreflight(result Result, index int, stale bool, err error) (Result, error) {
