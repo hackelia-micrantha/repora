@@ -1,5 +1,5 @@
 // Package journal defines durable, versioned execution evidence for repository
-// reconciliation. Filesystem persistence is intentionally owned by a later slice.
+// reconciliation.
 package journal
 
 import (
@@ -15,8 +15,16 @@ import (
 )
 
 const (
-	Version = 1
-	Kind    = "repora.io/execution-record"
+	LegacyVersion = 1
+	Version       = 2
+	Kind          = "repora.io/execution-record"
+)
+
+type Phase string
+
+const (
+	PhaseIntent Phase = "INTENT"
+	PhaseResult Phase = "RESULT"
 )
 
 type Mode string
@@ -30,11 +38,12 @@ const (
 type Outcome string
 
 const (
-	OutcomePlanned Outcome = "PLANNED"
-	OutcomeApplied Outcome = "APPLIED"
-	OutcomeFailed  Outcome = "FAILED"
-	OutcomeSkipped Outcome = "SKIPPED"
-	OutcomeStale   Outcome = "STALE"
+	OutcomePlanned   Outcome = "PLANNED"
+	OutcomeValidated Outcome = "VALIDATED"
+	OutcomeApplied   Outcome = "APPLIED"
+	OutcomeFailed    Outcome = "FAILED"
+	OutcomeSkipped   Outcome = "SKIPPED"
+	OutcomeStale     Outcome = "STALE"
 )
 
 var (
@@ -43,11 +52,13 @@ var (
 	digestPattern     = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
 
-// Record is the durable evidence envelope for one repository execution.
+// Record is one immutable journal entry for a repository execution. Version 2
+// uses separate INTENT and RESULT entries sharing one execution ID.
 type Record struct {
 	Version     int        `json:"version"`
 	Kind        string     `json:"kind"`
 	ExecutionID string     `json:"execution_id"`
+	Phase       Phase      `json:"phase,omitempty"`
 	Mode        Mode       `json:"mode"`
 	Plan        PlanRef    `json:"plan"`
 	Repository  Repository `json:"repository"`
@@ -72,8 +83,8 @@ type Ref struct {
 	Branch   string `json:"branch"`
 }
 
-// Action records planned ref state and the eventual execution outcome. After is
-// optional until a mutation has produced a verified resulting object ID.
+// Action records planned ref state and an entry-specific outcome. After is
+// present only when a mutation produced a resulting object ID.
 type Action struct {
 	Index   int     `json:"index"`
 	Type    string  `json:"type"`
@@ -87,7 +98,7 @@ type Action struct {
 	Error   string  `json:"error,omitempty"`
 }
 
-// FromPlan creates deterministic planned evidence for exactly one repository.
+// FromPlan creates deterministic INTENT evidence for exactly one repository.
 func FromPlan(executionID string, mode Mode, artifact planartifact.Artifact) (Record, error) {
 	encoded, err := artifact.Marshal()
 	if err != nil {
@@ -103,6 +114,7 @@ func FromPlan(executionID string, mode Mode, artifact planartifact.Artifact) (Re
 		Version:     Version,
 		Kind:        Kind,
 		ExecutionID: executionID,
+		Phase:       PhaseIntent,
 		Mode:        mode,
 		Plan: PlanRef{
 			Version: artifact.Version,
@@ -158,7 +170,7 @@ func Parse(data []byte) (Record, error) {
 }
 
 func (r Record) Validate() error {
-	if r.Version != Version {
+	if r.Version != LegacyVersion && r.Version != Version {
 		return fmt.Errorf("unsupported execution record version %d", r.Version)
 	}
 	if r.Kind != Kind {
@@ -166,6 +178,13 @@ func (r Record) Validate() error {
 	}
 	if !validIdentifier(r.ExecutionID) {
 		return fmt.Errorf("execution_id must be a symbolic identifier")
+	}
+	if r.Version == LegacyVersion {
+		if r.Phase != "" {
+			return fmt.Errorf("legacy execution record must not define a phase")
+		}
+	} else if !validPhase(r.Phase) {
+		return fmt.Errorf("unsupported execution phase %q", r.Phase)
 	}
 	if !validMode(r.Mode) {
 		return fmt.Errorf("unsupported execution mode %q", r.Mode)
@@ -195,7 +214,7 @@ func (r Record) Validate() error {
 		if action.After != "" && !oidPattern.MatchString(action.After) {
 			return fmt.Errorf("action %d has invalid after object ID", i)
 		}
-		if !validOutcome(action.Outcome) {
+		if !validOutcome(r.Version, action.Outcome) {
 			return fmt.Errorf("action %d has unsupported outcome %q", i, action.Outcome)
 		}
 		if action.Outcome == OutcomeApplied && action.After == "" {
@@ -204,18 +223,49 @@ func (r Record) Validate() error {
 		if action.Error != "" && unsafeValue(action.Error) {
 			return fmt.Errorf("action %d error contains unsafe serialized data", i)
 		}
+		if r.Version == Version {
+			if err := validatePhaseAction(r.Phase, r.Mode, action); err != nil {
+				return fmt.Errorf("action %d: %w", i, err)
+			}
+		}
 	}
 	return nil
+}
+
+func validatePhaseAction(phase Phase, mode Mode, action Action) error {
+	switch phase {
+	case PhaseIntent:
+		if action.Outcome != OutcomePlanned || action.After != "" || action.Error != "" {
+			return fmt.Errorf("intent entry requires planned outcome without after or error")
+		}
+	case PhaseResult:
+		if action.Outcome == OutcomePlanned {
+			return fmt.Errorf("result entry must not contain planned outcome")
+		}
+		if mode == ModeDryRun && action.Outcome == OutcomeApplied {
+			return fmt.Errorf("dry-run result must not contain applied outcome")
+		}
+		if mode == ModeApply && action.Outcome == OutcomeValidated {
+			return fmt.Errorf("apply result must not contain validated outcome")
+		}
+	}
+	return nil
+}
+
+func validPhase(phase Phase) bool {
+	return phase == PhaseIntent || phase == PhaseResult
 }
 
 func validMode(mode Mode) bool {
 	return mode == ModePlan || mode == ModeDryRun || mode == ModeApply
 }
 
-func validOutcome(outcome Outcome) bool {
+func validOutcome(version int, outcome Outcome) bool {
 	switch outcome {
 	case OutcomePlanned, OutcomeApplied, OutcomeFailed, OutcomeSkipped, OutcomeStale:
 		return true
+	case OutcomeValidated:
+		return version == Version
 	default:
 		return false
 	}
