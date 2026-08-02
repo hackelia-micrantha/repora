@@ -44,7 +44,10 @@ func (w Writer) Write(record Record) (string, error) {
 		return "", fmt.Errorf("journal directory escapes root")
 	}
 
-	name := record.Repository.UID + "--" + record.ExecutionID + ".json"
+	name, err := recordFilename(record)
+	if err != nil {
+		return "", err
+	}
 	reference := filepath.ToSlash(filepath.Join(DirectoryName, name))
 	finalPath := filepath.Join(journalDir, name)
 	if filepath.Dir(finalPath) != journalDir {
@@ -92,6 +95,16 @@ func (w Writer) Write(record Record) (string, error) {
 	}
 
 	return reference, nil
+}
+
+func recordFilename(record Record) (string, error) {
+	if record.Version == LegacyVersion {
+		return record.Repository.UID + "--" + record.ExecutionID + ".json", nil
+	}
+	if !validPhase(record.Phase) {
+		return "", fmt.Errorf("journal record requires a valid phase")
+	}
+	return record.Repository.UID + "--" + record.ExecutionID + "--" + strings.ToLower(string(record.Phase)) + ".json", nil
 }
 
 func resolveJournalRoot(value string) (string, error) {
