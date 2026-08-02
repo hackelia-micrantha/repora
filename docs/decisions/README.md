@@ -2,7 +2,7 @@
 
 This directory is the index and lifecycle policy for durable Repora architecture decisions.
 
-The original ADR set remains under `docs/rfcs/0001-repora-documentation-set-v0.1/decisions/`. Those records preserve useful reasoning but were created as part of a draft RFC and must not be treated as accepted current behavior merely because they exist.
+The original ADR set remains under `docs/rfcs/0001-repora-documentation-set-v0.1/decisions/`. Those records preserve useful reasoning but must not be treated as current behavior merely because they exist.
 
 ## Decision lifecycle
 
@@ -40,7 +40,7 @@ Related issues:
 
 When an ADR and source disagree, either the source is defective or the ADR is stale. The conflict must be resolved explicitly; do not maintain both as valid alternatives.
 
-## Legacy ADR index
+## ADR index
 
 | Record | Subject | Current handling |
 | --- | --- | --- |
@@ -53,20 +53,9 @@ When an ADR and source disagree, either the source is defective or the ADR is st
 | [ADR-0007](../rfcs/0001-repora-documentation-set-v0.1/decisions/0007-concurrency-model.md) | Concurrency model | Retained draft; repository-level bounded concurrency remains implemented. |
 | [ADR-0008](../rfcs/0001-repora-documentation-set-v0.1/decisions/0008-disk-usage-optimization.md) | Disk usage optimization | Retained draft; not a current release gate. |
 | [ADR-0009](../rfcs/0001-repora-documentation-set-v0.1/decisions/0009-scope-boundary-v0.1-vs-future.md) | v0.1 scope boundary | Retained draft; use the current plan for active scope and deferrals. |
-| [ADR-0010](../rfcs/0001-repora-documentation-set-v0.1/decisions/0010-unified-diff-model.md) | Unified diff model | Partially implemented for versioned Git-ref plan artifacts; its universal cross-domain abstraction requires revision before acceptance. |
+| [ADR-0010](../rfcs/0001-repora-documentation-set-v0.1/decisions/0010-unified-diff-model.md) | Versioned domain-specific plan artifacts | Accepted. Exact Git-ref artifacts are review and executor input; the earlier universal cross-domain abstraction is rejected pending evidence from multiple implemented domains. |
 
 ## Required decision work
-
-### Narrow the plan-artifact decision
-
-ADR-0010 currently mixes two choices:
-
-1. a useful, implemented choice: a versioned artifact is the planner/executor boundary;
-2. an unproven future choice: refs, files, workflows, and artifacts should share one universal state/diff model.
-
-The first should be accepted independently. The second should remain proposed until multiple implemented domains demonstrate genuinely shared semantics.
-
-The preferred boundary is a shared envelope with domain-specific tagged actions, not a universal diff object imposed before those domains exist.
 
 ### Record explicit ref policy
 
