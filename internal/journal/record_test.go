@@ -120,7 +120,11 @@ func TestRecordRejectsInvalidEnvelopeAndSafetyFields(t *testing.T) {
 		{name: "after oid", edit: func(r *Record) { r.Actions[0].After = "not-an-oid" }, want: "after object ID"},
 		{name: "outcome", edit: func(r *Record) { r.Actions[0].Outcome = "UNKNOWN" }, want: "outcome"},
 		{name: "intent result", edit: func(r *Record) { r.Actions[0].Outcome = OutcomeSkipped }, want: "intent entry"},
-		{name: "secret error", edit: func(r *Record) { r.Phase = PhaseResult; r.Actions[0].Outcome = OutcomeFailed; r.Actions[0].Error = "token=secret" }, want: "unsafe"},
+		{name: "secret error", edit: func(r *Record) {
+			r.Phase = PhaseResult
+			r.Actions[0].Outcome = OutcomeFailed
+			r.Actions[0].Error = "token=secret"
+		}, want: "unsafe"},
 		{name: "transport ref", edit: func(r *Record) { r.Actions[0].Target.Remote = "git@github.com:org/repo" }, want: "symbolic"},
 		{name: "branch with spaces", edit: func(r *Record) { r.Actions[0].Target.Branch = "release candidate" }, want: "symbolic ref"},
 		{name: "branch traversal", edit: func(r *Record) { r.Actions[0].Target.Branch = "release..next" }, want: "symbolic ref"},
