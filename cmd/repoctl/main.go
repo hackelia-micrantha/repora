@@ -64,8 +64,8 @@ var statusCheck = func(repo config.Repo) (status.Result, error) {
 	return status.Check(repo, gitwrap.Client{})
 }
 
-var planBuild = func(repo config.Repo, result status.Result, force bool) (planartifact.Artifact, error) {
-	return apply.BuildArtifact(repo, result, gitwrap.Client{}, force)
+var planBuild = func(repo config.Repo, result status.Result, _ bool) (planartifact.Artifact, error) {
+	return apply.BuildArtifact(repo, result, gitwrap.Client{})
 }
 
 var applyExecute = func(repo config.Repo, result status.Result, force, dryRun bool) (apply.Result, error) {
@@ -391,7 +391,7 @@ func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool,
 			fmt.Fprintf(os.Stderr, "repoctl: validate plan artifact: %v\n", err)
 			return 1
 		}
-		if requiresForce && !force {
+		if requiresForce && !force && !dryRun {
 			fmt.Fprintln(os.Stderr, "repoctl: plan artifact contains a forced action; rerun apply with --force")
 			return 2
 		}
