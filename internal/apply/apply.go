@@ -14,7 +14,7 @@ import (
 
 const (
 	OutputKind    = "repora.apply"
-	OutputVersion = 1
+	OutputVersion = 2
 )
 
 type Output struct {
@@ -24,13 +24,20 @@ type Output struct {
 }
 
 type Result struct {
-	ID      string       `json:"id"`
-	UID     string       `json:"uid"`
-	State   status.State `json:"state"`
-	Applied bool         `json:"applied"`
-	DryRun  bool         `json:"dry_run"`
-	Actions []Action     `json:"actions"`
-	Error   string       `json:"error,omitempty"`
+	ID      string             `json:"id"`
+	UID     string             `json:"uid"`
+	State   status.State       `json:"state"`
+	Applied bool               `json:"applied"`
+	DryRun  bool               `json:"dry_run"`
+	Actions []Action           `json:"actions"`
+	Journal *JournalReferences `json:"journal,omitempty"`
+	Error   string             `json:"error,omitempty"`
+}
+
+type JournalReferences struct {
+	ExecutionID string `json:"execution_id"`
+	Intent      string `json:"intent"`
+	Result      string `json:"result,omitempty"`
 }
 
 type Action struct {
@@ -67,9 +74,8 @@ func BuildArtifact(repo config.Repo, st status.Result, git Git) (planartifact.Ar
 	return artifact, nil
 }
 
-// Execute is the convenience observe-plan-execute path. It delegates to the
-// same artifact boundary exposed to operators rather than executing an
-// in-memory plan through a separate path.
+// Execute is the non-journaled internal compatibility path. The CLI uses
+// ExecuteAudited so user-visible apply and dry-run operations are durable.
 func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun bool) (Result, error) {
 	artifact, err := BuildArtifact(repo, st, git)
 	if err != nil {
@@ -78,47 +84,10 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 	return ExecuteArtifact(repo, st, artifact, git, force, dryRun)
 }
 
-// ExecuteArtifact consumes an already-built artifact without recomputing
-// reconciliation intent. It validates repository topology, current observed
-// state, current default-branch scope, and explicit mutation authorization
-// before stale-ref preflight. Dry-run performs preflight without mutation.
+// ExecuteArtifact is the non-journaled internal compatibility path for exact
+// artifacts. It shares the same validation and execution core as audited apply.
 func ExecuteArtifact(repo config.Repo, st status.Result, artifact planartifact.Artifact, git Git, allowForce bool, dryRun bool) (Result, error) {
-	result := newResult(repo, st, dryRun)
-	planned, err := planForRepository(repo, artifact)
-	if err != nil {
-		return result, err
-	}
-	result.Actions = compatibilityActions(planned)
-	if err := validateStateIntent(repo.ID, st.State, planned); err != nil {
-		return result, err
-	}
-	if !dryRun && planRequiresForce(planned) && !allowForce {
-		return result, fmt.Errorf("repo %q plan contains a forced action; rerun with --force", repo.ID)
-	}
-	if len(planned.Actions) == 0 {
-		return result, nil
-	}
-
-	path, err := gitwrap.MirrorPath(repo.DurableID())
-	if err != nil {
-		return result, err
-	}
-	if err := validateDefaultBranchScope(path, planned, git); err != nil {
-		return result, fmt.Errorf("validate plan scope for repo %q: %w", repo.ID, err)
-	}
-	if dryRun {
-		if _, err := executor.Preflight(path, artifact, git); err != nil {
-			return result, fmt.Errorf("preflight plan artifact for repo %q: %w", repo.ID, err)
-		}
-		return result, nil
-	}
-
-	executed, err := executor.Execute(path, artifact, git)
-	if err != nil {
-		return result, fmt.Errorf("execute plan artifact for repo %q: %w", repo.ID, err)
-	}
-	result.Applied = executed.AllApplied()
-	return result, nil
+	return executeArtifact(repo, st, artifact, git, allowForce, dryRun, nil)
 }
 
 func ArtifactRequiresForce(artifact planartifact.Artifact) (bool, error) {
@@ -178,8 +147,7 @@ func buildPlan(repo config.Repo, st status.Result, git Git) (plan.Reconciliation
 		observation.MirrorHeadOID = targetOID
 	}
 
-	// Planning must describe destructive intent even before execution is
-	// authorized. ExecuteArtifact owns the explicit mutation gate.
+	// Planning describes destructive intent before execution authorization.
 	return plan.Reconcile(repo, st, observation, true)
 }
 
