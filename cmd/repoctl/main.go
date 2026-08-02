@@ -301,16 +301,12 @@ func applyRepos(spec config.Spec, summary checkSummary, force bool, dryRun bool,
 		close(resultsCh)
 	}()
 	ordered := make([]apply.Result, len(spec.Repos))
+	orderedErrors := make([]error, len(spec.Repos))
 	ok := make([]bool, len(spec.Repos))
-	var firstErr error
-	failedCount := 0
 	for res := range resultsCh {
 		if res.err != nil {
-			failedCount++
-			if firstErr == nil {
-				firstErr = res.err
-			}
 			res.result.Error = res.err.Error()
+			orderedErrors[res.index] = res.err
 		}
 		ordered[res.index] = res.result
 		ok[res.index] = true
@@ -319,6 +315,17 @@ func applyRepos(spec config.Spec, summary checkSummary, force bool, dryRun bool,
 	for i, res := range ordered {
 		if ok[i] {
 			output.Results = append(output.Results, res)
+		}
+	}
+	var firstErr error
+	failedCount := 0
+	for _, err := range orderedErrors {
+		if err == nil {
+			continue
+		}
+		failedCount++
+		if firstErr == nil {
+			firstErr = err
 		}
 	}
 	if firstErr != nil {
@@ -393,17 +400,17 @@ func printApply(output apply.Output) {
 		fmt.Println(result.ID)
 		if len(result.Actions) == 0 {
 			fmt.Println("  no changes")
-			continue
-		}
-		for _, action := range result.Actions {
-			mode := "apply"
-			if result.DryRun {
-				mode = "dry-run"
-			}
-			if action.Force {
-				fmt.Printf("  %s %s %s -> %s (force)\n", mode, action.Type, action.Source, action.Target)
-			} else {
-				fmt.Printf("  %s %s %s -> %s\n", mode, action.Type, action.Source, action.Target)
+		} else {
+			for _, action := range result.Actions {
+				mode := "apply"
+				if result.DryRun {
+					mode = "dry-run"
+				}
+				if action.Force {
+					fmt.Printf("  %s %s %s -> %s (force)\n", mode, action.Type, action.Source, action.Target)
+				} else {
+					fmt.Printf("  %s %s %s -> %s\n", mode, action.Type, action.Source, action.Target)
+				}
 			}
 		}
 		if result.Error != "" {
