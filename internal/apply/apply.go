@@ -54,10 +54,8 @@ func IsUnsafe(result status.Result) bool {
 
 // BuildArtifact is the single observation-to-plan boundary used by plan,
 // dry-run, and convenience apply. Planning describes required destructive
-// intent; execution separately authorizes it. The allowForce argument is
-// retained at this internal call boundary for compatibility but does not alter
-// the generated artifact.
-func BuildArtifact(repo config.Repo, st status.Result, git Git, _ bool) (planartifact.Artifact, error) {
+// intent; execution separately authorizes it.
+func BuildArtifact(repo config.Repo, st status.Result, git Git) (planartifact.Artifact, error) {
 	planned, err := buildPlan(repo, st, git)
 	if err != nil {
 		return planartifact.Artifact{}, err
@@ -73,7 +71,7 @@ func BuildArtifact(repo config.Repo, st status.Result, git Git, _ bool) (planart
 // same artifact boundary exposed to operators rather than executing an
 // in-memory plan through a separate path.
 func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun bool) (Result, error) {
-	artifact, err := BuildArtifact(repo, st, git, force)
+	artifact, err := BuildArtifact(repo, st, git)
 	if err != nil {
 		return newResult(repo, st, dryRun), err
 	}
@@ -81,9 +79,9 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 }
 
 // ExecuteArtifact consumes an already-built artifact without recomputing
-// reconciliation intent. It validates repository topology, current default-
-// branch scope, and explicit force authorization before stale-ref preflight and
-// mutation. Dry-run performs the same stale-ref preflight without mutation.
+// reconciliation intent. It validates repository topology, current observed
+// state, current default-branch scope, and explicit mutation authorization
+// before stale-ref preflight. Dry-run performs preflight without mutation.
 func ExecuteArtifact(repo config.Repo, st status.Result, artifact planartifact.Artifact, git Git, allowForce bool, dryRun bool) (Result, error) {
 	result := newResult(repo, st, dryRun)
 	planned, err := planForRepository(repo, artifact)
@@ -91,7 +89,10 @@ func ExecuteArtifact(repo config.Repo, st status.Result, artifact planartifact.A
 		return result, err
 	}
 	result.Actions = compatibilityActions(planned)
-	if planRequiresForce(planned) && !allowForce {
+	if err := validateStateIntent(repo.ID, st.State, planned); err != nil {
+		return result, err
+	}
+	if !dryRun && planRequiresForce(planned) && !allowForce {
 		return result, fmt.Errorf("repo %q plan contains a forced action; rerun with --force", repo.ID)
 	}
 	if len(planned.Actions) == 0 {
@@ -178,7 +179,7 @@ func buildPlan(repo config.Repo, st status.Result, git Git) (plan.Reconciliation
 	}
 
 	// Planning must describe destructive intent even before execution is
-	// authorized. ExecuteArtifact owns the explicit --force gate.
+	// authorized. ExecuteArtifact owns the explicit mutation gate.
 	return plan.Reconcile(repo, st, observation, true)
 }
 
@@ -209,6 +210,29 @@ func planForRepository(repo config.Repo, artifact planartifact.Artifact) (plan.R
 		}
 	}
 	return planned, nil
+}
+
+func validateStateIntent(repoID string, state status.State, planned plan.ReconciliationPlan) error {
+	actionCount := len(planned.Actions)
+	switch state {
+	case status.StateEqual:
+		if actionCount != 0 {
+			return fmt.Errorf("repo %q plan is stale: current state is EQUAL but artifact contains %d action(s)", repoID, actionCount)
+		}
+		return nil
+	case status.StateBehind:
+		if actionCount != 1 || planned.Actions[0].Force {
+			return fmt.Errorf("repo %q plan is stale or policy-invalid: BEHIND requires one non-forced action", repoID)
+		}
+		return nil
+	case status.StateAhead, status.StateDiverged:
+		if actionCount != 1 || !planned.Actions[0].Force {
+			return fmt.Errorf("repo %q plan is stale or policy-invalid: %s requires one forced action", repoID, state)
+		}
+		return nil
+	default:
+		return fmt.Errorf("repo %q has unsupported current state %q", repoID, state)
+	}
 }
 
 func validateDefaultBranchScope(repoPath string, planned plan.ReconciliationPlan, git Git) error {
