@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"repoctl/internal/executor"
+	"repoctl/internal/plan"
 	"repoctl/internal/planartifact"
 )
 
@@ -19,6 +20,13 @@ func FromPreflight(executionID string, artifact planartifact.Artifact, result ex
 	}
 
 	for i, executed := range result.Actions {
+		if executed.Index != i {
+			return Record{}, fmt.Errorf("preflight action %d has non-deterministic index %d", i, executed.Index)
+		}
+		if !reflect.DeepEqual(executed.Action, planned[i]) {
+			return Record{}, fmt.Errorf("preflight action %d does not match the referenced plan", i)
+		}
+
 		action := &record.Actions[i]
 		if preflightErr == nil {
 			action.Outcome = OutcomeValidated
@@ -38,9 +46,6 @@ func FromPreflight(executionID string, artifact planartifact.Artifact, result ex
 			return Record{}, fmt.Errorf("preflight action %d unexpectedly reports applied outcome", i)
 		default:
 			return Record{}, fmt.Errorf("preflight action %d has unsupported outcome %q", i, executed.Outcome)
-		}
-		if !reflect.DeepEqual(executed.Action, planned.Actions[i]) {
-			return Record{}, fmt.Errorf("preflight action %d does not match the referenced plan", i)
 		}
 	}
 
@@ -62,7 +67,7 @@ func FromExecution(executionID string, artifact planartifact.Artifact, result ex
 		if executed.Index != i {
 			return Record{}, fmt.Errorf("executor action %d has non-deterministic index %d", i, executed.Index)
 		}
-		if !reflect.DeepEqual(executed.Action, planned.Actions[i]) {
+		if !reflect.DeepEqual(executed.Action, planned[i]) {
 			return Record{}, fmt.Errorf("executor action %d does not match the referenced plan", i)
 		}
 
