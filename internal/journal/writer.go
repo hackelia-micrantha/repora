@@ -119,8 +119,8 @@ func ensurePrivateDirectory(parent, name string) (string, error) {
 	path := filepath.Join(parent, name)
 	info, err := os.Lstat(path)
 	if errors.Is(err, os.ErrNotExist) {
-		if err := os.Mkdir(path, 0o700); err != nil {
-			return "", fmt.Errorf("create %q: %w", path, err)
+		if mkdirErr := os.Mkdir(path, 0o700); mkdirErr != nil && !errors.Is(mkdirErr, os.ErrExist) {
+			return "", fmt.Errorf("create %q: %w", path, mkdirErr)
 		}
 		info, err = os.Lstat(path)
 	}
