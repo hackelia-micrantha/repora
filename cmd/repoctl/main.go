@@ -564,6 +564,10 @@ func printPlan(output plan.Output) {
 			continue
 		}
 		for _, action := range repoPlan.Actions {
+			if action.Destructive {
+				fmt.Printf("  overwrite mirror %s (destructive)\n", action.Target)
+				continue
+			}
 			fmt.Printf("  push mirror %s: %d commits\n", action.Target, action.Behind)
 		}
 	}
