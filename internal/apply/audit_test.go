@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"repoctl/internal/config"
 	"repoctl/internal/journal"
 	"repoctl/internal/plan"
 	"repoctl/internal/planartifact"
@@ -58,7 +59,7 @@ func TestExecuteArtifactAuditedFailsClosedWhenIntentWriteFails(t *testing.T) {
 }
 
 func TestExecuteArtifactAuditedPersistsRuntimeFailure(t *testing.T) {
-	git := &fakeGit{pushBranchErr: errors.New("remote rejected update")}
+	git := &failingPushGit{err: errors.New("remote rejected update")}
 	writer := &recordingJournalWriter{}
 	repo := testRepo()
 
@@ -143,6 +144,16 @@ func auditedArtifact(repo config.Repo, force bool) planartifact.Artifact {
 			Reason:            "mirror is behind",
 		}},
 	})
+}
+
+type failingPushGit struct {
+	fakeGit
+	err error
+}
+
+func (g *failingPushGit) PushBranch(repoPath, remote, srcRef, dstBranch string) error {
+	g.fakeGit.PushBranch(repoPath, remote, srcRef, dstBranch)
+	return g.err
 }
 
 type recordingJournalWriter struct {
