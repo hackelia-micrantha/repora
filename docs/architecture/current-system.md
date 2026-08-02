@@ -115,7 +115,7 @@ The merged journal implementation defines:
 - `PLANNED`, `APPLIED`, `FAILED`, `SKIPPED`, and `STALE` outcomes;
 - validated projection from executor results with diagnostic redaction.
 
-The journal is not yet required by apply and merged `main` does not yet persist or expose execution records. A journal record is evidence of intent and outcome, never authority to replay a stale operation.
+Apply does not yet require, persist, or expose execution records. A standalone filesystem writer may land before integration, but writer availability alone does not make apply audited. A journal record is evidence of intent and outcome, never authority to replay a stale operation.
 
 ## Concurrency model
 
