@@ -258,11 +258,7 @@ func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool,
 			}
 		}
 	}
-	output, err := applyRepos(spec, summary, force, dryRun, parallel, !jsonFlag)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "repoctl: %v\n", err)
-		return 1
-	}
+	output, applyErr := applyRepos(spec, summary, force, dryRun, parallel, !jsonFlag)
 	if jsonFlag {
 		if err := json.NewEncoder(os.Stdout).Encode(output); err != nil {
 			fmt.Fprintf(os.Stderr, "repoctl: write json: %v\n", err)
@@ -270,6 +266,10 @@ func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool,
 		}
 	} else {
 		printApply(output)
+	}
+	if applyErr != nil {
+		fmt.Fprintf(os.Stderr, "repoctl: %v\n", applyErr)
+		return 1
 	}
 	return 0
 }
@@ -302,8 +302,14 @@ func applyRepos(spec config.Spec, summary checkSummary, force bool, dryRun bool,
 	}()
 	ordered := make([]apply.Result, len(spec.Repos))
 	ok := make([]bool, len(spec.Repos))
+	var firstErr error
+	failedCount := 0
 	for res := range resultsCh {
 		if res.err != nil {
+			failedCount++
+			if firstErr == nil {
+				firstErr = res.err
+			}
 			res.result.Error = res.err.Error()
 		}
 		ordered[res.index] = res.result
@@ -314,6 +320,13 @@ func applyRepos(spec config.Spec, summary checkSummary, force bool, dryRun bool,
 		if ok[i] {
 			output.Results = append(output.Results, res)
 		}
+	}
+	if firstErr != nil {
+		noun := "repositories"
+		if failedCount == 1 {
+			noun = "repository"
+		}
+		return output, fmt.Errorf("%d %s failed during apply: %w", failedCount, noun, firstErr)
 	}
 	return output, nil
 }
