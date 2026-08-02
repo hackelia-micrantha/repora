@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"repoctl/internal/config"
 	"repoctl/internal/plan"
 	"repoctl/internal/planartifact"
 	"repoctl/internal/status"
