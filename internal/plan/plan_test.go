@@ -9,10 +9,18 @@ import (
 	"repoctl/internal/status"
 )
 
-func TestNewRepoPlanAddsPushMirrorActionWhenMirrorIsBehind(t *testing.T) {
-	got := NewRepoPlan(testRepo(), status.Result{State: status.StateBehind, Behind: 3})
-	if len(got.Actions) != 1 || got.Actions[0].Type != "PUSH_MIRROR" {
-		t.Fatalf("actions = %#v, want legacy PUSH_MIRROR action", got.Actions)
+func TestNewRepoPlanProjectsExactPushBranchAction(t *testing.T) {
+	planned := ReconciliationPlan{
+		ID:  "payments-api",
+		UID: "repo.org.payments-api",
+		Actions: []PlannedAction{{
+			Type:   ActionPushBranch,
+			Target: Remote{Provider: "github", Name: "mirror", Branch: "main"},
+		}},
+	}
+	got := NewRepoPlan(planned, status.Result{State: status.StateBehind, Behind: 3})
+	if len(got.Actions) != 1 || got.Actions[0].Type != "PUSH_MIRROR" || got.Actions[0].Target != "github" || got.Actions[0].Behind != 3 {
+		t.Fatalf("actions = %#v, want compatibility view derived from exact push action", got.Actions)
 	}
 }
 
