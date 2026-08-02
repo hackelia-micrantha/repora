@@ -33,12 +33,17 @@ func TestOutputJSONMatchesGoldenContract(t *testing.T) {
 		State:   status.StateBehind,
 		DryRun:  true,
 		Actions: []Action{{Type: "PUSH_BRANCH", Source: "canonical/main", Target: "github/main"}},
+		Journal: &JournalReferences{
+			ExecutionID: "run-001",
+			Intent:      ".repora/journal/repo.org.payments-api--run-001--intent.json",
+			Result:      ".repora/journal/repo.org.payments-api--run-001--result.json",
+		},
 	}}}
 	got, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := os.ReadFile("testdata/apply-v1.golden.json")
+	want, err := os.ReadFile("testdata/apply-v2.golden.json")
 	if err != nil {
 		t.Fatal(err)
 	}
