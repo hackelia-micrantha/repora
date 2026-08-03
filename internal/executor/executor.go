@@ -20,6 +20,13 @@ type Git interface {
 	ForcePushBranchWithLease(repoPath, remote, srcRef, dstBranch, expectedOldOID string) error
 }
 
+// RuntimeBindings maps durable artifact identity to current local Git remote
+// aliases. The reviewed action remains unchanged; aliases are execution detail.
+type RuntimeBindings struct {
+	SourceRemote  string
+	TargetRemotes map[string]string
+}
+
 type Outcome string
 
 const (
@@ -64,7 +71,17 @@ func Preflight(repoPath string, artifact planartifact.Artifact, git Git) (Result
 	if err != nil {
 		return Result{}, err
 	}
-	return preflightPlan(repoPath, planned, git)
+	return preflightPlan(repoPath, planned, git, nil)
+}
+
+// PreflightWithBindings performs the same complete preflight while resolving
+// current remote aliases from durable provider/path target identity.
+func PreflightWithBindings(repoPath string, artifact planartifact.Artifact, git Git, bindings RuntimeBindings) (Result, error) {
+	planned, err := onePlan(artifact)
+	if err != nil {
+		return Result{}, err
+	}
+	return preflightPlan(repoPath, planned, git, &bindings)
 }
 
 // Execute validates and consumes exactly one repository plan from a versioned
@@ -91,7 +108,7 @@ func onePlan(artifact planartifact.Artifact) (plan.ReconciliationPlan, error) {
 // executePlan remains the plan-level execution boundary used by focused tests.
 // Artifact callers reach it only after strict artifact parsing and conversion.
 func executePlan(repoPath string, planned plan.ReconciliationPlan, git Git) (Result, error) {
-	result, err := preflightPlan(repoPath, planned, git)
+	result, err := preflightPlan(repoPath, planned, git, nil)
 	if err != nil {
 		return result, err
 	}
@@ -115,7 +132,7 @@ func executePlan(repoPath string, planned plan.ReconciliationPlan, git Git) (Res
 	return result, nil
 }
 
-func preflightPlan(repoPath string, planned plan.ReconciliationPlan, git Git) (Result, error) {
+func preflightPlan(repoPath string, planned plan.ReconciliationPlan, git Git, bindings *RuntimeBindings) (Result, error) {
 	result := Result{Actions: make([]ActionResult, len(planned.Actions))}
 	for i, action := range planned.Actions {
 		result.Actions[i] = ActionResult{Index: i, Action: action, Outcome: OutcomeSkipped}
@@ -127,7 +144,7 @@ func preflightPlan(repoPath string, planned plan.ReconciliationPlan, git Git) (R
 		}
 	}
 	for i, action := range planned.Actions {
-		if err := validateCurrentRefs(repoPath, action, git); err != nil {
+		if err := validateCurrentRefs(repoPath, action, git, bindings); err != nil {
 			return failPreflight(result, i, true, fmt.Errorf("stale action %d: %w", i, err))
 		}
 	}
@@ -160,8 +177,22 @@ func validateAction(action plan.PlannedAction) error {
 	return nil
 }
 
-func validateCurrentRefs(repoPath string, action plan.PlannedAction, git Git) error {
-	sourceRef := remoteTrackingRef(action.Source.Name, action.Source.Branch)
+func validateCurrentRefs(repoPath string, action plan.PlannedAction, git Git, bindings *RuntimeBindings) error {
+	sourceRemote := action.Source.Name
+	targetRemote := action.Target.Name
+	if bindings != nil {
+		if strings.TrimSpace(bindings.SourceRemote) != "" {
+			sourceRemote = bindings.SourceRemote
+		}
+		targetID := stableTargetID(action.Target)
+		bound, ok := bindings.TargetRemotes[targetID]
+		if !ok || strings.TrimSpace(bound) == "" {
+			return fmt.Errorf("no runtime binding for target %s", targetID)
+		}
+		targetRemote = bound
+	}
+
+	sourceRef := remoteTrackingRef(sourceRemote, action.Source.Branch)
 	currentSource, err := git.ResolveRevision(repoPath, sourceRef)
 	if err != nil {
 		return fmt.Errorf("resolve source %s: %w", sourceRef, err)
@@ -170,7 +201,7 @@ func validateCurrentRefs(repoPath string, action plan.PlannedAction, git Git) er
 		return fmt.Errorf("source %s changed from %s to %s", sourceRef, shortOID(action.ExpectedSource), shortOID(currentSource))
 	}
 
-	targetRef := remoteTrackingRef(action.Target.Name, action.Target.Branch)
+	targetRef := remoteTrackingRef(targetRemote, action.Target.Branch)
 	currentTarget, err := git.ResolveRevision(repoPath, targetRef)
 	if err != nil {
 		return fmt.Errorf("resolve target %s: %w", targetRef, err)
@@ -179,6 +210,10 @@ func validateCurrentRefs(repoPath string, action plan.PlannedAction, git Git) er
 		return fmt.Errorf("target %s changed from %s to %s", targetRef, shortOID(action.ExpectedOldTarget), shortOID(currentTarget))
 	}
 	return nil
+}
+
+func stableTargetID(remote plan.Remote) string {
+	return strings.TrimSpace(remote.Provider) + ":" + strings.Trim(strings.TrimSpace(remote.Path), "/")
 }
 
 func remoteTrackingRef(remote, branch string) string {
