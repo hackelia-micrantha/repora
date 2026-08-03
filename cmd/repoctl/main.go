@@ -155,6 +155,9 @@ func run(args []string) int {
 	if command == "status" {
 		return runMultiStatus(spec, parallel, *jsonFlag, *continueOnError, *debug)
 	}
+	if command == "plan" && hasMultiMirrorRepository(spec) {
+		return runMultiMirrorPlan(spec, parallel, *jsonFlag, *artifactFlag, *force, *continueOnError, *debug)
+	}
 	if err := requireSingleMirrorReconciliation(spec); err != nil {
 		fmt.Fprintf(os.Stderr, "repoctl: %v\n", err)
 		return 1
