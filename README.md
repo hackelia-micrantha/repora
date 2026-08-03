@@ -4,111 +4,90 @@
 
 ![status](https://img.shields.io/badge/status-pre--alpha-blue)
 ![license](https://img.shields.io/badge/license-BSL%201.1-orange)
-![implementation](https://img.shields.io/badge/runtime-single--mirror-black)
+![implementation](https://img.shields.io/badge/status-multi--mirror%20read-black)
 
 ## Overview
 
-**Repora** is an early-stage project for managing repository state through explicit observation, planning, policy, execution, and evidence.
+**Repora** manages repository state through explicit topology, observation, policy, exact planning, stale-safe execution, and durable evidence.
 
-**repoctl** is the current Go CLI prototype. Each configured repository currently compares and synchronizes one GitLab canonical default branch to exactly one configured GitHub or GitLab mirror. Multiple repository entries may be processed in one invocation with bounded concurrency.
+**repoctl** is the current Go CLI prototype. A repository entry has one GitLab canonical and one or more GitHub/GitLab mirrors. Status observes every mirror independently. Plan/apply/sync remain explicitly single-mirror until the exact multi-mirror execution contract is implemented.
 
-The broader repository-control-plane model described below is the project direction, not the current feature set.
+Repora is pre-alpha. The broader repository-control-plane model is product direction, not a claim about current runtime capability.
 
 ## Implemented today
 
-The current CLI supports:
-
-- strict YAML configuration parsing
-- multiple configured repository entries per invocation
-- bounded concurrent repository processing
-- stable repository identity using `id` and optional durable `uid`
-- provider-relative repository locations using `provider + path`
-- runtime HTTPS URL derivation for GitHub and GitLab
-- bounded compatibility for legacy URL-based endpoints
-- one GitLab canonical repository per entry
-- exactly one GitHub or GitLab mirror per entry
-- system Git authentication and credential handling
-- local bare mirror caching
-- default-branch status classification:
+- strict YAML parsing and validation;
+- multiple repository entries with bounded concurrency;
+- durable `uid` identity separate from location;
+- provider-relative `provider + path` topology;
+- one or more unambiguous mirrors for status;
+- stable mirror selectors such as `github:org/repository`;
+- bounded single-mirror legacy URL compatibility;
+- runtime HTTPS resolution for built-in GitHub and GitLab;
+- local bare-cache preparation and system Git authentication;
+- default-branch status states:
   - `EQUAL`
   - `BEHIND`
   - `AHEAD`
   - `DIVERGED`
-- plan output for a behind mirror
-- dry-run apply
-- normal default-branch push when the mirror is behind
-- explicit `--force` handling for ahead or diverged mirrors
-- force-with-lease protection against stale target overwrites
-- human-readable and JSON output
-- top-level help through `repoctl --help`, `repoctl -h`, or `repoctl help`
+  - `ERROR` for incomplete mirror observation;
+- mirror-local status failure isolation;
+- `repora.status` JSON version 2;
+- closed ref-policy version 1:
+  - default branch only;
+  - destructive actions require explicit force authorization;
+- deterministic exact reconciliation artifacts;
+- `plan --artifact` export and `apply --plan-file` execution without re-planning;
+- complete stale-ref preflight before mutation;
+- normal behind pushes and explicit lease-protected overwrites;
+- fail-closed immutable intent/result journal evidence;
+- versioned human/JSON command contracts and nonzero failure status.
 
 ## Current limitations
 
-Repora is pre-alpha and should not yet be treated as a general Git mirror, repository control plane, or production governance service.
-
-Current limitations include:
-
-- GitLab-only canonical repositories
-- built-in GitHub and GitLab transport bases only
-- default HTTPS transport for path-based runtime operations
-- no user-configurable transport selection
-- one mirror per configured repository
-- default branch only
-- no tag synchronization
-- no deleted-ref reconciliation
-- no complete ref inventory
-- plan and apply do not yet consume one serialized plan artifact
-- no durable execution journal
-- no explicit branch/ref policy model
-- no Anthesis policy integration
-- no release binaries or compatibility guarantee for JSON output
-
-The existing `--force` path is transitional. It uses force-with-lease, but it is not yet constrained by the planned branch/ref policy and approval model.
+- GitLab canonical repositories only;
+- built-in GitHub/GitLab transport bases only;
+- path-based operations use HTTPS by default;
+- no user-selectable transport or provider bases;
+- multi-mirror status is implemented, but multi-mirror plan/apply/sync are not;
+- default branch only;
+- no tags, wildcard refs, deleted-ref reconciliation, or complete ref inventory;
+- no provider provisioning;
+- no cross-remote transaction or rollback;
+- no Anthesis policy integration;
+- no supported release binaries or compatibility guarantee beyond committed versioned schemas.
 
 ## Current workflow
 
+### Inspect one or more mirrors
+
 ```mermaid
 flowchart LR
-    Config[repora.yaml] --> Resolver[Resolve provider/path endpoints]
-    Resolver --> Status[Fetch canonical and mirror]
-    Status --> Compare[Compare default branches]
-    Compare --> Plan[Produce semantic plan]
-    Compare --> Apply[Apply default-branch update]
-    Apply --> Lease[Use force-with-lease when explicitly forced]
+    Config[repora.yaml] --> Canonical[Observe canonical once]
+    Canonical --> Mirrors[Observe each mirror]
+    Mirrors --> Status[Status v2 results]
 ```
 
-The target architecture moves to a single plan artifact consumed by apply:
+One mirror failure remains visible as `ERROR` and does not hide later mirrors. Operational failure returns exit `1`; complete ahead/diverged state returns `2`.
+
+### Review and apply one mirror
 
 ```mermaid
 flowchart LR
-    Topology[Topology] --> Resolver[Transport resolver]
-    Resolver --> Observe[Observed ref state]
+    Topology[Topology + ref policy] --> Observe[Single-mirror observation]
     Observe --> Planner[Deterministic planner]
-    Planner --> Artifact[Versioned plan artifact]
-    Artifact --> Policy[Policy decision]
-    Policy --> Executor[Stale-safe executor]
-    Executor --> Journal[Execution journal]
+    Planner --> Artifact[Exact plan artifact]
+    Artifact --> Intent[Immutable INTENT]
+    Intent --> Preflight[Complete stale preflight]
+    Preflight --> Executor[Mutation or dry-run]
+    Executor --> Result[Immutable RESULT]
 ```
 
-See [`docs/architecture/mirror-workflow-semantics.md`](docs/architecture/mirror-workflow-semantics.md) for the intended mirror-controller semantics.
+Plan/apply/sync reject multi-mirror repositories before Git observation rather than choosing the first mirror implicitly.
 
-## Development
+## Configuration
 
-This project uses [mise](https://mise.jdx.sh/) to manage development tools and tasks.
-
-```bash
-mise install
-mise run fmt
-mise run lint
-mise run test
-mise run build
-```
-
-The project can also be built and tested directly with Go tooling.
-
-## Current configuration
-
-Use `provider + path` as the authoritative repository location:
+Preferred form:
 
 ```yaml
 repos:
@@ -120,149 +99,126 @@ repos:
     mirrors:
       - provider: github
         path: hackelia-micrantha/anthesis
+      - provider: gitlab
+        path: micrantha-backup/anthesis
     mode: mirror
+    policy:
+      refs:
+        version: 1
+        scope: default-branch-only
+        destructive: require-force
 ```
 
-`id` is the human-facing operational alias. `uid` is the durable logical identity used for cache continuity and future history or evidence. Keep `uid` stable when renaming `id`, moving a repository, changing provider, or changing transport.
+`id` is the operational label. `uid` is durable identity and should remain stable across renames, provider changes, moves, and transport changes.
 
-The runtime currently resolves the example to HTTPS Git remotes immediately before Git operations. Resolved URLs are runtime state, not durable identity.
+When several mirrors are configured, each must use provider/path and targets must be unique. Array position is deterministic order, not identity.
 
-Credentials must not be embedded in `repora.yaml`. Authentication is delegated to system Git and configured credential helpers. Credential-bearing HTTP URLs are rejected during configuration loading.
+Credentials must not be embedded in configuration. Authentication is delegated to system Git and credential helpers.
 
-Legacy `url` fields remain accepted temporarily, but an endpoint must define exactly one of `path` or `url`. New configuration should use `path`.
-
-See [`docs/configuration/provider-path-topology-v1.md`](docs/configuration/provider-path-topology-v1.md) for the complete field reference, nested GitLab paths, migration examples, validation errors, compatibility behavior, and current limitations.
+See [`docs/configuration/provider-path-topology-v1.md`](docs/configuration/provider-path-topology-v1.md).
 
 ## CLI
 
-Show the implemented command surface with:
-
-```bash
-repoctl --help
-```
-
-Primary workflows:
-
 ```bash
 repoctl status -f repora.yaml
-repoctl plan -f repora.yaml
-repoctl apply -f repora.yaml --dry-run
-repoctl apply -f repora.yaml
-repoctl sync -f repora.yaml
+repoctl status -f repora.yaml --json
+repoctl plan -f single-mirror.yaml
+repoctl plan -f single-mirror.yaml --artifact > plan.json
+repoctl apply -f single-mirror.yaml --dry-run
+repoctl apply -f single-mirror.yaml --plan-file plan.json
+repoctl apply -f single-mirror.yaml --plan-file plan.json --force
 ```
 
-`sync` is currently an alias for `apply`. Top-level help is also available through `repoctl -h` and `repoctl help`.
+`sync` is currently an alias for `apply`.
 
-Commands such as generalized `diff`, continuous `drift`, repository bootstrapping, and policy management remain planned work.
+Exit codes:
+
+- `0`: success;
+- `1`: operational, validation, stale, journal, execution, or output failure;
+- `2`: complete unsafe status or missing authorization for a destructive real mutation.
+
+## Contracts and architecture
+
+- [Current architecture](docs/architecture/current-system.md)
+- [Multi-mirror status](docs/architecture/multi-mirror-status.md)
+- [Failure and recovery semantics](docs/architecture/failure-semantics.md)
+- [Exact reconciliation artifact](docs/architecture/reconciliation-plan-artifact.md)
+- [Execution journal](docs/architecture/execution-journal.md)
+- [Closed ref policy](docs/architecture/ref-policy.md)
+- [Status v2 migration](docs/cli/status-v2.md)
+- [Active implementation plan](docs/plans/current.md)
+- [Architecture decision index](docs/decisions/README.md)
+- [Versioned schemas](schemas/)
+
+## Development
+
+Repora uses [mise](https://mise.jdx.sh/) for tool and task management.
+
+```bash
+mise install
+mise run fmt
+mise run lint
+mise run test
+mise run build
+```
+
+Direct Go tooling is also supported.
 
 ## Product direction
 
-Repora is intended to become a local-first repository controller with these properties:
+Repora is intended to become a local-first repository controller that is:
 
-- **Deterministic** — identical topology, observations, and policy produce the same plan
-- **Idempotent** — safe operations converge without unnecessary mutation
-- **Reviewable** — mutation intent is represented before execution
-- **Stale-safe** — apply rejects changed target state rather than silently re-planning
-- **Auditable** — plans, decisions, leases, and outcomes can be journaled
-- **Policy-driven** — destructive or sensitive operations fail closed unless explicitly authorized
+- **deterministic** — identical topology, observations, and policy produce the same exact plan;
+- **reviewable** — mutation intent exists before execution;
+- **stale-safe** — changed refs reject old plans;
+- **auditable** — intent and outcome evidence is durable;
+- **policy-driven** — unsupported or destructive behavior fails closed;
+- **honest about partial failure** — no false atomicity or rollback claims.
 
-Potential managed domains include:
-
-- Git ref reconciliation
-- selected deterministic repository artifacts
-- CI/CD and security baseline assessment
-- repository posture evidence
-- deterministic context routing for AI-assisted work
-
-These domains will share the planner, policy, execution, and evidence substrate rather than becoming independent mutation paths.
-
-## Document routing
-
-Repora includes a repository-local deterministic document-routing definition intended to reduce retrieval noise for AI-assisted workflows.
-
-Artifacts:
-
-- `.repora/document-router.yaml`
-- `schemas/document-router.schema.json`
-- `docs/routing/document-routing.md`
-- `prompts/document-routing-overlay.md`
-
-The routing model is currently a specification and repository convention. Advanced features such as trust tiers, context receipts, hierarchical summaries, subsystem manifests, and AST-aware routing remain planned.
-
-Core routing principles:
-
-- route before retrieval expansion
-- explicit include and exclude rules
-- bounded file, byte, and token budgets
-- deterministic ordering and pruning
-- canonical-document preference
-- prompt and generated-content boundaries
-
-## Repository and CI/CD posture
-
-Repora can model repository security posture, CI/CD posture, mirror management, documentation hygiene, commit-history evidence, and local workflow controls as declarative repository state.
-
-The posture model is documented in [`docs/posture.md`](docs/posture.md). It covers normalized repository facts, CI/CD hardening checks, mirror drift, README and documentation hygiene, commit analysis, hook expectations, policy evaluation, exceptions, remediation plans, and the boundary between read-only checks and provider mutation.
-
-The goal is not to replace specialized scanners, documentation linters, or commit-forensics tools. Repora should orchestrate posture tools, normalize their findings, and produce reviewable reports, issues, PRs, or guarded provider-setting changes.
+Potential managed domains include Git ref reconciliation, deterministic repository artifacts, CI/security posture, repository evidence, and bounded document routing for AI-assisted work. They must reuse the plan, policy, execution, and evidence substrate rather than create parallel mutation paths.
 
 ## Security model
 
-Repository mutation is privileged. Current and planned controls follow these principles:
+Current controls include:
 
-- least privilege
-- credentials delegated to system Git
-- no credentials stored in `repora.yaml`
-- explicit mutation boundaries
-- reviewable intent before mutation
-- force-with-lease for explicitly forced default-branch updates
-- fail-closed handling for unsupported or ambiguous states
-- deterministic routing allowlists for AI context
+- credentials delegated to system Git;
+- credential-bearing HTTP URLs rejected;
+- stable identity separated from transport;
+- closed default-branch-only ref policy;
+- destructive intent visible in the exact artifact;
+- explicit `--force` authorization;
+- full stale-ref preflight;
+- force-with-lease defense in depth;
+- fail-closed journal intent persistence;
+- sanitized diagnostics and safe relative evidence references;
+- strict denial of implicit multi-mirror mutation.
 
-Threats under consideration include:
-
-- unauthorized repository mutation
-- stale-plan overwrites
-- deletion or rewrite of durable refs
-- over-broad Git credentials
-- supply-chain injection through templates
-- unsafe plugin execution
-- prompt injection through repository content
-- context poisoning through generated, archived, or external artifacts
-
-Planned mitigations include explicit ref policy, durable journals, approvals, policy attestations, signed artifacts, sandboxed extensions, and context receipts.
+Future work includes exact multi-mirror target binding and outcomes, optional approvals/attestations, and supported release packaging.
 
 ## Roadmap
 
-The ordered implementation path is maintained in [`docs/roadmap/ordered-implementation-path.md`](docs/roadmap/ordered-implementation-path.md).
+Immediate critical path:
 
-The immediate critical path is:
+1. exact multi-mirror artifacts and independent ordered apply;
+2. per-mirror result and journal evidence with non-atomic recovery;
+3. v0.1 release packaging, checksums, verification, and installation guidance.
 
-1. separate topology, observation, planning, and execution
-2. stabilize versioned JSON contracts
-3. make one serialized plan the apply boundary
-4. add stale-plan validation and execution journaling
-5. enforce explicit branch/ref policy
-6. expand to multiple mirrors
-7. integrate optional Anthesis policy evaluation
-8. harden and package a v0.1 release
-
-The runtime resolver foundation and provider/path topology documentation are complete. Configurable provider bases and user-selected transport remain tracked under issue #16 outside the immediate #22 decision-path slice.
+The authoritative order is maintained in [`docs/plans/current.md`](docs/plans/current.md) and GitHub issues.
 
 ## License
 
-This project is licensed under the **Business Source License 1.1 (BSL)**.
+Business Source License 1.1:
 
-- Free for personal and internal use
-- Commercial or SaaS use requires a license
-- Converts to Apache-2.0 on 2029-01-01
+- free for personal and internal use;
+- commercial or SaaS use requires a license;
+- converts to Apache-2.0 on 2029-01-01.
 
-See [LICENSE](./LICENSE) for details.
+See [LICENSE](LICENSE).
 
 ## Project status
 
-Pre-alpha and actively evolving. Expect breaking changes, schema iteration, and architecture refinement.
+Pre-alpha and actively evolving. Expect explicit version migrations and architecture refinement.
 
-External contributions are currently closed while the core model stabilizes. Issues describing concrete use cases and failure modes are welcome.
+External contributions are currently closed while the core model stabilizes. Concrete use cases and failure reports are welcome.
 
 Micrantha Software — [micrantha.com](https://micrantha.com)
