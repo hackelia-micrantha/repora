@@ -55,9 +55,13 @@ func NewOutput(plans []ReconciliationPlan, results []status.Result) Output {
 func NewRepoPlan(planned ReconciliationPlan, result status.Result) RepoPlan {
 	repoPlan := RepoPlan{ID: planned.ID, UID: planned.UID, Actions: []Action{}}
 	for _, action := range planned.Actions {
+		target := action.Target.Provider
+		if action.Target.Path != "" {
+			target += ":" + action.Target.Path
+		}
 		repoPlan.Actions = append(repoPlan.Actions, Action{
 			Type:        "PUSH_MIRROR",
-			Target:      action.Target.Provider,
+			Target:      target,
 			Behind:      result.Behind,
 			Destructive: action.Force,
 		})
@@ -71,6 +75,7 @@ const ActionPushBranch ActionType = "PUSH_BRANCH"
 
 type Remote struct {
 	Provider string
+	Path     string
 	Name     string
 	Branch   string
 }
@@ -98,14 +103,10 @@ type Observation struct {
 	MirrorHeadOID    string
 }
 
-// RequiresMirrorHeadObservation reports whether planning needs the current
-// mirror head to construct a forced action and its lease.
 func RequiresMirrorHeadObservation(result status.Result) bool {
 	return result.State == status.StateAhead || result.State == status.StateDiverged
 }
 
-// RequiresRefObservation reports whether reconciliation may produce a mutation
-// action whose source and target refs must be captured for stale-plan checks.
 func RequiresRefObservation(result status.Result) bool {
 	return result.State == status.StateBehind || RequiresMirrorHeadObservation(result)
 }
@@ -131,6 +132,14 @@ func Reconcile(repo config.Repo, result status.Result, observed Observation, for
 	if strings.TrimSpace(repo.Canonical.Provider) == "" || strings.TrimSpace(repo.Mirrors[0].Provider) == "" {
 		return repoPlan, fmt.Errorf("repo %q requires canonical and mirror providers", repo.ID)
 	}
+	canonicalPath, err := repo.Canonical.RepositoryPath()
+	if err != nil {
+		return repoPlan, fmt.Errorf("resolve canonical identity for repo %q: %w", repo.ID, err)
+	}
+	mirrorPath, err := repo.Mirrors[0].RepositoryPath()
+	if err != nil {
+		return repoPlan, fmt.Errorf("resolve mirror identity for repo %q: %w", repo.ID, err)
+	}
 
 	sourceBranch := strings.TrimSpace(observed.CanonicalBranch)
 	targetBranch := strings.TrimSpace(observed.MirrorBranch)
@@ -151,11 +160,13 @@ func Reconcile(repo config.Repo, result status.Result, observed Observation, for
 		Type: ActionPushBranch,
 		Source: Remote{
 			Provider: repo.Canonical.Provider,
+			Path:     canonicalPath,
 			Name:     "canonical",
 			Branch:   sourceBranch,
 		},
 		Target: Remote{
 			Provider: repo.Mirrors[0].Provider,
+			Path:     mirrorPath,
 			Name:     "mirror",
 			Branch:   targetBranch,
 		},
