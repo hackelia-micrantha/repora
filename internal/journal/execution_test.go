@@ -93,21 +93,28 @@ func TestFromExecutionPreservesPartialFailure(t *testing.T) {
 
 func TestFromExecutionRedactsUnsafeDiagnostic(t *testing.T) {
 	planned := testPlan().Actions[0]
-	for _, diagnostic := range []string{
-		"push failed token=secret",
-		"fatal: '/tmp/private/mirror.git' does not appear to be a git repository",
-	} {
+	tests := []struct {
+		diagnostic string
+		want       string
+	}{
+		{diagnostic: "push failed token=secret", want: "execution diagnostic redacted"},
+		{
+			diagnostic: "fatal: '/tmp/private/mirror.git' does not appear to be a git repository",
+			want:       "fatal: '[REDACTED_PATH]' does not appear to be a git repository",
+		},
+	}
+	for _, tt := range tests {
 		record, err := FromExecution("run-failed", testArtifact(), executor.Result{Actions: []executor.ActionResult{{
 			Index:   0,
 			Action:  planned,
 			Outcome: executor.OutcomeFailed,
-			Error:   diagnostic,
+			Error:   tt.diagnostic,
 		}}})
 		if err != nil {
 			t.Fatalf("FromExecution returned error: %v", err)
 		}
-		if record.Actions[0].Error != "execution diagnostic redacted" {
-			t.Fatalf("error = %q, want redacted diagnostic", record.Actions[0].Error)
+		if record.Actions[0].Error != tt.want {
+			t.Fatalf("error = %q, want %q", record.Actions[0].Error, tt.want)
 		}
 	}
 }
