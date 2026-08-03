@@ -59,7 +59,11 @@ func runMultiStatus(spec config.Spec, parallel int, jsonFlag, continueOnError, d
 		ordered[item.index] = item.result
 		orderedErrors[item.index] = item.err
 		if debug {
-			debugf("repoctl: debug checked repo=%s mirrors=%d error=%t\n", spec.Repos[item.index].ID, len(item.result.Mirrors), item.err != nil)
+			if item.err == nil && len(item.result.Mirrors) == 1 {
+				debugf("repoctl: debug checked repo=%s state=%s\n", spec.Repos[item.index].ID, item.result.Mirrors[0].State)
+			} else {
+				debugf("repoctl: debug checked repo=%s mirrors=%d error=%t\n", spec.Repos[item.index].ID, len(item.result.Mirrors), item.err != nil)
+			}
 		}
 	}
 
