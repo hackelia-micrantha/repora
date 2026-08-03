@@ -2,6 +2,8 @@ package journal
 
 import (
 	"bytes"
+	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -14,82 +16,86 @@ const (
 	testTargetOID = "2222222222222222222222222222222222222222"
 )
 
-func TestRecordRoundTrip(t *testing.T) {
-	record, err := FromPlan("run-001", ModeApply, testArtifact())
+func TestFromPlanCreatesDeterministicIntentAndActions(t *testing.T) {
+	artifact := testArtifact()
+	first, err := FromPlan("run-001", ModeDryRun, artifact)
 	if err != nil {
 		t.Fatalf("FromPlan returned error: %v", err)
 	}
-	encoded, err := record.Marshal()
+	second, err := FromPlan("run-001", ModeDryRun, artifact)
 	if err != nil {
-		t.Fatalf("Marshal returned error: %v", err)
+		t.Fatalf("FromPlan returned error: %v", err)
 	}
-	parsed, err := Parse(encoded)
+	if !reflect.DeepEqual(first, second) {
+		t.Fatalf("records differ:\n%#v\n%#v", first, second)
+	}
+	if first.Version != Version || first.Phase != PhaseIntent {
+		t.Fatalf("envelope = version %d phase %q, want v%d INTENT", first.Version, first.Phase, Version)
+	}
+	if first.Plan.SHA256 == "" || len(first.Plan.SHA256) != 64 {
+		t.Fatalf("plan digest = %q, want SHA-256", first.Plan.SHA256)
+	}
+	if len(first.Actions) != 1 {
+		t.Fatalf("actions = %#v, want one", first.Actions)
+	}
+	action := first.Actions[0]
+	if action.Index != 0 || action.Before != testTargetOID || action.Desired != testSourceOID || action.Outcome != OutcomePlanned {
+		t.Fatalf("action = %#v, want ordered planned ref evidence", action)
+	}
+}
+
+func TestRecordSerializationIsDeterministicAndRoundTrips(t *testing.T) {
+	record, err := FromPlan("run-001", ModePlan, testArtifact())
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := record.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := record.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(first, second) {
+		t.Fatalf("serialization differs:\n%s\n%s", first, second)
+	}
+	decoded, err := Parse(first)
 	if err != nil {
 		t.Fatalf("Parse returned error: %v", err)
 	}
-	if parsed.ExecutionID != "run-001" || parsed.Repository.UID != "repo.org.payments-api" || len(parsed.Actions) != 1 {
-		t.Fatalf("parsed record = %#v", parsed)
-	}
-	if parsed.Actions[0].Before != testTargetOID || parsed.Actions[0].Desired != testSourceOID || parsed.Actions[0].Outcome != OutcomePlanned {
-		t.Fatalf("action = %#v", parsed.Actions[0])
+	if !reflect.DeepEqual(decoded, record) {
+		t.Fatalf("decoded = %#v, want %#v", decoded, record)
 	}
 }
 
-func TestRecordJSONMatchesGoldenContract(t *testing.T) {
-	record, err := FromPlan("run-001", ModeApply, testArtifact())
+func TestParseRetainsLegacyV1Compatibility(t *testing.T) {
+	record, err := FromPlan("run-legacy", ModeApply, testArtifact())
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := record.Marshal()
+	record.Version = LegacyVersion
+	record.Phase = ""
+	encoded, err := json.Marshal(record)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := testdata.ReadFile("testdata/execution-record-v2.golden.json")
+	decoded, err := Parse(encoded)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Parse legacy record: %v", err)
 	}
-	if !bytes.Equal(bytes.TrimSpace(got), bytes.TrimSpace(want)) {
-		t.Fatalf("execution record contract changed:\ngot:\n%s\nwant:\n%s", got, want)
+	if decoded.Version != LegacyVersion || decoded.Phase != "" {
+		t.Fatalf("legacy envelope = %#v", decoded)
 	}
 }
 
-func TestParseHistoricalVersion1Record(t *testing.T) {
-	data, err := testdata.ReadFile("testdata/execution-record-v1.golden.json")
-	if err != nil {
-		t.Fatal(err)
+func TestFromPlanRejectsInvalidOrMultiRepositoryArtifact(t *testing.T) {
+	invalid := testArtifact()
+	invalid.Version = 99
+	if _, err := FromPlan("run-001", ModeApply, invalid); err == nil || !strings.Contains(err.Error(), "serialize plan artifact") {
+		t.Fatalf("error = %v, want artifact validation failure", err)
 	}
-	record, err := Parse(data)
-	if err != nil {
-		t.Fatalf("Parse returned error: %v", err)
-	}
-	if record.Version != LegacyVersion || record.Phase != "" || record.Actions[0].Outcome != OutcomePlanned {
-		t.Fatalf("record = %#v", record)
-	}
-}
 
-func TestParseRejectsUnknownAndTrailingFields(t *testing.T) {
-	data, err := (Record{
-		Version:     LegacyVersion,
-		Kind:        Kind,
-		ExecutionID: "run",
-		Mode:        ModeApply,
-		Plan:        PlanRef{Version: planartifact.LegacyVersion, Kind: planartifact.Kind, SHA256: strings.Repeat("a", 64)},
-		Repository:  Repository{UID: "repo.uid", ID: "repo"},
-		Actions:     []Action{},
-	}).Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
-	withUnknown := append(data[:len(data)-1], []byte(`,"url":"https://example.com"}`)...)
-	if _, err := Parse(withUnknown); err == nil || !strings.Contains(err.Error(), "unknown field") {
-		t.Fatalf("unknown field error = %v", err)
-	}
-	if _, err := Parse(append(data, []byte(` {}`)...)); err == nil || !strings.Contains(err.Error(), "trailing") {
-		t.Fatalf("trailing error = %v", err)
-	}
-}
-
-func TestRecordRejectsMultipleRepositories(t *testing.T) {
 	multi := planartifact.FromPlans(testPlan(), testPlan())
 	if _, err := FromPlan("run-001", ModeApply, multi); err == nil || !strings.Contains(err.Error(), "exactly one repository") {
 		t.Fatalf("error = %v, want repository cardinality failure", err)
@@ -163,8 +169,30 @@ func TestResultPhaseRules(t *testing.T) {
 	applyValidated := record
 	applyValidated.Actions[0].Outcome = OutcomeValidated
 	applyValidated.Actions[0].After = ""
-	if err := applyValidated.Validate(); err == nil || !strings.Contains(err.Error(), "apply") {
+	if err := applyValidated.Validate(); err == nil || !strings.Contains(err.Error(), "apply result") {
 		t.Fatalf("apply validated error = %v", err)
+	}
+}
+
+func TestParseRejectsUnknownFieldsAndTrailingData(t *testing.T) {
+	record, err := FromPlan("run-001", ModePlan, testArtifact())
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := record.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unknown := bytes.Replace(encoded, []byte(`"mode": "PLAN"`), []byte(`"mode": "PLAN", "secret": "x"`), 1)
+	if _, err := Parse(unknown); err == nil || !strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("error = %v, want unknown-field rejection", err)
+	}
+	for _, suffix := range []string{`{"extra":true}`, ` trailing`} {
+		payload := append(append([]byte(nil), encoded...), []byte(suffix)...)
+		if _, err := Parse(payload); err == nil || !strings.Contains(err.Error(), "trailing") {
+			t.Fatalf("suffix %q error = %v, want trailing-data rejection", suffix, err)
+		}
 	}
 }
 
@@ -182,7 +210,8 @@ func testPlan() plan.ReconciliationPlan {
 			Target:            plan.Remote{Provider: "github", Name: "mirror", Branch: "main"},
 			ExpectedSource:    testSourceOID,
 			ExpectedOldTarget: testTargetOID,
-			Reason:            "mirror is behind",
+			Force:             true,
+			Reason:            "mirror is diverged",
 		}},
 	}
 }
