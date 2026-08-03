@@ -15,10 +15,8 @@ import (
 	"repoctl/internal/status"
 )
 
-var (
-	ErrForceAuthorization              = errors.New("destructive plan requires --force")
-	publicEmbeddedAbsolutePathPattern = regexp.MustCompile(`(^|[[:space:]'"])/[^[:space:]'"]+`)
-)
+var ErrForceAuthorization = errors.New("destructive plan requires --force")
+var publicEmbeddedAbsolutePathPattern = regexp.MustCompile(`(^|[[:space:]'"])/[^[:space:]'"]+`)
 
 // ExecuteRepositoryArtifactAudited applies or dry-runs one exact path-bound
 // repository artifact. It shares topology, policy, branch, intent, and OID
