@@ -31,15 +31,22 @@ func TestEndpointRepositoryPathDerivesSafeLegacyPath(t *testing.T) {
 }
 
 func TestEndpointRepositoryPathRejectsUnsafeIdentity(t *testing.T) {
-	for _, endpoint := range []Endpoint{
-		{Provider: "github", Path: "/tmp/payments-api"},
-		{Provider: "github", Path: "../payments-api"},
-		{Provider: "github", URL: "file:///tmp/payments-api.git"},
-	} {
-		_, err := endpoint.RepositoryPath()
-		if err == nil || !strings.Contains(err.Error(), "path") {
-			t.Fatalf("endpoint %#v error = %v, want unsafe path rejection", endpoint, err)
-		}
+	tests := []struct {
+		name     string
+		endpoint Endpoint
+		want     string
+	}{
+		{name: "absolute path", endpoint: Endpoint{Provider: "github", Path: "/tmp/payments-api"}, want: "path"},
+		{name: "traversal path", endpoint: Endpoint{Provider: "github", Path: "../payments-api"}, want: "path"},
+		{name: "local file URL", endpoint: Endpoint{Provider: "github", URL: "file:///tmp/payments-api.git"}, want: "durable provider identity"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.endpoint.RepositoryPath()
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("endpoint %#v error = %v, want containing %q", tt.endpoint, err, tt.want)
+			}
+		})
 	}
 }
 
