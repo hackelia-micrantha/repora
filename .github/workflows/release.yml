@@ -1,0 +1,110 @@
+name: release
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - Makefile
+      - cmd/repoctl/main.go
+      - cmd/repoctl/version.go
+      - scripts/ci/cli-smoke.sh
+      - scripts/release/**
+      - docs/release.md
+      - README.md
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GO_VERSION: '1.25.8'
+
+jobs:
+  validate:
+    name: Validate release packages
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Set validation metadata
+        run: |
+          {
+            echo 'VERSION=v0.0.0-validation'
+            echo "COMMIT=$GITHUB_SHA"
+            echo "SOURCE_DATE_EPOCH=$(git show -s --format=%ct "$GITHUB_SHA")"
+          } >> "$GITHUB_ENV"
+
+      - name: Build release packages
+        run: make release-package
+
+      - name: Verify reproducible checksums
+        run: |
+          cp dist/checksums.txt "$RUNNER_TEMP/checksums.first.txt"
+          make release-package
+          diff -u "$RUNNER_TEMP/checksums.first.txt" dist/checksums.txt
+
+      - name: Verify release packages
+        run: make release-verify
+
+  publish:
+    name: Publish tagged release
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Require tag commit on main
+        run: |
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Setup Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Set release metadata
+        run: |
+          {
+            echo "VERSION=$GITHUB_REF_NAME"
+            echo "COMMIT=$GITHUB_SHA"
+            echo "SOURCE_DATE_EPOCH=$(git show -s --format=%ct "$GITHUB_SHA")"
+          } >> "$GITHUB_ENV"
+
+      - name: Build release packages
+        run: make release-package
+
+      - name: Verify release packages
+        run: make release-verify
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$VERSION" dist/* \
+            --verify-tag \
+            --title "$VERSION" \
+            --generate-notes

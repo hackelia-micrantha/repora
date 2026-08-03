@@ -10,12 +10,14 @@ const helpText = `repoctl manages configured Git repository mirrors.
 Usage:
   repoctl <command> [options]
   repoctl --help
+  repoctl --version
 
 Commands:
   status   inspect canonical and mirror default-branch state
   plan     show planned mirror updates or export an executable artifact
   apply    apply current observations or an exact plan artifact
   sync     alias for apply
+  version  show embedded version and commit metadata
   help     show this help
 
 Options:
@@ -37,6 +39,8 @@ Options:
         allow destructive overwrites for ahead or diverged mirrors
   --debug
         print debug logs to stderr
+  --version
+        show embedded version and commit metadata
   -h, --help
         show this help
 `
