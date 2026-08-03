@@ -14,6 +14,18 @@
 
 Repora is pre-alpha. The broader repository-control-plane model is product direction, not a claim about current runtime capability.
 
+## Why Go
+
+Go was chosen for `repoctl` because it fits the operational shape of a repository-control CLI:
+
+- it produces small, self-contained binaries that are straightforward to distribute across Linux, macOS, Windows, CI runners, and administrative hosts;
+- fast startup and modest runtime overhead suit commands that inspect many repositories and frequently invoke system Git;
+- the standard library provides strong support for subprocess control, cancellation, timeouts, filesystem work, structured encoding, and bounded concurrency without requiring a large dependency graph;
+- static typing, explicit error handling, built-in testing, formatting, vetting, and race detection support deterministic behavior and long-term maintenance;
+- cross-compilation and reproducible release automation keep the packaging and deployment boundary simple.
+
+The choice is pragmatic rather than ideological. Repora delegates Git protocol and credential behavior to the installed Git executable instead of reimplementing Git, while Go owns the topology, policy, planning, validation, execution, and evidence contracts. Languages such as Rust could provide stronger compile-time guarantees for some internal states, but Go currently offers the better trade-off for implementation speed, operational simplicity, contributor accessibility, and the project's expected performance envelope.
+
 ## Implemented today
 
 - strict YAML validation and durable `uid` identity;
