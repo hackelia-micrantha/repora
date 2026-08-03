@@ -17,6 +17,7 @@ import (
 const (
 	LegacyVersion = 1
 	Version       = 2
+	PathVersion   = 3
 	Kind          = "repora.io/execution-record"
 )
 
@@ -76,6 +77,7 @@ type Repository struct {
 
 type Ref struct {
 	Provider string `json:"provider"`
+	Path     string `json:"path,omitempty"`
 	Remote   string `json:"remote"`
 	Branch   string `json:"branch"`
 }
@@ -102,10 +104,14 @@ func FromPlan(executionID string, mode Mode, artifact planartifact.Artifact) (Re
 		return Record{}, fmt.Errorf("journal record requires exactly one repository, got %d", len(artifact.Repositories))
 	}
 
+	recordVersion := Version
+	if artifact.Version == planartifact.Version {
+		recordVersion = PathVersion
+	}
 	digest := sha256.Sum256(encoded)
 	repo := artifact.Repositories[0]
 	record := Record{
-		Version:     Version,
+		Version:     recordVersion,
 		Kind:        Kind,
 		ExecutionID: executionID,
 		Phase:       PhaseIntent,
@@ -120,10 +126,20 @@ func FromPlan(executionID string, mode Mode, artifact planartifact.Artifact) (Re
 	}
 	for i, planned := range repo.Actions {
 		record.Actions = append(record.Actions, Action{
-			Index:   i,
-			Type:    planned.Type,
-			Source:  Ref{Provider: planned.Source.Provider, Remote: planned.Source.Remote, Branch: planned.Source.Branch},
-			Target:  Ref{Provider: planned.Target.Provider, Remote: planned.Target.Remote, Branch: planned.Target.Branch},
+			Index: i,
+			Type:  planned.Type,
+			Source: Ref{
+				Provider: planned.Source.Provider,
+				Path:     planned.Source.Path,
+				Remote:   planned.Source.Remote,
+				Branch:   planned.Source.Branch,
+			},
+			Target: Ref{
+				Provider: planned.Target.Provider,
+				Path:     planned.Target.Path,
+				Remote:   planned.Target.Remote,
+				Branch:   planned.Target.Branch,
+			},
 			Before:  planned.Diff.Observed,
 			Desired: planned.Diff.Desired,
 			Force:   planned.Force,
@@ -164,7 +180,7 @@ func Parse(data []byte) (Record, error) {
 }
 
 func (r Record) Validate() error {
-	if r.Version != LegacyVersion && r.Version != Version {
+	if r.Version != LegacyVersion && r.Version != Version && r.Version != PathVersion {
 		return fmt.Errorf("unsupported execution record version %d", r.Version)
 	}
 	if r.Kind != Kind {
@@ -196,10 +212,10 @@ func (r Record) Validate() error {
 		if action.Type != "PUSH_BRANCH" {
 			return fmt.Errorf("action %d has unsupported type %q", i, action.Type)
 		}
-		if err := validateRef(action.Source); err != nil {
+		if err := validateRef(r.Version, action.Source); err != nil {
 			return fmt.Errorf("action %d source: %w", i, err)
 		}
-		if err := validateRef(action.Target); err != nil {
+		if err := validateRef(r.Version, action.Target); err != nil {
 			return fmt.Errorf("action %d target: %w", i, err)
 		}
 		if !oidPattern.MatchString(action.Before) || !oidPattern.MatchString(action.Desired) {
@@ -217,7 +233,7 @@ func (r Record) Validate() error {
 		if action.Error != "" && unsafeValue(action.Error) {
 			return fmt.Errorf("action %d error contains unsafe serialized data", i)
 		}
-		if r.Version == Version {
+		if r.Version >= Version {
 			if err := validatePhaseAction(r.Phase, r.Mode, action); err != nil {
 				return fmt.Errorf("action %d: %w", i, err)
 			}
@@ -259,7 +275,7 @@ func validOutcome(version int, outcome Outcome) bool {
 	case OutcomePlanned, OutcomeApplied, OutcomeFailed, OutcomeSkipped, OutcomeStale:
 		return true
 	case OutcomeValidated:
-		return version == Version
+		return version >= Version
 	default:
 		return false
 	}
@@ -270,11 +286,35 @@ func validIdentifier(value string) bool {
 	return value != "" && identifierPattern.MatchString(value)
 }
 
-func validateRef(ref Ref) error {
+func validateRef(version int, ref Ref) error {
 	if !validIdentifier(ref.Provider) || !validIdentifier(ref.Remote) {
 		return fmt.Errorf("provider and remote must be symbolic identifiers")
 	}
+	if version == PathVersion {
+		if err := validateProviderPath(ref.Path); err != nil {
+			return err
+		}
+	} else if strings.TrimSpace(ref.Path) != "" {
+		return fmt.Errorf("execution record version %d ref must not define provider path", version)
+	}
 	return validateBranch(ref.Branch)
+}
+
+func validateProviderPath(path string) error {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" || strings.HasPrefix(trimmed, "/") || strings.HasSuffix(trimmed, "/") {
+		return fmt.Errorf("provider path must be relative and non-empty")
+	}
+	parts := strings.Split(trimmed, "/")
+	if len(parts) < 2 {
+		return fmt.Errorf("provider path must include an owner or namespace")
+	}
+	for _, part := range parts {
+		if part == "" || part == "." || part == ".." || strings.ContainsAny(part, `\:@?#`) || strings.ContainsAny(part, " \t\r\n") {
+			return fmt.Errorf("provider path contains an unsafe segment")
+		}
+	}
+	return nil
 }
 
 func validateBranch(branch string) error {
