@@ -9,6 +9,7 @@ Use the smallest authoritative source that answers the question.
 | Question | Authoritative source |
 | --- | --- |
 | What does Repora support today? | [`../README.md`](../README.md) |
+| How do I install and verify a release? | [`release.md`](release.md) |
 | How is the current implementation structured? | [`architecture/current-system.md`](architecture/current-system.md) |
 | How does multi-mirror status work? | [`architecture/multi-mirror-status.md`](architecture/multi-mirror-status.md) |
 | How does the exact plan artifact work? | [`architecture/reconciliation-plan-artifact.md`](architecture/reconciliation-plan-artifact.md) |
@@ -62,6 +63,7 @@ Update documentation in the same change when any of these change:
 - JSON contract shape or version;
 - mutation, stale-plan, partial-failure, or recovery semantics;
 - supported topology, providers, transports, refs, or mirrors;
+- supported release targets, packaging, installation, or verification behavior;
 - an accepted architectural decision;
 - the active implementation order or a release gate.
 
@@ -75,6 +77,7 @@ Every pull request should answer these questions in its description or checklist
 - Did a public JSON or schema contract change?
 - Did an architecture boundary change?
 - Did failure or recovery behavior change?
+- Did release packaging or supported targets change?
 - Is an ADR required or superseded?
 - Does the active plan need updating?
 
