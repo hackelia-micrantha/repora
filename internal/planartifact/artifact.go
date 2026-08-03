@@ -214,7 +214,10 @@ func validateRef(version int, ref Ref) error {
 }
 
 func validateProviderPath(path string) error {
-	path = strings.Trim(strings.TrimSpace(path), "/")
+	path = strings.TrimSpace(path)
+	if path == "" || strings.HasPrefix(path, "/") || strings.HasSuffix(path, "/") {
+		return fmt.Errorf("provider path contains an unsafe segment")
+	}
 	parts := strings.Split(path, "/")
 	if len(parts) < 2 {
 		return fmt.Errorf("provider path must include an owner or namespace")
