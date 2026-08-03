@@ -51,6 +51,38 @@ func TestExecuteWithBindingsContinuesAfterRuntimeFailure(t *testing.T) {
 	}
 }
 
+func TestExecuteWithBindingsForcedActionUsesCurrentAliasAndLease(t *testing.T) {
+	action := testAction(true)
+	action.Source.Path = "org/payments-api"
+	action.Target.Path = "backup/payments-api"
+	action.Target.Name = "serialized-alias"
+	artifact, err := planartifact.FromCurrentPlans(testPlan(action))
+	if err != nil {
+		t.Fatal(err)
+	}
+	git := &fakeGit{}
+
+	got, err := ExecuteWithBindings("/tmp/repo", artifact, git, RuntimeBindings{
+		SourceRemote: "canonical",
+		TargetRemotes: map[string]string{
+			"github:backup/payments-api": "mirror-3",
+		},
+	})
+	if err != nil {
+		t.Fatalf("ExecuteWithBindings returned error: %v", err)
+	}
+	if len(git.forceCalls) != 1 || len(git.pushCalls) != 0 {
+		t.Fatalf("force/push calls = %#v/%#v, want one lease-protected action", git.forceCalls, git.pushCalls)
+	}
+	call := git.forceCalls[0]
+	if call.remote != "mirror-3" || call.srcRef != "refs/remotes/canonical/main" || call.expectedOldOID != testTargetOID {
+		t.Fatalf("force call = %#v, want current alias and reviewed lease", call)
+	}
+	if !got.AllApplied() || got.Actions[0].AfterOID != testSourceOID {
+		t.Fatalf("result = %#v, want applied forced action", got)
+	}
+}
+
 func TestExecuteWithBindingsPreflightFailureAttemptsNoAction(t *testing.T) {
 	first := testAction(false)
 	first.Source.Path = "org/payments-api"
