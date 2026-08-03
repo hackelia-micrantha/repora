@@ -53,29 +53,22 @@ type Git interface {
 	ResolveRemoteHeadBranch(repoPath, remote string) (string, error)
 }
 
-// IsUnsafe is retained for callers that need to identify states requiring a
-// mirror-head observation. The planner owns that classification.
 func IsUnsafe(result status.Result) bool {
 	return plan.RequiresMirrorHeadObservation(result)
 }
 
-// BuildArtifact is the single observation-to-plan boundary used by plan,
-// dry-run, and convenience apply. Planning describes required destructive
-// intent; execution separately authorizes it.
 func BuildArtifact(repo config.Repo, st status.Result, git Git) (planartifact.Artifact, error) {
 	planned, err := buildPlan(repo, st, git)
 	if err != nil {
 		return planartifact.Artifact{}, err
 	}
-	artifact := planartifact.FromPlans(planned)
-	if err := artifact.Validate(); err != nil {
+	artifact, err := planartifact.FromCurrentPlans(planned)
+	if err != nil {
 		return planartifact.Artifact{}, fmt.Errorf("validate plan artifact for repo %q: %w", repo.ID, err)
 	}
 	return artifact, nil
 }
 
-// Execute is the non-journaled internal compatibility path. The CLI uses
-// ExecuteAudited so user-visible apply and dry-run operations are durable.
 func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun bool) (Result, error) {
 	artifact, err := BuildArtifact(repo, st, git)
 	if err != nil {
@@ -84,8 +77,6 @@ func Execute(repo config.Repo, st status.Result, git Git, force bool, dryRun boo
 	return ExecuteArtifact(repo, st, artifact, git, force, dryRun)
 }
 
-// ExecuteArtifact is the non-journaled internal compatibility path for exact
-// artifacts. It shares the same validation and execution core as audited apply.
 func ExecuteArtifact(repo config.Repo, st status.Result, artifact planartifact.Artifact, git Git, allowForce bool, dryRun bool) (Result, error) {
 	return executeArtifact(repo, st, artifact, git, allowForce, dryRun, nil)
 }
@@ -147,7 +138,6 @@ func buildPlan(repo config.Repo, st status.Result, git Git) (plan.Reconciliation
 		observation.MirrorHeadOID = targetOID
 	}
 
-	// Planning describes destructive intent before execution authorization.
 	return plan.Reconcile(repo, st, observation, true)
 }
 
@@ -169,12 +159,29 @@ func planForRepository(repo config.Repo, artifact planartifact.Artifact) (plan.R
 	if len(planned.Actions) > 1 {
 		return plan.ReconciliationPlan{}, fmt.Errorf("repo %q plan supports at most one default-branch action, got %d", repo.ID, len(planned.Actions))
 	}
+
+	canonicalPath, err := repo.Canonical.RepositoryPath()
+	if err != nil {
+		return plan.ReconciliationPlan{}, fmt.Errorf("resolve configured canonical identity: %w", err)
+	}
+	mirrorPath, err := repo.Mirrors[0].RepositoryPath()
+	if err != nil {
+		return plan.ReconciliationPlan{}, fmt.Errorf("resolve configured mirror identity: %w", err)
+	}
 	for i, action := range planned.Actions {
 		if action.Source.Provider != repo.Canonical.Provider || action.Source.Name != "canonical" {
 			return plan.ReconciliationPlan{}, fmt.Errorf("plan action %d source does not match configured canonical repository", i)
 		}
 		if action.Target.Provider != repo.Mirrors[0].Provider || action.Target.Name != "mirror" {
 			return plan.ReconciliationPlan{}, fmt.Errorf("plan action %d target does not match configured mirror repository", i)
+		}
+		if artifact.Version == planartifact.Version {
+			if action.Source.Path != canonicalPath {
+				return plan.ReconciliationPlan{}, fmt.Errorf("plan action %d source path %q does not match configured canonical path %q", i, action.Source.Path, canonicalPath)
+			}
+			if action.Target.Path != mirrorPath {
+				return plan.ReconciliationPlan{}, fmt.Errorf("plan action %d target path %q does not match configured mirror path %q", i, action.Target.Path, mirrorPath)
+			}
 		}
 	}
 	return planned, nil
