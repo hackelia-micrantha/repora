@@ -2,183 +2,130 @@
 
 Status: Current
 
-Repora execution journals provide durable, local-first evidence for dry-run validation and repository mutation.
+Repora execution journals provide durable local evidence for dry-run validation and real repository mutation.
 
-## Apply integration
+## Storage and correlation
 
-CLI `apply` and `sync` operations are journaled by default. The journal root is anchored beside the loaded configuration file:
+The journal root is beside the loaded configuration:
 
 ```text
 <config-directory>/.repora/journal/
 ```
 
-One command-level execution ID is shared across all selected repositories. Each repository writes two immutable entries:
+One command execution ID is shared across selected repositories. Each repository writes an immutable pair:
 
 ```text
 <uid>--<execution-id>--intent.json
 <uid>--<execution-id>--result.json
 ```
 
-Human and current apply output expose safe relative references to the entries.
+Every record references the exact serialized reconciliation artifact by SHA-256 digest. Intent and result preserve the same UID, mode, plan digest, action order, provider paths, and before/desired values.
 
-## Version 3 record model
+## Execution record v3
 
-New path-bound plan artifact v2 executions write `repora.io/execution-record` version 3.
+Path-bound artifact v2 execution writes `repora.io/execution-record` version 3.
 
-```text
-ExecutionRecord {
-  version: 3
-  kind: repora.io/execution-record
-  execution_id: symbolic identifier
-  phase: INTENT | RESULT
-  mode: PLAN | DRY_RUN | APPLY
-  plan:
-    version: 2
-    kind: repora.io/reconciliation-plan
-    sha256: digest of the exact deterministic plan serialization
-  repository:
-    uid: durable repository identity
-    id: human-facing repository identity
-  actions: ActionRecord[]
-}
+Each action contains:
 
-ActionRecord {
-  index: deterministic action order
-  type: PUSH_BRANCH
-  source: symbolic provider, provider-relative path, runtime alias, and branch
-  target: symbolic provider, provider-relative path, runtime alias, and branch
-  before: observed target OID
-  desired: planned source OID
-  after: resulting OID for an applied mutation
-  force: bool
-  outcome: PLANNED | VALIDATED | APPLIED | FAILED | SKIPPED | STALE
-  error: optional sanitized diagnostic
-}
-```
+- deterministic index and `PUSH_BRANCH` type;
+- source and target provider, provider-relative path, runtime alias, and branch;
+- observed target OID (`before`);
+- planned source OID (`desired`);
+- resulting OID (`after`) for successful real mutation;
+- force intent;
+- `PLANNED`, `VALIDATED`, `APPLIED`, `FAILED`, `SKIPPED`, or `STALE` outcome;
+- optional sanitized error.
 
-Provider/path is durable evidence identity. Runtime aliases are retained only as execution context and cannot retarget a reviewed action.
+Provider/path is durable evidence identity. Runtime aliases are historical execution context only.
 
 ## Compatibility
 
-- version 1 records remain parseable and retain the historical one-file envelope;
-- version 2 intent/result records remain parseable and exclude provider paths;
-- version 3 is written for reconciliation artifact v2 and requires safe provider-relative paths;
-- version 2 remains written only when consuming a historical reconciliation artifact v1.
+- version 1 remains the historical one-file record;
+- version 2 remains the historical intent/result record without provider paths;
+- version 3 requires artifact v2 and safe provider paths;
+- artifact v1 can still produce record v2 through the legacy single-mirror path;
+- old records are never upgraded or reinterpreted.
 
-All historical schemas remain committed. Consumers must inspect `kind` and `version`.
-
-## Transaction boundary
-
-The audited execution sequence is:
+## Audited execution sequence
 
 ```text
-configuration, status, policy, and artifact topology validation
-  -> current default-branch validation through runtime bindings
-  -> persist INTENT
-  -> executor stale-ref preflight for every action
-  -> mutate when supported and not dry-run
-  -> persist RESULT
-  -> render references and return status
+prepare all selected repositories and exact artifacts
+  -> authorize any reviewed forced actions
+  -> for each repository:
+       validate topology, state/action/force intent, and default branches
+       persist INTENT
+       preflight every expected source and target OID
+       dry-run or execute actions
+       persist RESULT
+  -> expose references and return aggregate status
 ```
 
 Required behavior:
 
-- target binding, topology, policy, and branch failures occur before intent persistence;
-- intent persistence occurs before executor preflight can reach mutation;
-- intent-write failure is fail-closed and performs no mutation;
-- dry-run writes a result containing `VALIDATED`, `STALE`, `FAILED`, or `SKIPPED` outcomes;
-- real apply writes `APPLIED`, `STALE`, `FAILED`, or `SKIPPED` outcomes;
-- runtime failure still attempts final result persistence;
-- result-write failure returns nonzero even when a mutation completed;
-- an intent record is evidence of reviewed intent, not evidence that mutation occurred;
-- a missing result entry means the final outcome must be reconciled against current Git state.
+- preparation or authorization failure writes no intent and performs no selected mutation;
+- topology, policy, or branch failure occurs before intent;
+- intent-write failure prevents every push in that repository;
+- stale preflight writes ordered `SKIPPED`/`STALE` result evidence and performs no push;
+- real execution records every attempted target independently;
+- runtime failure does not prevent later independent actions;
+- result-write failure remains nonzero even if pushes completed;
+- an intent record is not evidence that mutation occurred;
+- a missing result requires reconciliation against current Git state.
 
-## Multi-mirror dry-run
+## Partial real execution
 
-A multi-mirror dry-run writes one repository-level intent/result pair containing every planned mirror action in deterministic artifact order.
+After complete repository preflight, mirrors execute sequentially in artifact order. A result may contain:
 
-Before intent, Repora verifies:
+```text
+APPLIED, FAILED, APPLIED
+```
 
-- durable repository UID;
-- canonical provider/path;
-- every configured mirror target exactly once;
-- complete current status evidence;
-- state/action/force agreement under the closed ref policy;
-- current canonical and target default branches.
+The result record preserves:
 
-Executor preflight then resolves every expected source and target OID through current runtime aliases. Artifact aliases and array positions are not target authority. If a later target is stale, earlier actions remain `SKIPPED`, the offending action becomes `STALE`, no mutation occurs, and a result record is still attempted.
+- successful targets with `after = desired`;
+- failed targets with sanitized diagnostics;
+- later successful targets attempted after failure;
+- no automatic rollback or inverse push.
 
-Real multi-mirror mutation remains gated until continuation and per-target applied-result semantics are complete.
-
-## Plan correlation
-
-Every entry references the exact serialized reconciliation artifact through a SHA-256 digest. Intent and result entries for one repository share:
-
-- execution ID;
-- mode;
-- plan digest;
-- durable repository UID;
-- deterministic action ordering, stable provider paths, and before/desired values.
-
-Result projection fails closed when executor actions do not exactly match the referenced plan.
+This is intentional non-atomic evidence. Retry requires a new status observation and exact artifact.
 
 ## Local persistence
 
-`journal.Writer` accepts only a validated record and writes beneath the caller-owned existing root.
+`journal.Writer` writes only validated records beneath the caller-owned root.
 
-Persistence properties:
-
-- `.repora` and `journal` are created one component at a time with mode `0700`;
-- existing symlink or non-directory components are rejected before descendant creation;
-- journal files use mode `0600`;
-- content is written and synced through a temporary file;
-- publication uses an atomic no-replace link;
-- an existing phase entry is never overwritten;
+- `.repora` and `journal` directories use mode `0700`;
+- existing symlink or non-directory components are rejected;
+- files use mode `0600`;
+- temporary content is synced before atomic no-replace publication;
+- an existing phase record is never overwritten;
 - the journal directory is synced after publication;
-- returned references are relative and slash-separated;
+- returned references are safe relative slash-separated paths;
 - invalid records are rejected before directories are created.
 
-Before the no-replace link succeeds, an error means no final record was published by that call. After publication, the final reference is returned even if temporary-file cleanup or directory synchronization fails; callers treat this as uncertain durability rather than absence.
-
-## Failure evidence
-
-Executor evidence maps as follows:
-
-- successful dry-run preflight becomes `VALIDATED`;
-- successful mutation becomes `APPLIED` with the resulting OID;
-- stale preflight becomes `STALE`;
-- mutation or validation failure becomes `FAILED`;
-- unattempted actions remain `SKIPPED`;
-- unsafe diagnostics are replaced with a stable redacted message.
+After publication, a cleanup or directory-sync error still returns the published reference and a nonzero error so callers treat durability as uncertain rather than absent.
 
 ## Security boundary
 
-Records exclude:
+Records exclude transport URLs, credentials, tokens, authorization headers, command lines, and absolute local paths. Provider paths must be relative, namespace-qualified, and free of traversal, transport, credential, whitespace, and unsafe delimiter syntax.
 
-- runtime transport URLs;
-- credentials, tokens, authorization headers, and secret environment values;
-- raw command lines;
-- absolute cache or checkout paths.
+Unsafe diagnostics are replaced by a stable redacted message before public or journal serialization.
 
-Provider paths must be relative, namespace-qualified, and free of traversal, transport, credential, whitespace, and unsafe delimiter syntax. Validation also rejects URL-like, credential-like, authorization-bearing, and absolute-path-like diagnostics.
+## Recovery
 
-## Retention and recovery
+After stale, partial, or uncertain execution:
 
-Retention is operator-managed. Repora does not automatically delete, compact, upload, sign, or index journal entries.
+1. inspect apply v3 and journal references;
+2. compare current mirrors with recorded provider paths and OIDs;
+3. rerun status for every target;
+4. create a new exact artifact;
+5. review force intent and execute the new artifact.
 
-Safe recovery after a failed or incomplete execution is:
-
-1. inspect the intent and result references returned by the CLI;
-2. compare current repository state with the recorded provider paths and before/desired values;
-3. rerun status and produce a new exact artifact;
-4. review and apply or dry-run the new artifact.
-
-Journal records are evidence, never replay authority. Do not edit expected OIDs or replay an old artifact after current state has changed.
+Journal records are evidence, never replay authority. Do not edit OIDs, replay an old record, or construct an unreviewed rollback.
 
 ## Deferred capabilities
 
 - retention automation and indexing;
-- cryptographic signing or provenance envelopes;
+- signing or provenance envelopes;
 - remote journal storage;
 - approval metadata;
-- independent post-push provider verification where policy requires more than local remote-tracking evidence.
+- provider-side post-push verification beyond current Git evidence.
