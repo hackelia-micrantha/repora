@@ -17,7 +17,7 @@
         "properties": {
           "id": { "type": "string", "minLength": 1 },
           "uid": { "type": "string", "minLength": 1 },
-          "state": { "enum": ["EQUAL", "BEHIND", "AHEAD", "DIVERGED"] },
+          "state": { "enum": ["EQUAL", "BEHIND", "AHEAD", "DIVERGED", "ERROR"] },
           "applied": { "type": "boolean" },
           "dry_run": { "type": "boolean" },
           "error": { "type": "string" },
