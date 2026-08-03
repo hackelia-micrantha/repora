@@ -138,8 +138,8 @@ func installPathBoundCommandFakes(t *testing.T, configPath string, force bool) f
 	repositoryPlanBuild = func(repo config.Repo, observed status.RepositoryResult) (planartifact.Artifact, error) {
 		action := planArtifactAction("github", "org/payments-api", "mirror-0", force)
 		return planartifact.Artifact{
-			Version: planartifact.Version,
-			Kind:    planartifact.Kind,
+			Version:      planartifact.Version,
+			Kind:         planartifact.Kind,
 			Repositories: []planartifact.Repository{{UID: repo.DurableID(), ID: repo.ID, Actions: []planartifact.Action{action}}},
 		}, nil
 	}
