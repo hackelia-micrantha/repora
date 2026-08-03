@@ -3,6 +3,7 @@ package apply
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"repoctl/internal/config"
@@ -14,7 +15,10 @@ import (
 	"repoctl/internal/status"
 )
 
-var ErrForceAuthorization = errors.New("destructive plan requires --force")
+var (
+	ErrForceAuthorization              = errors.New("destructive plan requires --force")
+	publicEmbeddedAbsolutePathPattern = regexp.MustCompile(`(^|[[:space:]'"])/[^[:space:]'"]+`)
+)
 
 // ExecuteRepositoryArtifactAudited applies or dry-runs one exact path-bound
 // repository artifact. It shares topology, policy, branch, intent, and OID
@@ -91,8 +95,9 @@ func ExecuteRepositoryArtifactAudited(repo config.Repo, observed status.Reposito
 	result.Journal = compat.Journal
 
 	if joined := errors.Join(executionErr, journalErr); joined != nil {
-		result.Error = joined.Error()
-		return result, fmt.Errorf("execute plan artifact for repo %q: %w", repo.ID, joined)
+		diagnostic := publicDiagnostic(joined.Error())
+		result.Error = diagnostic
+		return result, fmt.Errorf("execute plan artifact for repo %q: %s", repo.ID, diagnostic)
 	}
 	return result, nil
 }
@@ -151,7 +156,7 @@ func publicDiagnostic(value string) string {
 		return "execution failed"
 	}
 	lower := strings.ToLower(value)
-	if strings.Contains(lower, "://") || strings.Contains(lower, "token=") || strings.Contains(lower, "password=") || strings.Contains(lower, "authorization:") || strings.Contains(lower, "\\") || strings.HasPrefix(lower, "/") || strings.HasPrefix(lower, "file:") || strings.Contains(lower, "@") {
+	if strings.Contains(lower, "://") || strings.Contains(lower, "token=") || strings.Contains(lower, "password=") || strings.Contains(lower, "authorization:") || strings.Contains(lower, "\\") || strings.HasPrefix(lower, "/") || strings.HasPrefix(lower, "file:") || strings.Contains(lower, "@") || publicEmbeddedAbsolutePathPattern.MatchString(value) {
 		return "execution diagnostic redacted"
 	}
 	return value
