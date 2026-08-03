@@ -4,90 +4,107 @@ Status: Current
 
 Repora uses a versioned reconciliation plan artifact as the review and execution boundary for repository mutations.
 
-The current artifact is `repora.io/reconciliation-plan` version `1` and is described by `schemas/reconciliation-plan-v1.schema.json`.
+New plans emit `repora.io/reconciliation-plan` version `2`, described by `schemas/reconciliation-plan-v2.schema.json`. Version 1 remains parseable for historical single-mirror compatibility.
 
 ## Operator workflow
 
 Export the exact executable artifact:
 
 ```bash
-repoctl plan -f repora.yaml --artifact > plan.json
+repoctl plan -f single-mirror.yaml --artifact > plan.json
 ```
 
-Review and validate `plan.json`, then execute that exact artifact:
+Review and execute that exact artifact:
 
 ```bash
-repoctl apply -f repora.yaml --plan-file plan.json
+repoctl apply -f single-mirror.yaml --plan-file plan.json
 ```
 
-When the artifact contains any forced action, execution also requires explicit authorization:
+Forced actions also require explicit authorization:
 
 ```bash
-repoctl apply -f repora.yaml --plan-file plan.json --force
+repoctl apply -f single-mirror.yaml --plan-file plan.json --force
 ```
 
-A non-mutating imported-artifact check uses the same structural, scope, and stale-ref preflight:
+Dry-run performs the same structural, topology, scope, authorization, and stale-ref preflight without mutation:
 
 ```bash
-repoctl apply -f repora.yaml --plan-file plan.json --dry-run
+repoctl apply -f single-mirror.yaml --plan-file plan.json --dry-run
 ```
 
-`apply --plan-file` refreshes the selected repositories from configuration so current default-branch and stale-ref checks compare the artifact against current remote-tracking refs. It does not rebuild reconciliation intent.
+Imported execution refreshes current repository state but does not rebuild reconciliation intent.
 
-A plan file may contain a configuration-ordered subset of repositories. Repository selection uses durable `uid`; a missing or duplicate UID fails before repository observation or mutation.
+## Version 2 identity boundary
 
-## Contents
+Every source and target ref includes:
 
-Each artifact contains:
+- symbolic provider;
+- provider-relative repository path;
+- runtime Git remote alias;
+- branch;
+- observed and desired object IDs;
+- force intent and planner reason.
 
-- repository `uid` for durable identity and `id` for display;
-- zero or one semantic default-branch ref-update action per repository in version 1;
-- symbolic source and target provider, remote, and branch values;
-- the observed target object ID and desired source object ID;
-- the force flag and planner reason.
+Provider/path is durable topology identity. Runtime aliases are execution details. A future multi-mirror executor may map a path-bound target to a current runtime alias after configuration reordering without changing the reviewed target.
 
-Transport URLs, credentials, command lines, and local filesystem paths are excluded.
+URLs, credentials, local filesystem paths, command lines, and array indexes are excluded from identity.
+
+Version 2 rejects missing, absolute, traversal-bearing, transport-like, credential-like, or otherwise unsafe provider paths.
+
+## Version 1 compatibility
+
+Version 1 refs contain provider, runtime alias, and branch but no repository path. They remain parseable for existing single-mirror plan files and tests.
+
+A v1 artifact:
+
+- is matched through the historical single-mirror provider/alias contract;
+- cannot authorize multi-mirror targeting;
+- must not be reinterpreted as path-bound identity;
+- remains covered by the committed v1 schema and golden fixture.
+
+New production observation-to-artifact paths use the strict version-2 constructor. Compatibility-only in-memory callers may continue to create v1 artifacts when provider paths are absent.
 
 ## Planning boundary
 
-`repoctl plan` builds the artifact through the same observation-to-plan function used by convenience apply.
+`repoctl plan` and convenience apply share the same observation-to-plan function. Planning records destructive intent independently of command authorization.
 
-Planning describes destructive intent independently of execution authorization. Ahead or diverged state therefore produces a forced action in the exact artifact; actual apply still requires `--force`.
+The compatibility `repoctl plan --json` envelope remains `repora.plan` version 1 and remains a view only. Human plan output is also a compatibility view. Use `--artifact` to review exact topology, branches, OID preconditions, and force intent.
 
-The stabilized `repoctl plan --json` response remains `repora.plan` version `1` for compatibility. It is projected from the exact reconciliation plans represented by the artifact; it does not make independent mutation decisions.
-
-Human plan output remains a compatibility view. Safe behind updates retain the established commit-distance wording, while forced actions are labelled as destructive overwrites. Use `--artifact` when branches, force flags, object-ID preconditions, and exact executor input must be reviewed.
-
-An exact artifact is not emitted when any selected repository cannot be observed or planned completely. This avoids presenting a partial document as a complete executable plan.
+An exact artifact is suppressed when selected observation or planning is incomplete.
 
 ## Execution boundary
 
-Convenience apply builds an artifact and delegates to the same artifact execution function used by `--plan-file`.
-
 Before mutation, artifact execution validates:
 
-- artifact version, kind, repositories, actions, refs, OIDs, and serialized safety constraints;
-- durable repository UID against configuration;
-- exactly one configured mirror and at most one v1 action per repository;
-- canonical and mirror provider/remote ownership;
-- action branches against the current canonical and mirror default branches;
-- explicit `--force` authorization for forced actions;
-- current source and target OIDs for every action.
+- supported artifact version and kind;
+- durable repository UID;
+- repository/action cardinality for the current runtime;
+- source and target provider/alias ownership;
+- version-2 canonical and mirror paths against configuration;
+- default-branch scope;
+- state/action/force consistency;
+- explicit force authorization for real destructive actions;
+- every expected source and target OID.
 
-Dry-run performs all of these checks, including stale-ref preflight, but does not push. Real execution repeats the same preflight immediately before mutation.
+Version-2 path mismatch fails before any repository Git read. Dry-run performs complete stale preflight. Real execution uses the same artifact-backed path.
 
-The executor rejects the complete repository plan before action zero when any structural, scope, authorization, or stale-ref check fails.
+## Journal compatibility
 
-The artifact is review evidence, not a promise that execution remains safe indefinitely. Operators should re-plan from current state instead of editing or replaying stale artifacts.
+Execution-record version 2 may reference reconciliation artifact version 1 or 2 through the exact serialized artifact digest. The journal envelope does not change merely because the referenced plan version advances.
 
-## Compatibility and identity
-
-Repository matching uses `uid`, not the human-facing `id`, provider/path location, or resolved URL. A harmless alias change therefore does not redefine durable repository identity.
-
-The v1 `repora.plan` CLI schema remains supported as a compatibility response. The reconciliation artifact schema is the authoritative executable contract.
+Journal action refs remain compatible with the current single-mirror execution model in this slice. Per-target path evidence belongs to the subsequent multi-mirror execution contract.
 
 ## Current scope
 
-Version 1 models one default-branch Git ref reconciliation action per repository. It does not model non-default refs, tags, managed file diffs, workflow diffs, multi-mirror targeting, approvals, or cross-repository transactions.
+Artifact v2 establishes stable target binding but the CLI mutation gate remains single-mirror.
 
-Future domains may reuse versioned envelope and safety conventions, but they require domain-specific action schemas unless implemented experience demonstrates a genuinely shared abstraction.
+The next #15 slice must:
+
+- build multiple path-bound actions;
+- resolve each reviewed target to its current runtime alias;
+- complete all-target preflight before action zero;
+- execute independent actions sequentially and preserve partial outcomes;
+- version apply/journal contracts where per-target evidence changes;
+- avoid cross-remote atomicity or rollback claims.
+
+The artifact does not model tags, non-default refs, managed files, approvals, provider provisioning, or cross-repository transactions.

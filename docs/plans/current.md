@@ -31,25 +31,33 @@ A v0.1-quality controller must:
 | Ref policy v1 | Complete | Default-branch-only and require-force; unsupported expansion is rejected. |
 | Multi-mirror status | Complete | Ordered observations, stable `provider:path` identity, mirror-local failures, and status v2. |
 | Planner/executor separation | Complete | The executor does not recompute reconciliation policy. |
-| Exact executable plan artifact | Complete for one mirror | Export/import and stale preflight are implemented. |
-| Execution journals | Complete for one-mirror apply/dry-run | Intent failure is fail-closed; result-write failure is non-zero. |
-| Multi-mirror apply | Active next gate | Requires exact target binding and per-mirror outcomes/evidence. |
+| Exact executable plan artifact | Complete for path-bound single-mirror execution | New plans emit v2 with canonical/mirror provider paths; v1 remains historical single-mirror compatibility. |
+| Execution journals | Complete for one-mirror apply/dry-run | Intent failure is fail-closed; result-write failure is non-zero; records may reference plan v1 or v2. |
+| Multi-mirror apply | Active next gate | Target identity foundation is complete; multi-action planning, preflight, outcomes, and evidence remain. |
 | Release packaging | Not started | CI builds verification binaries but does not publish supported releases. |
 
 ## Immediate sequence
 
-### 1. Add exact multi-mirror apply
+### 1. Complete exact multi-mirror apply
 
-Exit condition:
+Completed foundation:
 
-- the exact artifact identifies each mirror by provider/path rather than position or runtime alias;
-- mirror reordering cannot retarget an imported artifact;
-- all topology, policy, default-branch, and OID checks complete before action zero;
-- convenience apply and `--plan-file` use the same artifact-backed path;
-- independent mirror runtime failures do not hide or prevent later independent attempts;
-- apply output and journal result evidence preserve per-mirror outcomes;
-- no cross-remote atomicity or rollback is implied;
-- retry requires fresh status and re-planning.
+- reconciliation artifact v2 binds source and target refs to provider-relative paths;
+- version-2 topology mismatch fails before Git reads;
+- configuration order and runtime aliases are not durable target identity;
+- version-1 plans remain parseable only for historical single-mirror execution.
+
+Remaining exit condition:
+
+- build one exact action set across all non-equal mirrors;
+- map each reviewed provider/path target to its current runtime alias after configuration reordering;
+- complete all topology, policy, default-branch, and OID checks before action zero;
+- make convenience apply and `--plan-file` use the same multi-target path;
+- continue later independent mirror attempts after a runtime failure;
+- expose per-mirror outcomes in versioned apply output;
+- persist per-mirror path and outcome evidence in one repository-level journal intent/result pair;
+- make retry require fresh status and re-planning;
+- make no cross-remote atomicity or rollback claim.
 
 ### 2. Package v0.1
 
@@ -80,7 +88,7 @@ Deferred tracks must reuse the core plan, policy, execution, and evidence substr
 - Do not add a package solely to match an architecture diagram.
 - Add generic abstractions only after multiple implemented consumers prove shared behavior.
 - Keep compatibility serializers as views, never decision authorities.
-- Treat configuration order as deterministic order, never durable mirror identity.
+- Treat configuration order and runtime aliases as execution details, never durable mirror identity.
 - Keep ref-policy v1 closed.
 - Do not imply cross-remote atomicity.
 

@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "kind": "repora.io/reconciliation-plan",
+  "repositories": [
+    {
+      "uid": "repo.org.payments-api",
+      "id": "payments-api",
+      "actions": [
+        {
+          "type": "PUSH_BRANCH",
+          "source": {
+            "provider": "gitlab",
+            "path": "org/payments-api",
+            "remote": "canonical",
+            "branch": "main"
+          },
+          "target": {
+            "provider": "github",
+            "path": "org/payments-api",
+            "remote": "mirror",
+            "branch": "main"
+          },
+          "diff": {
+            "observed": "2222222222222222222222222222222222222222",
+            "desired": "1111111111111111111111111111111111111111"
+          },
+          "force": true,
+          "reason": "mirror is diverged"
+        }
+      ]
+    }
+  ]
+}

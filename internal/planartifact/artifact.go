@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	Version = 1
-	Kind    = "repora.io/reconciliation-plan"
+	LegacyVersion = 1
+	Version       = 2
+	Kind          = "repora.io/reconciliation-plan"
 )
 
 var (
@@ -45,6 +46,7 @@ type Action struct {
 
 type Ref struct {
 	Provider string `json:"provider"`
+	Path     string `json:"path,omitempty"`
 	Remote   string `json:"remote"`
 	Branch   string `json:"branch"`
 }
@@ -54,15 +56,57 @@ type RefDiff struct {
 	Desired  string `json:"desired"`
 }
 
+func SupportedVersion(version int) bool {
+	return version == LegacyVersion || version == Version
+}
+
+// FromPlans preserves compatibility for focused internal callers: plans with
+// complete provider paths emit v2, while historical alias-only plans emit v1.
+// Production observation-to-artifact paths must use FromCurrentPlans.
 func FromPlans(plans ...plan.ReconciliationPlan) Artifact {
-	artifact := Artifact{Version: Version, Kind: Kind, Repositories: make([]Repository, 0, len(plans))}
+	version := Version
+	for _, planned := range plans {
+		for _, action := range planned.Actions {
+			if strings.TrimSpace(action.Source.Path) == "" || strings.TrimSpace(action.Target.Path) == "" {
+				version = LegacyVersion
+				break
+			}
+		}
+		if version == LegacyVersion {
+			break
+		}
+	}
+	return fromPlans(version, plans...)
+}
+
+// FromCurrentPlans creates and validates a provider/path-bound v2 artifact.
+func FromCurrentPlans(plans ...plan.ReconciliationPlan) (Artifact, error) {
+	artifact := fromPlans(Version, plans...)
+	if err := artifact.Validate(); err != nil {
+		return Artifact{}, err
+	}
+	return artifact, nil
+}
+
+func FromLegacyPlans(plans ...plan.ReconciliationPlan) Artifact {
+	return fromPlans(LegacyVersion, plans...)
+}
+
+func fromPlans(version int, plans ...plan.ReconciliationPlan) Artifact {
+	artifact := Artifact{Version: version, Kind: Kind, Repositories: make([]Repository, 0, len(plans))}
 	for _, planned := range plans {
 		repo := Repository{UID: planned.UID, ID: planned.ID, Actions: make([]Action, 0, len(planned.Actions))}
 		for _, action := range planned.Actions {
+			source := Ref{Provider: action.Source.Provider, Remote: action.Source.Name, Branch: action.Source.Branch}
+			target := Ref{Provider: action.Target.Provider, Remote: action.Target.Name, Branch: action.Target.Branch}
+			if version == Version {
+				source.Path = action.Source.Path
+				target.Path = action.Target.Path
+			}
 			repo.Actions = append(repo.Actions, Action{
 				Type:   string(action.Type),
-				Source: Ref{Provider: action.Source.Provider, Remote: action.Source.Name, Branch: action.Source.Branch},
-				Target: Ref{Provider: action.Target.Provider, Remote: action.Target.Name, Branch: action.Target.Branch},
+				Source: source,
+				Target: target,
 				Diff:   RefDiff{Observed: action.ExpectedOldTarget, Desired: action.ExpectedSource},
 				Force:  action.Force,
 				Reason: action.Reason,
@@ -83,8 +127,8 @@ func (a Artifact) Plans() ([]plan.ReconciliationPlan, error) {
 		for _, action := range repo.Actions {
 			planned.Actions = append(planned.Actions, plan.PlannedAction{
 				Type:              plan.ActionType(action.Type),
-				Source:            plan.Remote{Provider: action.Source.Provider, Name: action.Source.Remote, Branch: action.Source.Branch},
-				Target:            plan.Remote{Provider: action.Target.Provider, Name: action.Target.Remote, Branch: action.Target.Branch},
+				Source:            plan.Remote{Provider: action.Source.Provider, Path: action.Source.Path, Name: action.Source.Remote, Branch: action.Source.Branch},
+				Target:            plan.Remote{Provider: action.Target.Provider, Path: action.Target.Path, Name: action.Target.Remote, Branch: action.Target.Branch},
 				ExpectedSource:    action.Diff.Desired,
 				ExpectedOldTarget: action.Diff.Observed,
 				Force:             action.Force,
@@ -124,7 +168,7 @@ func Parse(data []byte) (Artifact, error) {
 }
 
 func (a Artifact) Validate() error {
-	if a.Version != Version {
+	if !SupportedVersion(a.Version) {
 		return fmt.Errorf("unsupported plan artifact version %d", a.Version)
 	}
 	if a.Kind != Kind {
@@ -138,10 +182,10 @@ func (a Artifact) Validate() error {
 			if action.Type != string(plan.ActionPushBranch) {
 				return fmt.Errorf("repository %d action %d has unsupported type %q", i, j, action.Type)
 			}
-			if err := validateRef(action.Source); err != nil {
+			if err := validateRef(a.Version, action.Source); err != nil {
 				return fmt.Errorf("repository %d action %d source: %w", i, j, err)
 			}
-			if err := validateRef(action.Target); err != nil {
+			if err := validateRef(a.Version, action.Target); err != nil {
 				return fmt.Errorf("repository %d action %d target: %w", i, j, err)
 			}
 			if !oidPattern.MatchString(strings.TrimSpace(action.Diff.Observed)) || !oidPattern.MatchString(strings.TrimSpace(action.Diff.Desired)) {
@@ -155,12 +199,33 @@ func (a Artifact) Validate() error {
 	return nil
 }
 
-func validateRef(ref Ref) error {
+func validateRef(version int, ref Ref) error {
 	if !validIdentifier(ref.Provider) || !validIdentifier(ref.Remote) {
 		return fmt.Errorf("provider and remote must be symbolic identifiers")
 	}
-	if err := validateBranch(ref.Branch); err != nil {
+	if version == LegacyVersion {
+		if strings.TrimSpace(ref.Path) != "" {
+			return fmt.Errorf("version 1 ref must not define provider path")
+		}
+	} else if err := validateProviderPath(ref.Path); err != nil {
 		return err
+	}
+	return validateBranch(ref.Branch)
+}
+
+func validateProviderPath(path string) error {
+	path = strings.TrimSpace(path)
+	if path == "" || strings.HasPrefix(path, "/") || strings.HasSuffix(path, "/") {
+		return fmt.Errorf("provider path contains an unsafe segment")
+	}
+	parts := strings.Split(path, "/")
+	if len(parts) < 2 {
+		return fmt.Errorf("provider path must include an owner or namespace")
+	}
+	for _, part := range parts {
+		if part == "" || part == "." || part == ".." || strings.ContainsAny(part, `\\:@?#`) || strings.ContainsAny(part, " \t\r\n") {
+			return fmt.Errorf("provider path contains an unsafe segment")
+		}
 	}
 	return nil
 }

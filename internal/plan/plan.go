@@ -18,9 +18,6 @@ const (
 	OutputVersion = 1
 )
 
-// Output is the stabilized v1 CLI compatibility view. It is projected from
-// exact reconciliation plans and must never make independent mutation
-// decisions.
 type Output struct {
 	Kind    string     `json:"kind"`
 	Version int        `json:"version"`
@@ -71,6 +68,7 @@ const ActionPushBranch ActionType = "PUSH_BRANCH"
 
 type Remote struct {
 	Provider string
+	Path     string
 	Name     string
 	Branch   string
 }
@@ -98,14 +96,10 @@ type Observation struct {
 	MirrorHeadOID    string
 }
 
-// RequiresMirrorHeadObservation reports whether planning needs the current
-// mirror head to construct a forced action and its lease.
 func RequiresMirrorHeadObservation(result status.Result) bool {
 	return result.State == status.StateAhead || result.State == status.StateDiverged
 }
 
-// RequiresRefObservation reports whether reconciliation may produce a mutation
-// action whose source and target refs must be captured for stale-plan checks.
 func RequiresRefObservation(result status.Result) bool {
 	return result.State == status.StateBehind || RequiresMirrorHeadObservation(result)
 }
@@ -132,6 +126,13 @@ func Reconcile(repo config.Repo, result status.Result, observed Observation, for
 		return repoPlan, fmt.Errorf("repo %q requires canonical and mirror providers", repo.ID)
 	}
 
+	// Identity derivation is best-effort at the pure planner boundary so focused
+	// in-memory policy tests can remain transport-independent. Production exact
+	// artifact creation uses FromCurrentPlans and fails closed when either path is
+	// unavailable.
+	canonicalPath, _ := repo.Canonical.RepositoryPath()
+	mirrorPath, _ := repo.Mirrors[0].RepositoryPath()
+
 	sourceBranch := strings.TrimSpace(observed.CanonicalBranch)
 	targetBranch := strings.TrimSpace(observed.MirrorBranch)
 	if targetBranch == "" {
@@ -151,11 +152,13 @@ func Reconcile(repo config.Repo, result status.Result, observed Observation, for
 		Type: ActionPushBranch,
 		Source: Remote{
 			Provider: repo.Canonical.Provider,
+			Path:     canonicalPath,
 			Name:     "canonical",
 			Branch:   sourceBranch,
 		},
 		Target: Remote{
 			Provider: repo.Mirrors[0].Provider,
+			Path:     mirrorPath,
 			Name:     "mirror",
 			Branch:   targetBranch,
 		},

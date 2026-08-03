@@ -45,10 +45,11 @@ When an ADR and source disagree, either the source is defective or the ADR is st
 | [ADR-0011](0011-fail-closed-execution-evidence.md) | Fail-closed immutable execution evidence | Implemented by PR #74. |
 | [ADR-0012](0012-closed-ref-policy-v1.md) | Closed reference synchronization policy v1 | Implemented by PR #75. |
 | [ADR-0013](0013-multi-mirror-status-before-mutation.md) | Multi-mirror status before mutation | Implemented by PR #76. |
+| [ADR-0014](0014-path-bound-plan-artifact-v2.md) | Provider-path-bound reconciliation artifact v2 | Implemented by PR #77. |
 
 ## Future decision gates
 
-Before multi-mirror mutation, an accepted decision must define exact-artifact target binding, per-mirror execution/result/evidence semantics, continuation after runtime failure, and non-atomic recovery. ADR-0013 supplies stable provider/path target identity but intentionally does not authorize mutation.
+Before the multi-mirror mutation gate is removed, implementation must define per-mirror execution/result/evidence semantics, continuation after runtime failure, and non-atomic recovery. ADR-0014 supplies exact provider/path target binding but intentionally does not authorize multi-mirror mutation.
 
 Before reference scope expands beyond policy v1, a new decision must define branch/tag eligibility, protected refs, wildcard behavior, artifact binding, and compatibility. Existing v1 artifacts must not be reinterpreted under broader policy.
 
