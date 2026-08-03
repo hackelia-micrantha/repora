@@ -160,13 +160,16 @@ func planForRepository(repo config.Repo, artifact planartifact.Artifact) (plan.R
 		return plan.ReconciliationPlan{}, fmt.Errorf("repo %q plan supports at most one default-branch action, got %d", repo.ID, len(planned.Actions))
 	}
 
-	canonicalPath, err := repo.Canonical.RepositoryPath()
-	if err != nil {
-		return plan.ReconciliationPlan{}, fmt.Errorf("resolve configured canonical identity: %w", err)
-	}
-	mirrorPath, err := repo.Mirrors[0].RepositoryPath()
-	if err != nil {
-		return plan.ReconciliationPlan{}, fmt.Errorf("resolve configured mirror identity: %w", err)
+	var canonicalPath, mirrorPath string
+	if artifact.Version == planartifact.Version {
+		canonicalPath, err = repo.Canonical.RepositoryPath()
+		if err != nil {
+			return plan.ReconciliationPlan{}, fmt.Errorf("resolve configured canonical identity: %w", err)
+		}
+		mirrorPath, err = repo.Mirrors[0].RepositoryPath()
+		if err != nil {
+			return plan.ReconciliationPlan{}, fmt.Errorf("resolve configured mirror identity: %w", err)
+		}
 	}
 	for i, action := range planned.Actions {
 		if action.Source.Provider != repo.Canonical.Provider || action.Source.Name != "canonical" {
