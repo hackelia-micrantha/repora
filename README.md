@@ -33,6 +33,7 @@ Repora is pre-alpha. The broader repository-control-plane model is product direc
 - apply v3 per-target before/desired/after/outcome evidence;
 - execution-record v3 immutable intent/result evidence;
 - bounded repository concurrency;
+- versioned Linux, macOS, and Windows release packaging with SHA-256 checksums;
 - historical artifact v1, apply v2, and execution-record v1/v2 compatibility.
 
 ## Current limitations
@@ -45,7 +46,13 @@ Repora is pre-alpha. The broader repository-control-plane model is product direc
 - no provider provisioning;
 - no cross-remote transaction or automatic rollback;
 - no Anthesis policy integration;
-- no supported release binaries yet.
+- no package-manager distribution, release signing, or full provenance attestation.
+
+## Installation
+
+Version tags publish archives for Linux amd64, macOS amd64/arm64, and Windows amd64. Each release includes `checksums.txt`; packaged binaries report the embedded tag and source commit through `repoctl --version`.
+
+See [release installation and verification](docs/release.md) for target support, checksum commands, installation, local reproduction, and rollback.
 
 ## Execution model
 
@@ -99,6 +106,7 @@ See [`docs/configuration/provider-path-topology-v1.md`](docs/configuration/provi
 ## CLI
 
 ```bash
+repoctl --version
 repoctl status -f repora.yaml
 repoctl status -f repora.yaml --json
 
@@ -132,6 +140,7 @@ Exit codes:
 - [Exact reconciliation artifact](docs/architecture/reconciliation-plan-artifact.md)
 - [Execution journal](docs/architecture/execution-journal.md)
 - [Apply v3 migration](docs/cli/apply-v3.md)
+- [Release installation and verification](docs/release.md)
 - [Architecture decisions](docs/decisions/README.md)
 - [Active implementation plan](docs/plans/current.md)
 - [Versioned schemas](schemas/)
@@ -162,11 +171,12 @@ Current controls include:
 - fail-closed intent persistence;
 - path-bound per-target result evidence;
 - sanitized diagnostics and safe relative journal references;
-- no implicit target selection, replay, rollback, or atomicity claim.
+- no implicit target selection, replay, rollback, or atomicity claim;
+- tag-only release publication with least-privilege workflow permissions.
 
 ## Roadmap
 
-The mirror-controller implementation path is complete. The immediate critical path is v0.1 release packaging, checksums, packaged-binary smoke coverage, verification, and installation guidance.
+The mirror-controller implementation and initial release-packaging boundary are complete. The immediate critical path is v0.1 release-hardening reconciliation: remaining security scope, bounded benchmark evidence, release checklist, and changelog policy.
 
 The authoritative order is maintained in [`docs/plans/current.md`](docs/plans/current.md) and GitHub issues.
 
@@ -182,7 +192,7 @@ See [LICENSE](LICENSE).
 
 ## Project status
 
-Pre-alpha and actively evolving. Expect explicit version migrations until v0.1 packaging is complete.
+Pre-alpha and actively evolving. Expect explicit version migrations until the first v0.1 tag is published and validated.
 
 External contributions are currently closed while the core model stabilizes. Concrete use cases and failure reports are welcome.
 
