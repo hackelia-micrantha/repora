@@ -142,7 +142,7 @@ func TestMultiMirrorArtifactSuppressedWhenObservationIncomplete(t *testing.T) {
 
 func planArtifactAction(provider, path, remote string, force bool) planartifact.Action {
 	return planartifact.Action{
-		Type: "PUSH_BRANCH",
+		Type:   "PUSH_BRANCH",
 		Source: planartifact.Ref{Provider: "gitlab", Path: "org/payments-api", Remote: "canonical", Branch: "main"},
 		Target: planartifact.Ref{Provider: provider, Path: path, Remote: remote, Branch: "main"},
 		Diff: planartifact.RefDiff{

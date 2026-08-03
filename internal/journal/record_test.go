@@ -108,7 +108,7 @@ func TestRecordRejectsInvalidEnvelopeAndSafetyFields(t *testing.T) {
 		edit func(*Record)
 		want string
 	}{
-		{name: "version", edit: func(r *Record) { r.Version = 3 }, want: "version"},
+		{name: "version", edit: func(r *Record) { r.Version = 99 }, want: "version"},
 		{name: "kind", edit: func(r *Record) { r.Kind = "unknown" }, want: "kind"},
 		{name: "execution id", edit: func(r *Record) { r.ExecutionID = "/tmp/run" }, want: "execution_id"},
 		{name: "phase", edit: func(r *Record) { r.Phase = "UNKNOWN" }, want: "phase"},

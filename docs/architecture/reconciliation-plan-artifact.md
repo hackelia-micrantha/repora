@@ -8,31 +8,26 @@ New plans emit `repora.io/reconciliation-plan` version `2`, described by `schema
 
 ## Operator workflow
 
-Export the exact executable artifact:
+Export the exact artifact across one or more mirrors:
 
 ```bash
-repoctl plan -f single-mirror.yaml --artifact > plan.json
+repoctl plan -f repora.yaml --artifact > plan.json
 ```
 
-Review and execute that exact artifact:
+Review and validate that exact artifact without mutation:
+
+```bash
+repoctl apply -f repora.yaml --plan-file plan.json --dry-run
+```
+
+Real apply currently requires a single-mirror configuration:
 
 ```bash
 repoctl apply -f single-mirror.yaml --plan-file plan.json
-```
-
-Forced actions also require explicit authorization:
-
-```bash
 repoctl apply -f single-mirror.yaml --plan-file plan.json --force
 ```
 
-Dry-run performs the same structural, topology, scope, authorization, and stale-ref preflight without mutation:
-
-```bash
-repoctl apply -f single-mirror.yaml --plan-file plan.json --dry-run
-```
-
-Imported execution refreshes current repository state but does not rebuild reconciliation intent.
+Imported execution refreshes current repository state but does not rebuild or rewrite reconciliation intent.
 
 ## Version 2 identity boundary
 
@@ -45,66 +40,63 @@ Every source and target ref includes:
 - observed and desired object IDs;
 - force intent and planner reason.
 
-Provider/path is durable topology identity. Runtime aliases are execution details. A future multi-mirror executor may map a path-bound target to a current runtime alias after configuration reordering without changing the reviewed target.
+Provider/path is durable topology identity. Runtime aliases are execution details. During multi-mirror dry-run, each reviewed target is matched to current configuration by provider/path and then bound to the current local alias through a separate runtime map. The artifact and its digest remain unchanged.
 
-URLs, credentials, local filesystem paths, command lines, and array indexes are excluded from identity.
-
-Version 2 rejects missing, absolute, traversal-bearing, transport-like, credential-like, or otherwise unsafe provider paths.
+URLs, credentials, local filesystem paths, command lines, and array indexes are excluded from identity. Version 2 rejects missing, absolute, traversal-bearing, transport-like, credential-like, or otherwise unsafe provider paths.
 
 ## Version 1 compatibility
 
-Version 1 refs contain provider, runtime alias, and branch but no repository path. They remain parseable for existing single-mirror plan files and tests.
+Version 1 refs contain provider, runtime alias, and branch but no repository path.
 
 A v1 artifact:
 
-- is matched through the historical single-mirror provider/alias contract;
-- cannot authorize multi-mirror targeting;
+- remains parseable for historical single-mirror execution;
+- is matched through the historical provider/alias contract;
+- cannot authorize multi-mirror targeting or preflight;
 - must not be reinterpreted as path-bound identity;
 - remains covered by the committed v1 schema and golden fixture.
 
-New production observation-to-artifact paths use the strict version-2 constructor. Compatibility-only in-memory callers may continue to create v1 artifacts when provider paths are absent.
-
 ## Planning boundary
 
-`repoctl plan` and convenience apply share the same observation-to-plan function. Planning records destructive intent independently of command authorization.
+Multi-mirror planning matches complete status observations to configured mirrors by provider/path. Actions are emitted in configuration order after identity matching:
 
-The compatibility `repoctl plan --json` envelope remains `repora.plan` version 1 and remains a view only. Human plan output is also a compatibility view. Use `--artifact` to review exact topology, branches, OID preconditions, and force intent.
+- equal mirror: no action;
+- behind mirror: normal push intent;
+- ahead or diverged mirror: forced overwrite intent.
 
-An exact artifact is suppressed when selected observation or planning is incomplete.
+`repoctl plan --artifact` is the authoritative machine-readable multi-mirror plan. The compatibility `repoctl plan --json` v1 view remains single-mirror only. An exact artifact is suppressed when any selected observation or planning step is incomplete.
 
-## Execution boundary
+## Multi-mirror dry-run boundary
 
-Before mutation, artifact execution validates:
+Before intent persistence, imported or convenience artifacts are validated against:
 
-- supported artifact version and kind;
+- supported version and kind;
 - durable repository UID;
-- repository/action cardinality for the current runtime;
-- source and target provider/alias ownership;
-- version-2 canonical and mirror paths against configuration;
-- default-branch scope;
-- state/action/force consistency;
-- explicit force authorization for real destructive actions;
-- every expected source and target OID.
+- configured canonical provider/path;
+- every configured mirror target exactly once;
+- complete current status evidence;
+- state/action/force agreement under ref-policy v1;
+- current canonical and mirror default branches.
 
-Version-2 path mismatch fails before any repository Git read. Dry-run performs complete stale preflight. Real execution uses the same artifact-backed path.
+After one repository-level intent record is persisted, the executor resolves every expected source and target OID through the current runtime bindings. All actions are preflighted before action zero and no push occurs.
+
+A missing binding is structural failure, not stale state. An OID mismatch is stale state. A stale later action leaves earlier and later unattempted actions skipped and is preserved in result evidence.
+
+## Real execution boundary
+
+Real multi-mirror mutation remains gated. Current real single-mirror execution additionally requires explicit `--force` authorization for an action already marked forced and uses force-with-lease.
+
+The next mutation slice must reuse the exact same target binding and complete preflight, execute actions sequentially, continue later independent targets after a runtime push failure, and preserve per-target results without rollback claims.
 
 ## Journal compatibility
 
-Execution-record version 2 may reference reconciliation artifact version 1 or 2 through the exact serialized artifact digest. The journal envelope does not change merely because the referenced plan version advances.
+- reconciliation artifact v1 evidence uses execution-record v2;
+- reconciliation artifact v2 evidence uses execution-record v3;
+- execution-record v3 adds provider path to every source and target ref;
+- execution-record v1 and v2 remain parseable and are not reinterpreted.
 
-Journal action refs remain compatible with the current single-mirror execution model in this slice. Per-target path evidence belongs to the subsequent multi-mirror execution contract.
+Intent and result records reference the exact serialized artifact digest.
 
 ## Current scope
 
-Artifact v2 establishes stable target binding but the CLI mutation gate remains single-mirror.
-
-The next #15 slice must:
-
-- build multiple path-bound actions;
-- resolve each reviewed target to its current runtime alias;
-- complete all-target preflight before action zero;
-- execute independent actions sequentially and preserve partial outcomes;
-- version apply/journal contracts where per-target evidence changes;
-- avoid cross-remote atomicity or rollback claims.
-
-The artifact does not model tags, non-default refs, managed files, approvals, provider provisioning, or cross-repository transactions.
+Artifact v2 and audited dry-run support multiple default-branch mirror actions. The artifact does not model tags, non-default refs, managed files, approvals, provider provisioning, or cross-repository transactions.

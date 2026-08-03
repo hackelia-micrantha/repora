@@ -13,6 +13,8 @@ Use the smallest authoritative source that answers the question.
 | How does multi-mirror status work? | [`architecture/multi-mirror-status.md`](architecture/multi-mirror-status.md) |
 | How does the exact plan artifact work? | [`architecture/reconciliation-plan-artifact.md`](architecture/reconciliation-plan-artifact.md) |
 | How do plan-artifact consumers migrate to v2? | [`cli/plan-artifact-v2.md`](cli/plan-artifact-v2.md) |
+| How does execution evidence work? | [`architecture/execution-journal.md`](architecture/execution-journal.md) |
+| How do execution-record consumers migrate to v3? | [`cli/execution-record-v3.md`](cli/execution-record-v3.md) |
 | What are the current failure, exit, and recovery semantics? | [`architecture/failure-semantics.md`](architecture/failure-semantics.md) |
 | What work is active and what is deferred? | [`plans/current.md`](plans/current.md) and GitHub issues |
 | Why was an architectural choice made? | [`decisions/README.md`](decisions/README.md) and the linked ADR |
