@@ -14,7 +14,7 @@ A v0.1-quality controller must:
 - resolve runtime transport without persisting credentials or URLs as identity;
 - observe one canonical and one or more mirror default branches;
 - classify state and failures independently per mirror;
-- produce one deterministic exact executable artifact;
+- produce one deterministic exact executable artifact across required mirrors;
 - reject invalid or stale plans before mutation;
 - enforce closed reference and destructive-change policy;
 - execute with lease protection;
@@ -31,35 +31,50 @@ A v0.1-quality controller must:
 | Ref policy v1 | Complete | Default-branch-only and require-force; unsupported expansion is rejected. |
 | Multi-mirror status | Complete | Ordered observations, stable `provider:path` identity, mirror-local failures, and status v2. |
 | Planner/executor separation | Complete | The executor does not recompute reconciliation policy. |
-| Exact executable plan artifact | Complete for path-bound single-mirror execution | New plans emit v2 with canonical/mirror provider paths; v1 remains historical single-mirror compatibility. |
+| Exact executable plan artifact | Complete for multi-mirror planning | New plans emit v2; observations are identity-matched and required actions are emitted in configuration order. |
+| Multi-mirror plan command | Complete | Human output and `plan --artifact` support multiple mirrors; legacy `plan --json` remains single-mirror only. |
 | Execution journals | Complete for one-mirror apply/dry-run | Intent failure is fail-closed; result-write failure is non-zero; records may reference plan v1 or v2. |
-| Multi-mirror apply | Active next gate | Target identity foundation is complete; multi-action planning, preflight, outcomes, and evidence remain. |
+| Multi-mirror apply | Active next gate | All-target preflight, audited dry-run, independent execution, outcomes, and evidence remain. |
 | Release packaging | Not started | CI builds verification binaries but does not publish supported releases. |
 
 ## Immediate sequence
 
-### 1. Complete exact multi-mirror apply
+### 1. Add all-target preflight and audited dry-run
 
 Completed foundation:
 
 - reconciliation artifact v2 binds source and target refs to provider-relative paths;
 - version-2 topology mismatch fails before Git reads;
-- configuration order and runtime aliases are not durable target identity;
-- version-1 plans remain parseable only for historical single-mirror execution.
+- one exact artifact can contain every required mirror action;
+- observations are matched by stable target identity rather than result order;
+- canonical branch/OID observation is shared;
+- actions remain deterministic in configuration order;
+- incomplete observation suppresses exact artifact export;
+- apply/sync remain explicitly gated.
 
 Remaining exit condition:
 
-- build one exact action set across all non-equal mirrors;
-- map each reviewed provider/path target to its current runtime alias after configuration reordering;
-- complete all topology, policy, default-branch, and OID checks before action zero;
-- make convenience apply and `--plan-file` use the same multi-target path;
-- continue later independent mirror attempts after a runtime failure;
-- expose per-mirror outcomes in versioned apply output;
-- persist per-mirror path and outcome evidence in one repository-level journal intent/result pair;
-- make retry require fresh status and re-planning;
-- make no cross-remote atomicity or rollback claim.
+- bind every imported artifact target to its current configured mirror and runtime alias;
+- survive mirror configuration reordering without retargeting actions;
+- validate every target, policy decision, default branch, and expected OID before action zero;
+- make dry-run consume the reviewed multi-target artifact without mutation;
+- persist one repository-level immutable intent/result pair containing every action;
+- version execution-record evidence if provider/path target fields are added;
+- expose safe per-target validated/stale/skipped outcomes;
+- preserve the real mutation gate until independent execution semantics are ready.
 
-### 2. Package v0.1
+### 2. Add independent ordered multi-mirror mutation
+
+Exit condition:
+
+- convenience apply and `--plan-file` use the same multi-target path;
+- later independent mirrors are attempted after a runtime failure;
+- apply output preserves applied/failed/skipped/stale outcomes per target;
+- journal result evidence preserves per-target before/desired/after/outcome detail;
+- no rollback or cross-remote atomicity is implied;
+- retry requires fresh status and re-planning.
+
+### 3. Package v0.1
 
 Exit condition:
 
@@ -90,6 +105,7 @@ Deferred tracks must reuse the core plan, policy, execution, and evidence substr
 - Keep compatibility serializers as views, never decision authorities.
 - Treat configuration order and runtime aliases as execution details, never durable mirror identity.
 - Keep ref-policy v1 closed.
+- Complete all-target preflight before real multi-mirror mutation.
 - Do not imply cross-remote atomicity.
 
 ## Definition of done
