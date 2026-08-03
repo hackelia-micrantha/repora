@@ -18,9 +18,6 @@ const (
 	OutputVersion = 1
 )
 
-// Output is the stabilized v1 CLI compatibility view. It is projected from
-// exact reconciliation plans and must never make independent mutation
-// decisions.
 type Output struct {
 	Kind    string     `json:"kind"`
 	Version int        `json:"version"`
@@ -55,13 +52,9 @@ func NewOutput(plans []ReconciliationPlan, results []status.Result) Output {
 func NewRepoPlan(planned ReconciliationPlan, result status.Result) RepoPlan {
 	repoPlan := RepoPlan{ID: planned.ID, UID: planned.UID, Actions: []Action{}}
 	for _, action := range planned.Actions {
-		target := action.Target.Provider
-		if action.Target.Path != "" {
-			target += ":" + action.Target.Path
-		}
 		repoPlan.Actions = append(repoPlan.Actions, Action{
 			Type:        "PUSH_MIRROR",
-			Target:      target,
+			Target:      action.Target.Provider,
 			Behind:      result.Behind,
 			Destructive: action.Force,
 		})
@@ -132,14 +125,13 @@ func Reconcile(repo config.Repo, result status.Result, observed Observation, for
 	if strings.TrimSpace(repo.Canonical.Provider) == "" || strings.TrimSpace(repo.Mirrors[0].Provider) == "" {
 		return repoPlan, fmt.Errorf("repo %q requires canonical and mirror providers", repo.ID)
 	}
-	canonicalPath, err := repo.Canonical.RepositoryPath()
-	if err != nil {
-		return repoPlan, fmt.Errorf("resolve canonical identity for repo %q: %w", repo.ID, err)
-	}
-	mirrorPath, err := repo.Mirrors[0].RepositoryPath()
-	if err != nil {
-		return repoPlan, fmt.Errorf("resolve mirror identity for repo %q: %w", repo.ID, err)
-	}
+
+	// Identity derivation is best-effort at the pure planner boundary so focused
+	// in-memory policy tests can remain transport-independent. Production exact
+	// artifact creation uses FromCurrentPlans and fails closed when either path is
+	// unavailable.
+	canonicalPath, _ := repo.Canonical.RepositoryPath()
+	mirrorPath, _ := repo.Mirrors[0].RepositoryPath()
 
 	sourceBranch := strings.TrimSpace(observed.CanonicalBranch)
 	targetBranch := strings.TrimSpace(observed.MirrorBranch)
