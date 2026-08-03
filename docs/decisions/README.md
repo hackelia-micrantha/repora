@@ -46,12 +46,13 @@ When an ADR and source disagree, either the source is defective or the ADR is st
 | [ADR-0012](0012-closed-ref-policy-v1.md) | Closed reference synchronization policy v1 | Implemented by PR #75. |
 | [ADR-0013](0013-multi-mirror-status-before-mutation.md) | Multi-mirror status before mutation | Implemented by PR #76. |
 | [ADR-0014](0014-path-bound-plan-artifact-v2.md) | Provider-path-bound reconciliation artifact v2 | Implemented by PR #77. |
+| [ADR-0015](0015-path-bound-multi-mirror-preflight.md) | Provider-path runtime binding and audited multi-mirror preflight | Implemented by PR #79. |
 
 ## Future decision gates
 
-Before the multi-mirror mutation gate is removed, implementation must define per-mirror execution/result/evidence semantics, continuation after runtime failure, and non-atomic recovery. ADR-0014 supplies exact provider/path target binding but intentionally does not authorize multi-mirror mutation.
+Before real multi-mirror mutation is enabled, implementation must publish per-target apply/result semantics, continue independent later actions after runtime failure, persist path-bound applied/failed/skipped evidence, and document non-atomic recovery. ADR-0015 supplies complete preflight and audited dry-run but intentionally keeps mutation gated.
 
-Before reference scope expands beyond policy v1, a new decision must define branch/tag eligibility, protected refs, wildcard behavior, artifact binding, and compatibility. Existing v1 artifacts must not be reinterpreted under broader policy.
+Before reference scope expands beyond policy v1, a new decision must define branch/tag eligibility, protected refs, wildcard behavior, artifact binding, and compatibility. Existing artifacts must not be reinterpreted under broader policy.
 
 ## ADR writing guidance
 
