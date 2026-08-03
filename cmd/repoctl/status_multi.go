@@ -146,7 +146,7 @@ func printMultiStatus(result status.RepositoryResult) {
 func requireSingleMirrorReconciliation(spec config.Spec) error {
 	for _, repo := range spec.Repos {
 		if len(repo.Mirrors) != 1 {
-			return fmt.Errorf("repo %q configures %d mirrors; plan, apply, and sync remain single-mirror until multi-mirror execution is implemented", repo.ID, len(repo.Mirrors))
+			return fmt.Errorf("repo %q configures %d mirrors; real apply and sync remain single-mirror until independent multi-mirror execution is implemented", repo.ID, len(repo.Mirrors))
 		}
 	}
 	return nil
