@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/cli-apply-v3.schema.json",
+  "title": "Repora apply output v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "results"],
+  "properties": {
+    "kind": { "const": "repora.apply" },
+    "version": { "const": 3 },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "uid", "state", "applied", "dry_run", "actions"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "uid": { "type": "string", "minLength": 1 },
+          "state": { "enum": ["EQUAL", "BEHIND", "AHEAD", "DIVERGED"] },
+          "applied": { "type": "boolean" },
+          "dry_run": { "type": "boolean" },
+          "error": { "type": "string" },
+          "journal": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["execution_id"],
+            "properties": {
+              "execution_id": { "type": "string", "minLength": 1 },
+              "intent": { "type": "string" },
+              "result": { "type": "string" }
+            }
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "source", "target", "force", "before", "desired", "outcome"],
+              "properties": {
+                "type": { "const": "PUSH_BRANCH" },
+                "source": { "$ref": "#/$defs/stable_ref" },
+                "target": { "$ref": "#/$defs/stable_ref" },
+                "force": { "type": "boolean" },
+                "before": { "$ref": "#/$defs/oid" },
+                "desired": { "$ref": "#/$defs/oid" },
+                "after": { "$ref": "#/$defs/oid" },
+                "outcome": { "enum": ["PLANNED", "VALIDATED", "APPLIED", "FAILED", "SKIPPED", "STALE"] },
+                "error": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "oid": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$"
+    },
+    "stable_ref": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+:[^/\\s:@?#\\\\]+(?:/[^/\\s:@?#\\\\]+)+/[^\\s]+$"
+    }
+  }
+}
