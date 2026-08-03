@@ -1,6 +1,7 @@
 package apply_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -73,7 +74,7 @@ func TestMultiMirrorApplyContinuesAfterBareRemoteFailure(t *testing.T) {
 	git(t, cachePath, "remote", "rename", "origin", "canonical")
 	git(t, cachePath, "remote", "set-head", "canonical", "main")
 	for i, mirror := range mirrors {
-		remote := "mirror-" + string(rune('0'+i))
+		remote := fmt.Sprintf("mirror-%d", i)
 		git(t, cachePath, "remote", "add", remote, mirror)
 		git(t, cachePath, "fetch", remote)
 		git(t, cachePath, "remote", "set-head", remote, "main")
@@ -83,7 +84,7 @@ func TestMultiMirrorApplyContinuesAfterBareRemoteFailure(t *testing.T) {
 	actions := make([]plan.PlannedAction, 0, len(repo.Mirrors))
 	observed := status.RepositoryResult{ID: repo.ID, UID: repo.DurableID(), Mirrors: make([]status.MirrorResult, 0, len(repo.Mirrors))}
 	for i, mirror := range repo.Mirrors {
-		remote := "mirror-" + string(rune('0'+i))
+		remote := fmt.Sprintf("mirror-%d", i)
 		targetOID := strings.TrimSpace(git(t, cachePath, "rev-parse", "refs/remotes/"+remote+"/main"))
 		actions = append(actions, plan.PlannedAction{
 			Type: plan.ActionPushBranch,
@@ -109,8 +110,8 @@ func TestMultiMirrorApplyContinuesAfterBareRemoteFailure(t *testing.T) {
 		ExecutionID: "run-partial-integration",
 		Writer:      journal.Writer{Root: root},
 	})
-	if err == nil || !strings.Contains(err.Error(), "mirror-1") {
-		t.Fatalf("error = %v, want middle remote failure", err)
+	if err == nil || !strings.Contains(err.Error(), "one/payments-api") {
+		t.Fatalf("error = %v, want middle target failure", err)
 	}
 	if len(result.Actions) != 3 || result.Actions[0].Outcome != "APPLIED" || result.Actions[1].Outcome != "FAILED" || result.Actions[2].Outcome != "APPLIED" {
 		t.Fatalf("actions = %#v, want applied/failed/applied", result.Actions)
