@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"repoctl/internal/plan"
 	"repoctl/internal/planartifact"
 )
 
@@ -94,5 +93,3 @@ func TestPreflightWithBindingsChecksAllTargetsBeforeMutation(t *testing.T) {
 	}
 	assertNoMutation(t, git)
 }
-
-var _ plan.PlannedAction
