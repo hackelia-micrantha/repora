@@ -1,0 +1,41 @@
+{
+  "kind": "repora.apply",
+  "version": 3,
+  "results": [
+    {
+      "id": "payments-api",
+      "uid": "repo.org.payments-api",
+      "state": "DIVERGED",
+      "applied": false,
+      "dry_run": false,
+      "actions": [
+        {
+          "type": "PUSH_BRANCH",
+          "source": "gitlab:org/payments-api/main",
+          "target": "github:org/payments-api/main",
+          "force": false,
+          "before": "2222222222222222222222222222222222222222",
+          "desired": "1111111111111111111111111111111111111111",
+          "after": "1111111111111111111111111111111111111111",
+          "outcome": "APPLIED"
+        },
+        {
+          "type": "PUSH_BRANCH",
+          "source": "gitlab:org/payments-api/main",
+          "target": "gitlab:backup/payments-api/main",
+          "force": true,
+          "before": "3333333333333333333333333333333333333333",
+          "desired": "1111111111111111111111111111111111111111",
+          "outcome": "FAILED",
+          "error": "mirror unavailable"
+        }
+      ],
+      "journal": {
+        "execution_id": "run-001",
+        "intent": ".repora/journal/repo.org.payments-api--run-001--intent.json",
+        "result": ".repora/journal/repo.org.payments-api--run-001--result.json"
+      },
+      "error": "one mirror action failed"
+    }
+  ]
+}
