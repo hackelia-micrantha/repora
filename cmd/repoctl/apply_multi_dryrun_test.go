@@ -27,7 +27,7 @@ func TestRunRoutesMultiMirrorDryRunToApplyV3(t *testing.T) {
 		}
 		return detailedCommandResult(repo, true, "VALIDATED", ""), nil
 	}
-	t.Cleanup(func() { repositoryArtifactExecute = oldExecute })
+	defer func() { repositoryArtifactExecute = oldExecute }()
 
 	var stdout bytes.Buffer
 	code := withStdout(t, &stdout, func() int {
@@ -61,7 +61,7 @@ func TestRunReportsPartialMultiMirrorFailureAndContinuesOutcomes(t *testing.T) {
 		}, result.Actions...)
 		return result, errors.New("one mirror action failed")
 	}
-	t.Cleanup(func() { repositoryArtifactExecute = oldExecute })
+	defer func() { repositoryArtifactExecute = oldExecute }()
 
 	var stdout, stderr bytes.Buffer
 	code := withStdout(t, &stdout, func() int {
@@ -101,10 +101,10 @@ func TestRunRequiresForceBeforeAuditOrExecution(t *testing.T) {
 		executeCalled = true
 		return apply.DetailedResult{}, nil
 	}
-	t.Cleanup(func() {
+	defer func() {
 		newAudit = oldAudit
 		repositoryArtifactExecute = oldExecute
-	})
+	}()
 
 	var stderr bytes.Buffer
 	code := withStderr(t, &stderr, func() int {
