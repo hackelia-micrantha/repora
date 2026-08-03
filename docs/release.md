@@ -67,21 +67,26 @@ repoctl v0.1.0 (<commit>)
 
 A trusted `v*` tag push starts `.github/workflows/release.yml`. The workflow:
 
-1. checks out the tagged source;
-2. uses the repository's pinned Go toolchain;
-3. derives the source timestamp from the tagged commit;
-4. cross-compiles with `CGO_ENABLED=0`, `-trimpath`, and VCS auto-stamping disabled;
-5. injects the tag and source commit through linker flags;
-6. creates normalized archives containing `repoctl`, `LICENSE`, and `README.md`;
-7. generates `checksums.txt`;
-8. verifies every checksum, archive member, Linux executable, and embedded version;
-9. publishes the files to a GitHub Release only after successful verification.
+1. checks out the tagged source with full history;
+2. refuses publication unless the tag commit is an ancestor of `main`;
+3. uses the repository's pinned Go toolchain;
+4. derives the source timestamp from the tagged commit;
+5. cross-compiles with `CGO_ENABLED=0`, `-trimpath`, and VCS auto-stamping disabled;
+6. injects the tag and source commit through linker flags;
+7. creates normalized archives containing `repoctl`, `LICENSE`, and `README.md`;
+8. generates `checksums.txt`;
+9. verifies every checksum, archive member, Linux executable, and embedded version;
+10. publishes the files to a GitHub Release only after successful verification.
 
-Pull requests that change the release boundary run the same package and verification scripts with validation metadata, but receive only read permissions and cannot publish a release.
+Pull requests that change the release boundary run the same package and verification scripts with validation metadata, but receive only read permissions and cannot publish a release. Validation builds the packages twice and requires identical checksum manifests.
+
+Repository administrators should protect release tags so only the intended release process can create or move `v*` refs.
 
 ## Local reproduction
 
-From a clean checkout:
+The checked-in packaging scripts currently target a Linux build environment with Bash, GNU `tar`, GNU `touch`, `gzip`, `zip`, `unzip`, and `sha256sum`.
+
+From a clean checkout in that environment:
 
 ```bash
 export VERSION=v0.1.0
@@ -91,7 +96,7 @@ make release-package
 make release-verify
 ```
 
-Outputs are written to `dist/`. Re-running with the same source, toolchain, metadata, and platform is expected to produce equivalent archive contents and checksums.
+Outputs are written to `dist/`. Re-running with the same source, Go toolchain, metadata, and packaging tools is expected to produce identical archive checksums. The pull-request workflow verifies that expectation by comparing two complete builds.
 
 ## Rollback
 
