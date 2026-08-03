@@ -7,29 +7,34 @@ import (
 	"path/filepath"
 	"testing"
 
-	"repoctl/internal/config"
 	"repoctl/internal/status"
 )
 
 func TestStatusOutputMatchesGoldenContract(t *testing.T) {
-	spec := config.Spec{Repos: []config.Repo{{
-		ID:        "payments-api",
-		UID:       "repo.org.payments-api",
-		Canonical: config.Endpoint{Provider: "gitlab"},
-		Mirrors:   []config.Endpoint{{Provider: "github"}},
-	}}}
-	output := newJSONOutput(spec, []status.Result{{
-		State:     status.StateBehind,
-		Canonical: "abc1234",
-		Mirror:    "def5678",
-		Behind:    3,
-	}}, []bool{true})
+	output := status.Output{
+		Kind:    status.OutputKind,
+		Version: status.OutputVersion,
+		Repos: []status.RepositoryResult{{
+			ID:        "payments-api",
+			UID:       "repo.org.payments-api",
+			Canonical: status.RefResult{Ref: "HEAD", Commit: "abc1234"},
+			Mirrors: []status.MirrorResult{{
+				Target:   "github:org/payments-api",
+				Provider: "github",
+				Path:     "org/payments-api",
+				Ref:      "HEAD",
+				Commit:   "def5678",
+				State:    status.StateBehind,
+				Behind:   3,
+			}},
+		}},
+	}
 
 	got, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := os.ReadFile(filepath.Join("testdata", "status-v1.golden.json"))
+	want, err := os.ReadFile(filepath.Join("testdata", "status-v2.golden.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +44,7 @@ func TestStatusOutputMatchesGoldenContract(t *testing.T) {
 }
 
 func TestEmptyStatusOutputIncludesContractMetadata(t *testing.T) {
-	data, err := json.Marshal(newJSONOutput(config.Spec{}, nil, nil))
+	data, err := json.Marshal(status.Output{Kind: status.OutputKind, Version: status.OutputVersion, Repos: []status.RepositoryResult{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +56,7 @@ func TestEmptyStatusOutputIncludesContractMetadata(t *testing.T) {
 	if err := json.Unmarshal(data, &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.Kind != statusOutputKind || got.Version != statusOutputVersion || got.Repos == nil {
-		t.Fatalf("metadata = %#v, want kind %q version %d and empty repos array", got, statusOutputKind, statusOutputVersion)
+	if got.Kind != status.OutputKind || got.Version != status.OutputVersion || got.Repos == nil {
+		t.Fatalf("metadata = %#v, want kind %q version %d and empty repos array", got, status.OutputKind, status.OutputVersion)
 	}
 }

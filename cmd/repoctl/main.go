@@ -15,31 +15,6 @@ import (
 	"repoctl/internal/status"
 )
 
-type jsonOutput struct {
-	Repos []jsonRepo `json:"repos"`
-}
-
-type jsonRepo struct {
-	ID        string       `json:"id"`
-	UID       string       `json:"uid"`
-	Canonical jsonRef      `json:"canonical"`
-	Mirrors   []jsonMirror `json:"mirrors"`
-}
-
-type jsonRef struct {
-	Ref    string `json:"ref"`
-	Commit string `json:"commit"`
-}
-
-type jsonMirror struct {
-	Provider string       `json:"provider"`
-	Ref      string       `json:"ref"`
-	Commit   string       `json:"commit"`
-	State    status.State `json:"state"`
-	Ahead    int          `json:"ahead"`
-	Behind   int          `json:"behind"`
-}
-
 type repoResult struct {
 	index  int
 	result status.Result
@@ -177,6 +152,14 @@ func run(args []string) int {
 		debugf("repoctl: debug command=%s repos=%d parallel=%d dry_run=%t\n", command, len(spec.Repos), parallel, *dryRun)
 	}
 
+	if command == "status" {
+		return runMultiStatus(spec, parallel, *jsonFlag, *continueOnError, *debug)
+	}
+	if err := requireSingleMirrorReconciliation(spec); err != nil {
+		fmt.Fprintf(os.Stderr, "repoctl: %v\n", err)
+		return 1
+	}
+
 	summary := checkRepos(spec, parallel, *debug)
 	if summary.firstErr != nil && !*continueOnError {
 		fmt.Fprintf(os.Stderr, "repoctl: %v\n", summary.firstErr)
@@ -184,8 +167,6 @@ func run(args []string) int {
 	}
 
 	switch command {
-	case "status":
-		return runStatus(spec, summary, *jsonFlag)
 	case "plan":
 		return runPlan(spec, summary, *jsonFlag, *artifactFlag, *force)
 	case "apply", "sync":
@@ -271,33 +252,6 @@ func checkRepos(spec config.Spec, parallel int, debug bool) checkSummary {
 		}
 	}
 	return summary
-}
-
-func runStatus(spec config.Spec, summary checkSummary, jsonFlag bool) int {
-	orderedResults := make([]status.Result, 0, len(spec.Repos)-summary.failedCount)
-	for i, result := range summary.results {
-		if summary.ok[i] {
-			orderedResults = append(orderedResults, result)
-		}
-	}
-	if jsonFlag {
-		if err := json.NewEncoder(os.Stdout).Encode(newJSONOutput(spec, summary.results, summary.ok)); err != nil {
-			fmt.Fprintf(os.Stderr, "repoctl: write json: %v\n", err)
-			return 1
-		}
-	} else {
-		for _, result := range orderedResults {
-			printHuman(result)
-		}
-	}
-	if summary.firstErr != nil {
-		fmt.Fprintf(os.Stderr, "repoctl: %d repos failed; continuing due to --continue-on-error\n", summary.failedCount)
-		if summary.failureCode == 2 {
-			return 2
-		}
-		return 1
-	}
-	return summary.failureCode
 }
 
 func runPlan(spec config.Spec, summary checkSummary, jsonFlag bool, artifactFlag bool, force bool) int {
@@ -535,50 +489,6 @@ func collectApplyResults(spec config.Spec, summary checkSummary, parallel int, p
 	return output, nil
 }
 
-func newJSONOutput(spec config.Spec, results []status.Result, ok []bool) jsonOutput {
-	out := jsonOutput{Repos: make([]jsonRepo, 0, len(spec.Repos))}
-	for i, repo := range spec.Repos {
-		if !ok[i] {
-			continue
-		}
-		result := results[i]
-		out.Repos = append(out.Repos, jsonRepo{
-			ID:        repo.ID,
-			UID:       repo.DurableID(),
-			Canonical: jsonRef{Ref: "HEAD", Commit: result.Canonical},
-			Mirrors: []jsonMirror{{
-				Provider: repo.Mirrors[0].Provider,
-				Ref:      "HEAD",
-				Commit:   result.Mirror,
-				State:    result.State,
-				Ahead:    result.Ahead,
-				Behind:   result.Behind,
-			}},
-		})
-	}
-	return out
-}
-
-func printHuman(result status.Result) {
-	fmt.Println(result.ID)
-	if result.Canonical != "" {
-		fmt.Printf("  canonical: %s\n", result.Canonical)
-	}
-	if result.Mirror != "" {
-		fmt.Printf("  mirror:    %s\n", result.Mirror)
-	}
-	switch result.State {
-	case status.StateBehind:
-		fmt.Printf("  state:     %s (%d)\n", result.State, result.Behind)
-	case status.StateAhead:
-		fmt.Printf("  state:     %s (%d)\n", result.State, result.Ahead)
-	case status.StateDiverged:
-		fmt.Printf("  state:     %s (behind %d, ahead %d)\n", result.State, result.Behind, result.Ahead)
-	default:
-		fmt.Printf("  state:     %s\n", result.State)
-	}
-}
-
 func printPlan(output plan.Output) {
 	for _, repoPlan := range output.Plan {
 		fmt.Println(repoPlan.ID)
@@ -615,7 +525,12 @@ func printApply(output apply.Output) {
 			}
 		}
 		if result.Journal != nil {
-			fmt.Printf("  journal intent: %s\n", result.Journal.Intent)
+			if result.Journal.ExecutionID != "" {
+				fmt.Printf("  execution: %s\n", result.Journal.ExecutionID)
+			}
+			if result.Journal.Intent != "" {
+				fmt.Printf("  journal intent: %s\n", result.Journal.Intent)
+			}
 			if result.Journal.Result != "" {
 				fmt.Printf("  journal result: %s\n", result.Journal.Result)
 			}

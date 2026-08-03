@@ -10,10 +10,12 @@ Use the smallest authoritative source that answers the question.
 | --- | --- |
 | What does Repora support today? | [`../README.md`](../README.md) |
 | How is the current implementation structured? | [`architecture/current-system.md`](architecture/current-system.md) |
+| How does multi-mirror status work? | [`architecture/multi-mirror-status.md`](architecture/multi-mirror-status.md) |
 | What are the current failure, exit, and recovery semantics? | [`architecture/failure-semantics.md`](architecture/failure-semantics.md) |
 | What work is active and what is deferred? | [`plans/current.md`](plans/current.md) and GitHub issues |
 | Why was an architectural choice made? | [`decisions/README.md`](decisions/README.md) and the linked ADR |
 | What JSON shape is valid? | The versioned files under [`../schemas`](../schemas) |
+| How do status consumers migrate to v2? | [`cli/status-v2.md`](cli/status-v2.md) |
 | How does CI run locally and on GitHub? | [`ci.md`](ci.md) |
 | How is repository topology configured? | [`configuration/provider-path-topology-v1.md`](configuration/provider-path-topology-v1.md) |
 | What are the mirror-controller semantics? | [`architecture/mirror-workflow-semantics.md`](architecture/mirror-workflow-semantics.md) |

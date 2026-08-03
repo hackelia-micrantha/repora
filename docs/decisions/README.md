@@ -44,10 +44,11 @@ When an ADR and source disagree, either the source is defective or the ADR is st
 | [ADR-0010](../rfcs/0001-repora-documentation-set-v0.1/decisions/0010-unified-diff-model.md) | Versioned domain-specific plan artifacts | Accepted and implemented for exact Git-ref artifacts; the universal cross-domain abstraction is rejected pending evidence. |
 | [ADR-0011](0011-fail-closed-execution-evidence.md) | Fail-closed immutable execution evidence | Implemented by PR #74. |
 | [ADR-0012](0012-closed-ref-policy-v1.md) | Closed reference synchronization policy v1 | Implemented by PR #75. |
+| [ADR-0013](0013-multi-mirror-status-before-mutation.md) | Multi-mirror status before mutation | Implemented by PR #76. |
 
 ## Future decision gates
 
-Before multi-mirror mutation, an accepted decision must define stable mirror target identity, exact-artifact compatibility, per-mirror result/evidence semantics, and non-atomic recovery.
+Before multi-mirror mutation, an accepted decision must define exact-artifact target binding, per-mirror execution/result/evidence semantics, continuation after runtime failure, and non-atomic recovery. ADR-0013 supplies stable provider/path target identity but intentionally does not authorize mutation.
 
 Before reference scope expands beyond policy v1, a new decision must define branch/tag eligibility, protected refs, wildcard behavior, artifact binding, and compatibility. Existing v1 artifacts must not be reinterpreted under broader policy.
 
