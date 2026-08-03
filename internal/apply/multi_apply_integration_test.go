@@ -87,9 +87,9 @@ func TestMultiMirrorApplyContinuesAfterBareRemoteFailure(t *testing.T) {
 		remote := fmt.Sprintf("mirror-%d", i)
 		targetOID := strings.TrimSpace(git(t, cachePath, "rev-parse", "refs/remotes/"+remote+"/main"))
 		actions = append(actions, plan.PlannedAction{
-			Type: plan.ActionPushBranch,
-			Source: plan.Remote{Provider: repo.Canonical.Provider, Path: repo.Canonical.Path, Name: "canonical", Branch: "main"},
-			Target: plan.Remote{Provider: mirror.Provider, Path: mirror.Path, Name: remote, Branch: "main"},
+			Type:           plan.ActionPushBranch,
+			Source:         plan.Remote{Provider: repo.Canonical.Provider, Path: repo.Canonical.Path, Name: "canonical", Branch: "main"},
+			Target:         plan.Remote{Provider: mirror.Provider, Path: mirror.Path, Name: remote, Branch: "main"},
 			ExpectedSource: sourceOID, ExpectedOldTarget: targetOID, Reason: "mirror is behind",
 		})
 		target, err := mirror.TargetID()
