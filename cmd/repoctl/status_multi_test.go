@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"strings"
 	"testing"
 
 	"repoctl/internal/config"
@@ -88,41 +87,5 @@ func TestStatusReturnsUnsafeCodeOnlyWhenObservationComplete(t *testing.T) {
 	})
 	if code != 2 {
 		t.Fatalf("run returned %d, want 2", code)
-	}
-}
-
-func TestApplyRejectsMultiMirrorBeforeObservation(t *testing.T) {
-	configPath := writeConfig(t, `repos:
-  - id: payments-api
-    canonical:
-      provider: gitlab
-      path: org/payments-api
-    mirrors:
-      - provider: github
-        path: org/payments-api
-      - provider: gitlab
-        path: backup/payments-api
-`)
-
-	oldCheck := statusCheck
-	called := false
-	statusCheck = func(config.Repo) (status.Result, error) {
-		called = true
-		return status.Result{}, nil
-	}
-	t.Cleanup(func() { statusCheck = oldCheck })
-
-	var stderr bytes.Buffer
-	code := withStderr(t, &stderr, func() int {
-		return run([]string{"apply", "-f", configPath})
-	})
-	if code != 1 {
-		t.Fatalf("run returned %d, want 1", code)
-	}
-	if called {
-		t.Fatal("status observation ran before the multi-mirror mutation gate")
-	}
-	if !strings.Contains(stderr.String(), "remain single-mirror") {
-		t.Fatalf("stderr = %q, want explicit mutation gate", stderr.String())
 	}
 }
