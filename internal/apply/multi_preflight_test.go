@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"repoctl/internal/config"
 	"repoctl/internal/journal"
 	"repoctl/internal/plan"
 	"repoctl/internal/planartifact"
@@ -62,8 +63,8 @@ func TestPreflightRepositoryArtifactAuditedRejectsUnknownTargetBeforeGitReads(t 
 	writer := &recordingJournalWriter{}
 
 	_, err := PreflightRepositoryArtifactAudited(repo, observed, artifact, git, Audit{ExecutionID: "run-unknown", Writer: writer})
-	if err == nil || !strings.Contains(err.Error(), "unknown configured mirror") {
-		t.Fatalf("error = %v, want unknown target rejection", err)
+	if err == nil || !strings.Contains(err.Error(), "stale or policy-invalid") {
+		t.Fatalf("error = %v, want topology/action mismatch rejection", err)
 	}
 	if len(git.resolveRemoteHeadBranchCalls) != 0 || len(git.resolveRevisionCalls) != 0 || len(writer.records) != 0 {
 		t.Fatalf("git heads=%#v refs=%#v records=%#v, want rejection before reads or journal", git.resolveRemoteHeadBranchCalls, git.resolveRevisionCalls, writer.records)
