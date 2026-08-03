@@ -91,7 +91,7 @@ func TestStatusReturnsUnsafeCodeOnlyWhenObservationComplete(t *testing.T) {
 	}
 }
 
-func TestPlanRejectsMultiMirrorBeforeObservation(t *testing.T) {
+func TestApplyRejectsMultiMirrorBeforeObservation(t *testing.T) {
 	configPath := writeConfig(t, `repos:
   - id: payments-api
     canonical:
@@ -114,7 +114,7 @@ func TestPlanRejectsMultiMirrorBeforeObservation(t *testing.T) {
 
 	var stderr bytes.Buffer
 	code := withStderr(t, &stderr, func() int {
-		return run([]string{"plan", "-f", configPath})
+		return run([]string{"apply", "-f", configPath})
 	})
 	if code != 1 {
 		t.Fatalf("run returned %d, want 1", code)
