@@ -146,6 +146,28 @@ func Check(repo config.Repo, git Git) (Result, error) {
 	return result, nil
 }
 
+// ProjectSingle converts the existing one-mirror reconciliation result into the
+// public status v2 shape without introducing a second observation path.
+func ProjectSingle(repo config.Repo, observed Result) (RepositoryResult, error) {
+	if len(repo.Mirrors) != 1 {
+		return RepositoryResult{}, fmt.Errorf("repo %q requires exactly one mirror for single-result projection", repo.ID)
+	}
+	mirror, err := newMirrorResult(repo.Mirrors[0])
+	if err != nil {
+		return RepositoryResult{}, err
+	}
+	mirror.Commit = strings.TrimSpace(observed.Mirror)
+	mirror.State = observed.State
+	mirror.Ahead = observed.Ahead
+	mirror.Behind = observed.Behind
+	return RepositoryResult{
+		ID:        repo.ID,
+		UID:       repo.DurableID(),
+		Canonical: RefResult{Ref: "HEAD", Commit: strings.TrimSpace(observed.Canonical)},
+		Mirrors:   []MirrorResult{mirror},
+	}, nil
+}
+
 // CheckAll observes every configured mirror independently for status output.
 // Canonical setup is shared; mirror failures remain attached to their target and
 // do not hide healthy mirror results.
