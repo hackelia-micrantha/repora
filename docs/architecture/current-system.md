@@ -14,11 +14,12 @@ For each repository entry it currently supports:
 - one or more GitHub/GitLab mirrors for status observation;
 - exactly one mirror for plan/apply/sync;
 - provider-relative `provider + path` topology with bounded single-mirror legacy URL compatibility;
-- stable status target identity as `provider:path`;
+- stable target identity as `provider:path`;
 - runtime HTTPS transport resolution;
 - default-branch-only closed ref policy;
 - independent `EQUAL`, `BEHIND`, `AHEAD`, `DIVERGED`, or `ERROR` status per mirror;
-- exact single-mirror plan artifact export/import;
+- provider/path-bound exact single-mirror plan artifact v2 export/import;
+- historical single-mirror plan artifact v1 import compatibility;
 - normal pushes and explicitly authorized lease-protected overwrites;
 - fail-closed immutable intent/result journal evidence;
 - bounded repository-level concurrency.
@@ -45,7 +46,7 @@ A mirror failure does not hide later mirrors. Canonical failure remains reposito
 configuration and closed ref policy
   -> explicit exactly-one-mirror gate
   -> observation and classification
-  -> exact deterministic artifact
+  -> path-bound exact artifact v2
   -> immutable journal intent
   -> complete structural and stale-ref preflight
   -> mutation or dry-run validation
@@ -57,15 +58,15 @@ configuration and closed ref policy
 
 | Package | Owns | Must not own |
 | --- | --- | --- |
-| `internal/config` | strict YAML, durable identity, topology and ref-policy normalization, duplicate target rejection | Runtime URL derivation or Git operations |
+| `internal/config` | strict YAML, durable identity, safe endpoint path identity, topology/ref-policy normalization, duplicate target rejection | Runtime URL derivation or Git operations |
 | `internal/refpolicy` | closed versioned ref scope and relationship-to-intent decisions | Git operations or CLI authorization parsing |
 | `internal/transport` | runtime provider/path URL resolution | Durable identity or policy |
 | `internal/status` | single-mirror reconciliation observation plus multi-mirror read-side observation, target identity, divergence, and commit evidence | Mutation decisions or pushes |
 | `internal/plan` | deterministic single-mirror reconciliation actions and compatibility projection | Git reads/writes or durable serialization |
-| `internal/planartifact` | exact versioned artifact parsing, validation, and conversion | Observation or execution policy |
+| `internal/planartifact` | versioned exact artifact parsing, provider-path validation, historical compatibility, and plan conversion | Observation or execution policy |
 | `internal/executor` | complete preflight, ordered mutation, and action outcomes | Recomputing status or policy |
-| `internal/apply` | artifact orchestration, config matching, authorization, audit integration, and public apply results | Independent reconciliation policy |
-| `internal/journal` | immutable intent/result evidence, redaction, and append-only local persistence | Mutation or replay authority |
+| `internal/apply` | artifact construction, configuration binding, authorization, audit integration, and public apply results | Independent reconciliation policy |
+| `internal/journal` | immutable intent/result evidence, artifact digest reference, redaction, and append-only local persistence | Mutation or replay authority |
 | `internal/git` | bounded Git subprocesses, cache safety, refs, pushes, leases, timeouts, and redaction | Product policy or identity |
 | `cmd/repoctl` | command routing, concurrency, status aggregation, mutation gate, artifact I/O, rendering, and exit semantics | Git mechanics or duplicated planning |
 
@@ -75,13 +76,13 @@ Repora distinguishes:
 
 - `id`: human-facing repository alias;
 - `uid`: durable logical repository identity;
-- `(provider, path)`: declarative location and stable mirror selector;
+- `(provider, path)`: declarative location and stable repository/mirror selector;
 - configuration index: deterministic order only;
 - resolved URL and Git remote alias: ephemeral transport state.
 
-Status v2 emits target strings such as `github:org/repository`. URLs and aliases are not durable identity and are excluded from plans and journals.
+Status v2 and plan artifact v2 use provider/path identity. URLs, credentials, local filesystem paths, and array indexes are excluded. Runtime aliases remain in the artifact only as execution details and are not target authority.
 
-When multiple mirrors are configured, each must use provider/path form and duplicate targets are rejected. Single-mirror legacy URLs remain compatibility input and are projected to a safe repository path for status output.
+When multiple mirrors are configured, each must use provider/path form and duplicate targets are rejected. Single-mirror legacy URLs remain compatibility input and can be reduced to a safe provider-relative path for new exact plans when supported.
 
 ## Reference policy
 
@@ -106,13 +107,21 @@ Aggregate exit status:
 
 Operational failure takes precedence over unsafe-state reporting.
 
+## Plan artifact compatibility
+
+New production plans emit reconciliation artifact version 2. Every ref contains provider, provider-relative path, runtime alias, and branch. Imported v2 artifacts validate canonical and mirror paths against configuration before repository Git reads.
+
+Version 1 remains parseable under its historical single-mirror provider/alias contract. It cannot authorize multi-mirror targeting and is never interpreted as path-bound identity.
+
+The compatibility `repora.plan` v1 output remains provider-oriented and is still a view only.
+
 ## Planning and execution safety
 
 Plan/apply/sync reject multi-mirror repositories before Git observation. They never select `mirrors[0]` implicitly.
 
-For an accepted single-mirror repository, execution validates artifact metadata, UID/topology, state/action/force intent, default branches, and all expected OIDs before action zero. Forced actions additionally use force-with-lease.
+For an accepted single-mirror repository, execution validates artifact metadata, UID/topology/path binding, state/action/force intent, default branches, and all expected OIDs before action zero. Forced actions additionally use force-with-lease.
 
-`plan --artifact` and `apply --plan-file` share the exact artifact boundary; compatibility plan output remains a view only.
+`plan --artifact` and `apply --plan-file` share the exact artifact boundary.
 
 ## Execution journal
 
@@ -123,7 +132,7 @@ Apply and dry-run write immutable version-2 intent/result records under the conf
 .repora/journal/<uid>--<execution-id>--result.json
 ```
 
-Intent failure prevents mutation. Result-write failure returns nonzero even after completed mutation. Journals are evidence, never replay authority.
+Intent failure prevents mutation. Result-write failure returns nonzero even after completed mutation. Journals may reference exact plan artifact version 1 or 2 through the serialized artifact digest. Journals are evidence, never replay authority.
 
 ## Concurrency and atomicity
 
@@ -137,7 +146,7 @@ Current public envelopes include:
 
 - `repora.status` v2;
 - compatibility `repora.plan` v1;
-- exact reconciliation plan v1;
+- exact reconciliation plan v2, with v1 historical import support;
 - `repora.apply` v2;
 - execution record v2.
 
@@ -145,9 +154,10 @@ Historical schemas remain committed. Consumers must inspect `kind` and `version`
 
 ## Immediate architecture gaps
 
-1. exact multi-mirror artifact target binding;
-2. complete preflight and independent ordered multi-mirror execution;
-3. per-mirror apply and journal outcomes with non-atomic recovery;
-4. supported v0.1 release packaging and verification.
+1. multi-action planning from multi-mirror observation;
+2. mapping each path-bound reviewed target to its current runtime alias;
+3. complete all-target preflight and independent ordered execution;
+4. per-mirror apply and journal outcomes with non-atomic recovery;
+5. supported v0.1 release packaging and verification.
 
 Managed artifacts, advanced document routing, assessments, and Anthesis integration remain deferred and must reuse the core plan, policy, execution, and evidence boundaries.
