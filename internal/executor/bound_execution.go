@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"repoctl/internal/plan"
 	"repoctl/internal/planartifact"
 )
 
@@ -50,7 +49,3 @@ func ExecuteWithBindings(repoPath string, artifact planartifact.Artifact, git Gi
 	}
 	return result, nil
 }
-
-// Keep plan imported for documentation tooling that follows the concrete
-// action type from this execution boundary.
-var _ plan.PlannedAction
