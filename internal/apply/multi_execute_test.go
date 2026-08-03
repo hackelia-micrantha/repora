@@ -55,6 +55,36 @@ func TestExecuteRepositoryArtifactAuditedPreservesPartialOutcomes(t *testing.T) 
 	}
 }
 
+func TestExecuteRepositoryArtifactAuditedRedactsEmbeddedLocalPath(t *testing.T) {
+	repo := multiMirrorRepo()
+	artifact := multiPreflightArtifact(t, repo, []plan.PlannedAction{
+		multiPreflightAction(repo, 0, "mirror-0", false),
+	})
+	observed := status.RepositoryResult{
+		ID: repo.ID, UID: repo.DurableID(),
+		Mirrors: []status.MirrorResult{
+			{Target: "github:org/payments-api", State: status.StateBehind},
+			{Target: "gitlab:backup/payments-api", State: status.StateEqual},
+		},
+	}
+	git := &partialExecutionGit{
+		failRemote: "mirror-0",
+		failErr:    errors.New("fatal: '/tmp/private/mirror.git' does not appear to be a git repository"),
+	}
+	writer := &recordingJournalWriter{}
+
+	got, err := ExecuteRepositoryArtifactAudited(repo, observed, artifact, git, false, false, Audit{ExecutionID: "run-redacted", Writer: writer})
+	if err == nil || strings.Contains(err.Error(), "/tmp/private") {
+		t.Fatalf("error = %v, want sanitized public failure", err)
+	}
+	if got.Error != "execution diagnostic redacted" || got.Actions[0].Error != "execution diagnostic redacted" {
+		t.Fatalf("result = %#v, want redacted aggregate and action diagnostics", got)
+	}
+	if len(writer.records) != 2 || writer.records[1].Actions[0].Error != "execution diagnostic redacted" {
+		t.Fatalf("records = %#v, want redacted durable diagnostic", writer.records)
+	}
+}
+
 func TestExecuteRepositoryArtifactAuditedRequiresForceBeforeIntent(t *testing.T) {
 	repo := multiMirrorRepo()
 	artifact := multiPreflightArtifact(t, repo, []plan.PlannedAction{
@@ -82,11 +112,15 @@ func TestExecuteRepositoryArtifactAuditedRequiresForceBeforeIntent(t *testing.T)
 type partialExecutionGit struct {
 	fakeGit
 	failRemote string
+	failErr    error
 }
 
 func (g *partialExecutionGit) PushBranch(repoPath, remote, srcRef, dstBranch string) error {
 	g.fakeGit.PushBranch(repoPath, remote, srcRef, dstBranch)
 	if remote == g.failRemote {
+		if g.failErr != nil {
+			return g.failErr
+		}
 		return errors.New(remote + " unavailable")
 	}
 	return nil
