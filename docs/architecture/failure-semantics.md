@@ -10,7 +10,7 @@ Repora controls durable Git state. Failures must be explicit in human output, ma
 | --- | --- |
 | `0` | Requested operation completed successfully. |
 | `1` | Configuration, observation, planning, artifact, stale input, journal, execution, serialization, or other operational failure. |
-| `2` | Observation is complete but unsafe state or a real destructive mutation requires explicit authorization. |
+| `2` | Observation/planning is complete but unsafe state or a real destructive mutation requires explicit authorization. |
 
 Operational failure takes precedence over unsafe-state reporting because incomplete observation cannot prove the rest of the topology safe.
 
@@ -43,21 +43,40 @@ A mirror-specific resolution, configuration, fetch, HEAD, comparison, or commit-
 
 If every mirror observation is complete, any `AHEAD` or `DIVERGED` result returns `2`; otherwise status returns `0`.
 
+## Multi-mirror planning
+
+`repoctl plan` supports one or more mirrors and matches status results to configuration by stable target identity rather than array position.
+
+Planning fails with exit `1` when:
+
+- canonical or any mirror observation is incomplete;
+- status repository identity or mirror cardinality is inconsistent;
+- a configured target is missing or duplicated in the status result;
+- provider/path identity cannot be derived safely;
+- policy, default branch, or OID evidence cannot be resolved;
+- the generated artifact fails validation.
+
+`plan --artifact` emits no partial artifact when any selected repository is incomplete, including with `--continue-on-error`. An exact artifact must represent the complete selected intent.
+
+When planning succeeds and the artifact contains ahead/diverged forced intent, the artifact is still emitted for review and the command returns `2` unless `--force` is supplied.
+
+Human multi-mirror plan output uses stable `provider:path` targets. The historical `plan --json` v1 compatibility view is rejected for multi-mirror topology with exit `1`; operators must use `--artifact` for the exact machine-readable plan.
+
 ## Mutation topology gate
 
-Plan/apply/sync currently require exactly one configured mirror. A multi-mirror repository is rejected before reconciliation observation with exit `1`. The CLI never chooses the first mirror implicitly.
+Apply and sync currently require exactly one configured mirror. A multi-mirror repository is rejected before reconciliation observation with exit `1`. The CLI never chooses the first mirror implicitly.
 
-## Planning and artifact failures
+## Artifact failures
 
-Planning is pure and describes destructive intent independently of authorization.
+Invalid kind/version/UID/topology/path/action/ref/OID values, policy mismatch, or state/action/force mismatch fail before mutation with exit `1`.
 
-Exact artifact export is suppressed when selected observation or planning is incomplete. Invalid kind/version/UID/topology/action/ref/OID values, excess actions, policy mismatch, or state/action/force mismatch fail before mutation with exit `1`.
+Version-2 path mismatch is rejected before repository Git reads. Version-1 imports remain limited to their historical single-mirror provider/alias contract.
 
-Imported artifacts are not repaired or partially reinterpreted.
+Imported artifacts are not repaired, reordered, retargeted, or partially reinterpreted.
 
 ## Stale preflight
 
-Dry-run and real apply resolve every planned source and target OID after current observation. If any ref is missing or differs:
+Current single-mirror dry-run and real apply resolve every planned source and target OID after observation. If any ref is missing or differs:
 
 - no action is attempted;
 - the offending action is `STALE`/failed internally;
@@ -68,9 +87,13 @@ Dry-run and real apply resolve every planned source and target OID after current
 
 Force-with-lease is additional defense and does not authorize stale replay.
 
+The next multi-mirror execution slice must complete this validation for every target before action zero.
+
 ## Force behavior
 
 The closed ref policy records ahead/diverged reconciliation as forced intent. `--force` authorizes only a real action already marked forced; it does not alter the plan.
+
+For planning, `--force` acknowledges destructive intent for process-status purposes only. It does not mutate or weaken the artifact.
 
 Dry-run may review and stale-check forced intent without authorizing mutation.
 
@@ -87,6 +110,8 @@ Apply and dry-run require one immutable intent/result pair per repository execut
 - available safe execution ID and references remain in output;
 - a present intent without a result requires reconciliation against current Git state before retry.
 
+Multi-mirror planning does not create journal evidence because it does not enter the execution boundary.
+
 Journals are evidence, never replay authority.
 
 ## Runtime mutation failure
@@ -99,11 +124,11 @@ Future multi-mirror execution must define continuation after one remote fails, p
 
 Repository tasks may complete out of order; output is restored to configuration or artifact order.
 
-Successful results remain visible when another repository fails. The aggregate diagnostic and status remain nonzero and deterministic.
+Successful status results remain visible when another repository fails. Exact plan artifacts are stricter: incomplete selected planning suppresses the artifact rather than emitting a partial executable document.
 
 ## Output failure
 
-Failure to serialize or write requested JSON returns `1` even if Git work completed. The CLI must not emit a second partial JSON document.
+Failure to serialize or write requested JSON returns `1` even if earlier Git reads completed. The CLI must not emit a second partial JSON document.
 
 Human diagnostics belong on stderr; structured results belong on stdout.
 
@@ -113,7 +138,7 @@ Human diagnostics belong on stderr; structured results belong on stdout.
 2. observe all current targets again;
 3. build a new exact artifact;
 4. review destructive intent again;
-5. apply the new artifact.
+5. apply only through the supported execution boundary.
 
 Do not edit expected OIDs, weaken policy/lease checks, infer identity from mirror position, or replay an artifact after drift is reported.
 
@@ -121,10 +146,13 @@ Do not edit expected OIDs, weaken policy/lease checks, infer identity from mirro
 
 Changes must test the applicable boundary:
 
-- invalid input performs zero Git operations;
+- invalid input performs zero mutation;
 - one mirror failure does not hide later status results;
 - operational status failure overrides unsafe exit reporting;
-- multi-mirror mutation is gated before observation;
+- observations are matched by stable target identity rather than order;
+- incomplete multi-mirror planning suppresses exact artifact output;
+- destructive plan intent remains visible and returns deterministic status;
+- multi-mirror apply/sync remain gated before observation;
 - state, policy, artifact intent, default branches, and OIDs agree before action zero;
 - dry-run performs complete stale preflight without mutation;
 - intent-write failure prevents mutation;
