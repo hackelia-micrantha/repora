@@ -4,99 +4,93 @@ Status: Current
 
 Repora uses a versioned reconciliation plan artifact as the review and execution boundary for repository mutations.
 
-New plans emit `repora.io/reconciliation-plan` version `2`, described by `schemas/reconciliation-plan-v2.schema.json`. Version 1 remains parseable for historical single-mirror compatibility.
+New plans emit `repora.io/reconciliation-plan` version 2. Version 1 remains parseable for historical single-mirror compatibility.
 
 ## Operator workflow
 
-Export the exact artifact across one or more mirrors:
-
 ```bash
 repoctl plan -f repora.yaml --artifact > plan.json
+repoctl apply -f repora.yaml --plan-file plan.json --dry-run --json
+repoctl apply -f repora.yaml --plan-file plan.json --json
 ```
 
-Review and validate that exact artifact without mutation:
+When any reviewed action is forced:
 
 ```bash
-repoctl apply -f repora.yaml --plan-file plan.json --dry-run
+repoctl apply -f repora.yaml --plan-file plan.json --force --json
 ```
 
-Real apply currently requires a single-mirror configuration:
-
-```bash
-repoctl apply -f single-mirror.yaml --plan-file plan.json
-repoctl apply -f single-mirror.yaml --plan-file plan.json --force
-```
-
-Imported execution refreshes current repository state but does not rebuild or rewrite reconciliation intent.
+Imported execution refreshes current repository observations and bindings but never rebuilds, edits, reorders, or retargets the artifact.
 
 ## Version 2 identity boundary
 
-Every source and target ref includes:
+Every source and target ref contains:
 
-- symbolic provider;
+- provider;
 - provider-relative repository path;
-- runtime Git remote alias;
+- serialized runtime Git alias;
 - branch;
-- observed and desired object IDs;
+- observed and desired OIDs;
 - force intent and planner reason.
 
-Provider/path is durable topology identity. Runtime aliases are execution details. During multi-mirror dry-run, each reviewed target is matched to current configuration by provider/path and then bound to the current local alias through a separate runtime map. The artifact and its digest remain unchanged.
+Provider/path is durable identity. The serialized alias is context only. At execution time each reviewed target binds to the current local alias through a separate runtime map; the artifact and its digest remain unchanged.
 
-URLs, credentials, local filesystem paths, command lines, and array indexes are excluded from identity. Version 2 rejects missing, absolute, traversal-bearing, transport-like, credential-like, or otherwise unsafe provider paths.
+URLs, credentials, local paths, command lines, and array indexes are excluded. Provider paths reject absolute, traversal-bearing, transport-like, credential-like, whitespace, and unsafe delimiter syntax.
 
 ## Version 1 compatibility
 
-Version 1 refs contain provider, runtime alias, and branch but no repository path.
+Version 1 refs have no provider path. They remain supported only through the historical single-mirror provider/alias execution path and cannot authorize multi-mirror targeting.
 
-A v1 artifact:
+## Planning
 
-- remains parseable for historical single-mirror execution;
-- is matched through the historical provider/alias contract;
-- cannot authorize multi-mirror targeting or preflight;
-- must not be reinterpreted as path-bound identity;
-- remains covered by the committed v1 schema and golden fixture.
+Complete status observations are matched to configuration by provider/path. Actions are emitted in configuration order:
 
-## Planning boundary
+- `EQUAL`: no action;
+- `BEHIND`: normal push intent;
+- `AHEAD` or `DIVERGED`: forced overwrite intent.
 
-Multi-mirror planning matches complete status observations to configured mirrors by provider/path. Actions are emitted in configuration order after identity matching:
+`plan --artifact` is the authoritative multi-mirror machine contract. The compatibility `plan --json` v1 view remains single-mirror only. Incomplete selected planning suppresses the artifact.
 
-- equal mirror: no action;
-- behind mirror: normal push intent;
-- ahead or diverged mirror: forced overwrite intent.
+## Selected preparation
 
-`repoctl plan --artifact` is the authoritative machine-readable multi-mirror plan. The compatibility `repoctl plan --json` v1 view remains single-mirror only. An exact artifact is suppressed when any selected observation or planning step is incomplete.
+Before any selected repository mutates, Repora:
 
-## Multi-mirror dry-run boundary
+- observes every selected repository;
+- builds or splits one exact artifact per repository;
+- validates artifact v2, kind, cardinality, and serialization;
+- refuses the complete selected execution if any preparation fails;
+- checks whether any action requires command-level force authorization.
 
-Before intent persistence, imported or convenience artifacts are validated against:
+Preparation or missing authorization writes no intent and performs no mutation.
 
-- supported version and kind;
-- durable repository UID;
-- configured canonical provider/path;
-- every configured mirror target exactly once;
-- complete current status evidence;
-- state/action/force agreement under ref-policy v1;
-- current canonical and mirror default branches.
+## Repository execution
 
-After one repository-level intent record is persisted, the executor resolves every expected source and target OID through the current runtime bindings. All actions are preflighted before action zero and no push occurs.
+Before intent persistence, each artifact is checked against current UID, canonical provider/path, every configured mirror, complete status, state/action/force agreement, and current default branches.
 
-A missing binding is structural failure, not stale state. An OID mismatch is stale state. A stale later action leaves earlier and later unattempted actions skipped and is preserved in result evidence.
+After immutable intent persistence, every expected source and target OID is validated before action zero.
 
-## Real execution boundary
+If preflight succeeds:
 
-Real multi-mirror mutation remains gated. Current real single-mirror execution additionally requires explicit `--force` authorization for an action already marked forced and uses force-with-lease.
+- actions execute sequentially in artifact order;
+- normal intent uses normal push;
+- forced intent uses force-with-lease and the reviewed old target OID;
+- runtime failure marks that action failed and later independent actions continue;
+- successful actions are not rolled back;
+- apply v3 and execution-record v3 preserve all outcomes;
+- any failure returns nonzero and retry requires a new artifact.
 
-The next mutation slice must reuse the exact same target binding and complete preflight, execute actions sequentially, continue later independent targets after a runtime push failure, and preserve per-target results without rollback claims.
+The same exact-artifact path serves convenience apply and `--plan-file` execution.
 
-## Journal compatibility
+## Public result and evidence contracts
 
-- reconciliation artifact v1 evidence uses execution-record v2;
-- reconciliation artifact v2 evidence uses execution-record v3;
-- execution-record v3 adds provider path to every source and target ref;
-- execution-record v1 and v2 remain parseable and are not reinterpreted.
+- single-mirror-only command selections retain apply v2;
+- mixed or multi-mirror selections emit apply v3;
+- artifact v2 execution writes execution-record v3;
+- artifact v1 can still write record v2 through the legacy path;
+- historical schemas remain committed.
 
-Intent and result records reference the exact serialized artifact digest.
+Apply v3 identifies source and target by stable provider/path/branch and includes force, before, desired, optional after, outcome, and sanitized error.
 
 ## Current scope
 
-Artifact v2 and audited dry-run support multiple default-branch mirror actions. The artifact does not model tags, non-default refs, managed files, approvals, provider provisioning, or cross-repository transactions.
+Artifact v2 models zero or one default-branch action per configured mirror. It does not model tags, non-default refs, managed files, approvals, provider provisioning, rollback, or cross-repository transactions.

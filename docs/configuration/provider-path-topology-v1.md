@@ -1,19 +1,17 @@
 # Provider/path topology schema v1
 
-## Status
+Status: Current
 
-This document describes the preferred `repora.yaml` topology accepted by the current pre-alpha runtime.
-
-Repora separates four concepts:
+Repora separates durable identity from runtime transport:
 
 | Field | Meaning | Stability |
 | --- | --- | --- |
-| `id` | Human-facing operational alias | May be renamed intentionally |
-| `uid` | Durable logical identity used for cache and evidence continuity | Should remain stable |
-| `provider + path` | Declarative repository location and mirror selector | Changes when hosting changes |
-| resolved URL / Git alias | Runtime transport state | Ephemeral; never durable identity |
+| `id` | Human-facing operational alias | May be renamed |
+| `uid` | Durable logical identity used by cache and evidence | Should remain stable |
+| `provider + path` | Declarative canonical or mirror location and selector | Changes only when hosting moves |
+| resolved URL / Git alias | Runtime transport state | Ephemeral; never target identity |
 
-## Preferred multi-mirror configuration
+## Preferred configuration
 
 ```yaml
 repos:
@@ -37,17 +35,15 @@ repos:
 
 The runtime derives HTTPS remotes immediately before Git operations. Authentication remains delegated to system Git and credential helpers.
 
-## Field reference
+## Fields
 
 ### `repos`
 
-A non-empty list of repository entries. Entries may be processed concurrently through `--parallel`.
+A non-empty list. Repository entries may be processed concurrently through `--parallel` after all selected preparation and force authorization succeeds.
 
 ### `id` and `uid`
 
-`id` is the CLI label. `uid` is durable identity. When `uid` is omitted it defaults to `id`, but explicit stable UIDs are recommended.
-
-Both values must be unique within the configuration.
+`id` is the CLI label. `uid` is durable identity. An omitted `uid` defaults to `id`, but an explicit stable UID is recommended. Both must be unique.
 
 ### `canonical`
 
@@ -57,24 +53,24 @@ The authoritative source. The current runtime supports GitLab canonical reposito
 
 One or more GitHub or GitLab targets.
 
-- Status observes every configured mirror.
-- When more than one mirror is configured, every mirror must use provider/path form.
-- Duplicate `(provider, path)` targets are rejected.
-- Plan/apply/sync remain single-mirror until issue #15 is implemented.
+- status, exact planning, dry-run, and real mutation support every configured mirror;
+- every mirror in a multi-mirror entry must use provider/path form;
+- duplicate `(provider, path)` targets are rejected;
+- actions are reviewed and executed in configuration order;
+- array position and derived Git aliases are not identity;
+- imported artifacts bind by provider/path to current runtime aliases.
 
-The stable status target is:
+Stable target form:
 
 ```text
 <provider>:<path>
 ```
 
-Array position is order, not identity.
-
 ### `path`
 
-A provider-relative repository location without scheme, host, credentials, leading slash, or traversal segments.
+A provider-relative repository location without scheme, host, credentials, leading slash, traversal segments, whitespace, backslashes, or unsafe delimiters.
 
-Valid examples:
+Examples:
 
 ```text
 micrantha/anthesis
@@ -84,7 +80,7 @@ hackelia-micrantha/repora
 
 ### `policy.refs`
 
-Optional. Omission normalizes to the closed version-1 policy:
+Omission normalizes to:
 
 ```yaml
 version: 1
@@ -96,50 +92,51 @@ Unsupported versions or broader values fail configuration loading.
 
 ### `mode`
 
-Optional. Defaults to `mirror`; no other mode is supported.
+Defaults to `mirror`; no other mode is supported.
 
 ## Legacy URL compatibility
 
-A single-mirror entry may continue to use legacy URLs:
+A single-mirror entry may continue to use legacy URLs. Exactly one of `path` or `url` is required per endpoint, and credential-bearing HTTP URLs are rejected.
 
-```yaml
-canonical:
-  provider: gitlab
-  url: git@gitlab.com:micrantha/anthesis.git
-mirrors:
-  - provider: github
-    url: git@github.com:hackelia-micrantha/anthesis.git
-```
+Legacy URLs are compatibility transport input, not identity. Multi-mirror entries require provider/path so every target is unambiguous. New exact multi-mirror artifacts and execution evidence never persist transport URLs.
 
-Exactly one of `path` or `url` is required per endpoint. Credential-bearing HTTP URLs are rejected.
+## Execution semantics
 
-Legacy URLs are compatibility input, not identity. Multi-mirror entries require provider/path so each target has an unambiguous stable selector. Status v2 derives only a safe repository path from a supported legacy URL and does not expose host, credentials, query values, fragments, or transport details.
+Provider/path topology is used consistently across:
+
+- status v2 target identity;
+- reconciliation artifact v2 actions;
+- current runtime alias rebinding;
+- apply v3 source and target results;
+- execution-record v3 intent/result evidence.
+
+Before action zero, Repora verifies current configuration, status, policy, default branches, and all expected OIDs. After preflight, mirror actions execute sequentially in exact artifact order. Runtime failure of one mirror does not prevent later independent targets, and successful earlier targets are not rolled back.
 
 ## Migration
 
-1. Add an explicit durable `uid` and keep it stable.
+1. Add and preserve an explicit `uid`.
 2. Replace endpoint URLs with provider-relative paths.
-3. Add additional mirrors only after all mirror endpoints use provider/path.
-4. Use `repoctl status` to inspect multi-mirror state.
-5. Do not expect plan/apply/sync to accept multiple mirrors until the exact multi-mirror execution contract lands.
+3. Add additional mirrors only after every target has unambiguous provider/path identity.
+4. Review `repoctl status` and `repoctl plan --artifact`.
+5. Run `apply --dry-run` before real mutation.
+6. Treat partial apply results as evidence requiring fresh status and planning, not replay or rollback.
 
 ## Current runtime boundary
 
 Implemented:
 
 - GitLab canonical repositories;
-- one or more GitHub/GitLab mirrors for status;
-- stable provider/path mirror selectors;
-- independent mirror failure reporting;
+- one or more GitHub/GitLab mirrors;
+- stable provider/path identity through status, planning, execution, results, and journals;
 - default-branch-only closed ref policy;
-- exact single-mirror plan artifacts and audited apply;
+- sequential independent mirror mutation with force-with-lease;
 - runtime HTTPS resolution;
-- bounded single-mirror legacy URL input.
+- bounded single-mirror legacy URL compatibility.
 
 Not implemented:
 
-- multi-mirror planning or mutation;
 - tags, non-default branches, wildcard refs, or deleted-ref reconciliation;
 - provider provisioning;
 - custom provider bases or user-selectable transport;
-- hosted control-plane behavior.
+- concurrent mirror mutation;
+- automatic rollback or hosted control-plane behavior.

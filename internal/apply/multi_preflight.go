@@ -15,7 +15,7 @@ import (
 	"repoctl/internal/status"
 )
 
-// PreflightRepositoryArtifactAudited validates one exact multi-mirror artifact
+// PreflightRepositoryArtifactAudited validates one exact path-bound artifact
 // against current topology and observations, writes one repository-level intent
 // and result pair, and performs no remote mutation.
 func PreflightRepositoryArtifactAudited(repo config.Repo, observed status.RepositoryResult, artifact planartifact.Artifact, git Git, audit Audit) (Result, error) {
@@ -76,7 +76,7 @@ func validateRepositoryArtifact(repo config.Repo, observed status.RepositoryResu
 	empty := plan.ReconciliationPlan{}
 	bindings := executor.RuntimeBindings{SourceRemote: "canonical", TargetRemotes: map[string]string{}}
 	if artifact.Version != planartifact.Version {
-		return empty, bindings, "", fmt.Errorf("multi-mirror preflight requires reconciliation artifact version %d", planartifact.Version)
+		return empty, bindings, "", fmt.Errorf("path-bound execution requires reconciliation artifact version %d", planartifact.Version)
 	}
 	plans, err := artifact.Plans()
 	if err != nil {
@@ -89,8 +89,8 @@ func validateRepositoryArtifact(repo config.Repo, observed status.RepositoryResu
 	if planned.UID != repo.DurableID() {
 		return empty, bindings, "", fmt.Errorf("plan repository uid %q does not match configured uid %q", planned.UID, repo.DurableID())
 	}
-	if len(repo.Mirrors) < 2 {
-		return empty, bindings, "", fmt.Errorf("repo %q requires multiple configured mirrors for multi-mirror preflight", repo.ID)
+	if len(repo.Mirrors) == 0 {
+		return empty, bindings, "", fmt.Errorf("repo %q requires at least one configured mirror", repo.ID)
 	}
 	if observed.ID != "" && observed.ID != repo.ID {
 		return empty, bindings, "", fmt.Errorf("status repository id %q does not match configured id %q", observed.ID, repo.ID)

@@ -4,7 +4,7 @@ Status: Active
 
 ## Release objective
 
-The next meaningful Repora release is a coherent, local-first Git mirror controller with one trustworthy observation, planning, execution, policy, and evidence path.
+The next meaningful Repora release is a supported v0.1 binary distribution of the completed local-first multi-mirror controller.
 
 ## Required v0.1 capability
 
@@ -14,12 +14,11 @@ A v0.1-quality controller must:
 - resolve runtime transport without persisting credentials or URLs as identity;
 - observe one canonical and one or more mirror default branches;
 - classify state and failures independently per mirror;
-- produce one deterministic exact executable artifact across required mirrors;
+- produce one deterministic exact executable artifact;
 - reject invalid or stale plans before mutation;
 - enforce closed reference and destructive-change policy;
-- execute with lease protection;
-- preserve per-mirror partial outcomes and correct process status;
-- persist durable intent/result evidence;
+- execute independent mirrors with lease protection and honest partial outcomes;
+- persist durable path-bound intent/result evidence;
 - ship through a documented repeatable binary release flow.
 
 ## Current state
@@ -27,66 +26,54 @@ A v0.1-quality controller must:
 | Area | State | Notes |
 | --- | --- | --- |
 | Durable `uid` identity | Complete | Cache and durable artifacts use logical identity. |
-| Provider/path topology | Complete for current providers | Multiple mirrors require unambiguous provider/path targets. |
-| Ref policy v1 | Complete | Default-branch-only and require-force; unsupported expansion is rejected. |
-| Multi-mirror status | Complete | Ordered observations, stable `provider:path` identity, mirror-local failures, and status v2. |
+| Provider/path topology | Complete | Multiple mirrors use unambiguous stable targets. |
+| Ref policy v1 | Complete | Default branch only; destructive actions require authorization. |
+| Multi-mirror status | Complete | Ordered observations and mirror-local failures in status v2. |
 | Exact multi-mirror planning | Complete | Artifact v2 actions are identity-matched and deterministic. |
-| Runtime target rebinding | Complete | Imported targets bind by provider/path to current local aliases; serialized aliases and positions are not authority. |
-| All-target preflight | Complete | Topology, policy, branches, and every expected OID are validated before action zero. |
-| Audited multi-mirror dry-run | Complete | One repository-level intent/result pair preserves every validated, stale, failed, or skipped action. |
-| Execution record v3 | Complete | Path-bound source/target evidence; v1/v2 remain parseable. |
-| Real multi-mirror mutation | Active next gate | Independent continuation and versioned per-target apply results remain. |
-| Release packaging | Not started | CI builds verification binaries but does not publish supported releases. |
+| Runtime target rebinding | Complete | Provider/path binds to current aliases without rewriting intent. |
+| Complete preflight | Complete | Topology, policy, branches, and all expected OIDs validate before action zero. |
+| Multi-mirror dry-run | Complete | Path-bound execution-record v3 intent/result evidence. |
+| Multi-mirror mutation | Complete | Sequential independent actions continue after runtime failure without rollback. |
+| Apply output v3 | Complete | Per-target before/desired/after/outcome evidence and partial-success reporting. |
+| Release packaging | Active next gate | CI verifies builds but does not publish supported artifacts. |
 
 ## Immediate sequence
 
-### 1. Add independent ordered multi-mirror mutation
-
-Completed foundation:
-
-- exact artifact v2 binds every reviewed target to provider/path;
-- status and planning match targets by identity rather than order;
-- imported artifacts bind targets to current runtime aliases without rewriting intent;
-- configuration, status, policy, force intent, and default branches are validated before intent;
-- executor preflight validates every expected source and target OID before action zero;
-- audited dry-run writes execution-record v3 intent/result evidence;
-- real multi-mirror mutation remains explicitly gated.
-
-Remaining exit condition:
-
-- publish a versioned per-target apply output contract;
-- make convenience apply and `--plan-file` use one multi-target execution path;
-- execute actions sequentially in deterministic artifact order;
-- continue later independent mirrors after one runtime push fails;
-- preserve `APPLIED`, `FAILED`, `SKIPPED`, and `STALE` per target;
-- persist path-bound before/desired/after/outcome details in one repository-level result record;
-- return nonzero when any mirror fails without hiding successful outcomes;
-- use force-with-lease for each action already marked forced;
-- imply no rollback or cross-remote atomicity;
-- require fresh status and re-planning for retry.
-
-### 2. Package v0.1
+### 1. Package v0.1
 
 Exit condition:
 
-- supported platforms are explicit;
-- tagged binaries and checksums are published;
-- packaged binaries receive smoke coverage;
-- release permissions remain least privilege;
-- installation, verification, compatibility, and release checklist are documented.
+- supported operating systems and architectures are explicit;
+- tagged binaries are built from a reviewed commit;
+- checksums are published beside release assets;
+- packaged binaries receive installation and command smoke coverage;
+- release workflow permissions remain least privilege;
+- artifact naming and version embedding are deterministic;
+- installation, checksum verification, compatibility, and rollback guidance are documented;
+- a repeatable release checklist identifies required CI/security gates;
+- issues #5 and #11 are reconciled or closed through the implementation.
+
+### 2. Post-v0.1 hardening
+
+After packaging, prioritize evidence-backed needs rather than broad abstraction:
+
+- remaining supply-chain CI from #10;
+- operator experience found during real multi-mirror use;
+- additional ref scope only through a new policy version and ADR;
+- provider or transport expansion only with explicit identity/authentication contracts.
 
 ## Explicit deferrals
 
 - tags, non-default branches, wildcard refspecs, and deleted-ref reconciliation;
-- concurrent mirror mutation in the first multi-mirror implementation;
+- concurrent mirror mutation;
+- automatic rollback or cross-repository/cross-remote transactions;
 - managed repository artifacts and README templating;
 - advanced document routing and repository assessments;
 - optional Anthesis policy integration;
 - provider provisioning or hosted control-plane behavior;
-- generalized cross-domain diff engines;
-- automated rollback or cross-repository/cross-remote transactions.
+- generalized cross-domain diff engines.
 
-Deferred tracks must reuse the core plan, policy, execution, and evidence substrate rather than introduce parallel mutation paths.
+Deferred tracks must reuse the current plan, policy, execution, result, and evidence substrate rather than create parallel mutation paths.
 
 ## Simplicity constraints
 
@@ -96,8 +83,8 @@ Deferred tracks must reuse the core plan, policy, execution, and evidence substr
 - Keep compatibility serializers as views, never decision authorities.
 - Treat configuration order and runtime aliases as execution details, never durable mirror identity.
 - Keep ref-policy v1 closed.
-- Reuse the audited dry-run preflight unchanged for real execution.
-- Do not imply cross-remote atomicity.
+- Keep mirrors sequential unless measured need justifies a concurrent execution decision.
+- Do not imply cross-remote atomicity or rollback.
 
 ## Definition of done
 

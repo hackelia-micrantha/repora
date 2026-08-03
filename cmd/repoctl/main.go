@@ -155,8 +155,8 @@ func run(args []string) int {
 	if command == "plan" && hasMultiMirrorRepository(spec) {
 		return runMultiMirrorPlan(spec, parallel, *jsonFlag, *artifactFlag, *force, *continueOnError, *debug)
 	}
-	if (command == "apply" || command == "sync") && *dryRun && hasMultiMirrorRepository(spec) {
-		return runMultiMirrorDryRun(spec, parallel, *jsonFlag, inputArtifact, *configPath, *debug)
+	if (command == "apply" || command == "sync") && hasMultiMirrorRepository(spec) {
+		return runPathBoundApply(spec, parallel, *jsonFlag, *force, *dryRun, inputArtifact, *configPath, *debug)
 	}
 	if err := requireSingleMirrorReconciliation(spec); err != nil {
 		fmt.Fprintf(os.Stderr, "repoctl: %v\n", err)
