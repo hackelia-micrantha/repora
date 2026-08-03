@@ -101,14 +101,27 @@ func validate(spec Spec) error {
 		if repo.Canonical.Provider != "gitlab" {
 			return fmt.Errorf("unsupported canonical provider %q for repo %q: only gitlab is supported", repo.Canonical.Provider, repo.ID)
 		}
-		if len(repo.Mirrors) != 1 {
-			return fmt.Errorf("SCHEMA-0001 requires exactly one mirror for repo %q, got %d", repo.ID, len(repo.Mirrors))
+		if len(repo.Mirrors) == 0 {
+			return fmt.Errorf("SCHEMA-0001 requires at least one mirror for repo %q", repo.ID)
 		}
-		if err := validateEndpoint(repo.Mirrors[0], "mirror", repo.ID); err != nil {
-			return err
-		}
-		if !isSupportedMirrorProvider(repo.Mirrors[0].Provider) {
-			return fmt.Errorf("unsupported mirror provider %q for repo %q: supported providers are github and gitlab", repo.Mirrors[0].Provider, repo.ID)
+		seenMirrors := make(map[string]struct{}, len(repo.Mirrors))
+		for j, mirror := range repo.Mirrors {
+			if err := validateEndpoint(mirror, fmt.Sprintf("mirrors[%d]", j), repo.ID); err != nil {
+				return err
+			}
+			if !isSupportedMirrorProvider(mirror.Provider) {
+				return fmt.Errorf("unsupported mirror provider %q for repo %q: supported providers are github and gitlab", mirror.Provider, repo.ID)
+			}
+			if len(repo.Mirrors) > 1 && strings.TrimSpace(mirror.Path) == "" {
+				return fmt.Errorf("repo %q requires provider/path mirrors when more than one mirror is configured", repo.ID)
+			}
+			if path := strings.Trim(strings.TrimSpace(mirror.Path), "/"); path != "" {
+				key := strings.TrimSpace(mirror.Provider) + ":" + path
+				if _, exists := seenMirrors[key]; exists {
+					return fmt.Errorf("duplicate mirror target %q for repo %q", key, repo.ID)
+				}
+				seenMirrors[key] = struct{}{}
+			}
 		}
 		if repo.Mode == "" {
 			repo.Mode = "mirror"
