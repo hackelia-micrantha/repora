@@ -142,6 +142,11 @@ func preflightPlan(repoPath string, planned plan.ReconciliationPlan, git Git, bi
 		if err := validateAction(action); err != nil {
 			return failPreflight(result, i, false, fmt.Errorf("validate action %d: %w", i, err))
 		}
+		if bindings != nil {
+			if err := validateRuntimeBinding(action, *bindings); err != nil {
+				return failPreflight(result, i, false, fmt.Errorf("validate action %d binding: %w", i, err))
+			}
+		}
 	}
 	for i, action := range planned.Actions {
 		if err := validateCurrentRefs(repoPath, action, git, bindings); err != nil {
@@ -177,19 +182,24 @@ func validateAction(action plan.PlannedAction) error {
 	return nil
 }
 
+func validateRuntimeBinding(action plan.PlannedAction, bindings RuntimeBindings) error {
+	if strings.TrimSpace(bindings.SourceRemote) == "" {
+		return fmt.Errorf("source runtime binding is required")
+	}
+	targetID := stableTargetID(action.Target)
+	bound, ok := bindings.TargetRemotes[targetID]
+	if !ok || strings.TrimSpace(bound) == "" {
+		return fmt.Errorf("no runtime binding for target %s", targetID)
+	}
+	return nil
+}
+
 func validateCurrentRefs(repoPath string, action plan.PlannedAction, git Git, bindings *RuntimeBindings) error {
 	sourceRemote := action.Source.Name
 	targetRemote := action.Target.Name
 	if bindings != nil {
-		if strings.TrimSpace(bindings.SourceRemote) != "" {
-			sourceRemote = bindings.SourceRemote
-		}
-		targetID := stableTargetID(action.Target)
-		bound, ok := bindings.TargetRemotes[targetID]
-		if !ok || strings.TrimSpace(bound) == "" {
-			return fmt.Errorf("no runtime binding for target %s", targetID)
-		}
-		targetRemote = bound
+		sourceRemote = bindings.SourceRemote
+		targetRemote = bindings.TargetRemotes[stableTargetID(action.Target)]
 	}
 
 	sourceRef := remoteTrackingRef(sourceRemote, action.Source.Branch)
