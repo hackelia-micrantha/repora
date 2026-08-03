@@ -4,92 +4,71 @@
 
 ![status](https://img.shields.io/badge/status-pre--alpha-blue)
 ![license](https://img.shields.io/badge/license-BSL%201.1-orange)
-![implementation](https://img.shields.io/badge/status-multi--mirror%20preflight-black)
+![implementation](https://img.shields.io/badge/status-multi--mirror%20apply-black)
 
 ## Overview
 
-**Repora** manages repository state through explicit topology, observation, policy, exact planning, stale-safe execution, and durable evidence.
+**Repora** manages repository state through explicit topology, observation, policy, exact planning, stale-safe execution, honest partial results, and durable evidence.
 
-**repoctl** is the current Go CLI prototype. A repository entry has one GitLab canonical and one or more GitHub/GitLab mirrors. Status, exact planning, and audited dry-run support multiple mirrors. Real apply/sync mutation remains explicitly single-mirror until independent partial-result semantics are complete.
+**repoctl** is the current Go CLI prototype. A repository entry has one GitLab canonical and one or more GitHub/GitLab mirrors. Status, planning, dry-run, and real apply/sync support multiple mirrors.
 
 Repora is pre-alpha. The broader repository-control-plane model is product direction, not a claim about current runtime capability.
 
 ## Implemented today
 
-- strict YAML parsing and validation;
-- multiple repository entries with bounded concurrency;
-- durable `uid` identity separate from location;
-- provider-relative `provider + path` topology;
-- one or more unambiguous GitHub/GitLab mirrors;
-- stable mirror selectors such as `github:org/repository`;
+- strict YAML validation and durable `uid` identity;
+- provider-relative canonical and mirror topology;
+- one or more GitHub/GitLab mirrors with stable `provider:path` identity;
 - bounded single-mirror legacy URL compatibility;
 - runtime HTTPS resolution and system Git authentication;
-- independent per-mirror default-branch states: `EQUAL`, `BEHIND`, `AHEAD`, `DIVERGED`, and `ERROR`;
-- mirror-local status failure isolation and `repora.status` v2;
-- closed ref-policy v1: default branch only, destructive intent requires force for real mutation;
-- deterministic reconciliation artifact v2 with provider/path-bound actions;
-- exact multi-mirror `plan --artifact` output;
-- current-target rebinding by provider/path rather than artifact alias or array position;
-- complete multi-target topology, policy, default-branch, and OID preflight;
-- audited multi-mirror `apply|sync --dry-run` with zero mutation;
-- execution-record v3 with path-bound intent/result evidence;
-- historical artifact v1 and execution-record v1/v2 parsing support;
-- single-mirror normal pushes and explicit lease-protected overwrites;
-- fail-closed immutable journal persistence and nonzero failure status.
+- independent per-mirror `EQUAL`, `BEHIND`, `AHEAD`, `DIVERGED`, and `ERROR` status;
+- status v2 with mirror-local failure isolation;
+- closed ref-policy v1: default branch only and explicit destructive authorization;
+- exact reconciliation artifact v2 across every required mirror action;
+- target rebinding by provider/path rather than serialized alias or position;
+- complete topology, policy, branch, and expected-OID preflight before action zero;
+- sequential independent mirror execution in artifact order;
+- continuation to later mirrors after a runtime push failure;
+- normal pushes and reviewed force-with-lease overwrites;
+- apply v3 per-target before/desired/after/outcome evidence;
+- execution-record v3 immutable intent/result evidence;
+- bounded repository concurrency;
+- historical artifact v1, apply v2, and execution-record v1/v2 compatibility.
 
 ## Current limitations
 
 - GitLab canonical repositories only;
-- built-in GitHub/GitLab transport bases only;
-- path-based operations use HTTPS by default;
-- no user-selectable transport or provider bases;
-- real multi-mirror apply/sync mutation is not yet enabled;
-- multi-mirror dry-run has human output only; per-target apply JSON is not yet published;
+- built-in GitHub/GitLab HTTPS transport bases only;
 - default branch only;
+- mirrors execute sequentially inside one repository;
 - no tags, wildcard refs, deleted-ref reconciliation, or complete ref inventory;
 - no provider provisioning;
-- no cross-remote transaction or rollback;
+- no cross-remote transaction or automatic rollback;
 - no Anthesis policy integration;
-- no supported release binaries or compatibility guarantee beyond committed versioned schemas.
+- no supported release binaries yet.
 
-## Current workflow
-
-### Inspect and plan one or more mirrors
+## Execution model
 
 ```mermaid
 flowchart LR
-    Config[repora.yaml] --> Observe[Observe canonical and mirrors]
-    Observe --> Status[Status v2]
-    Status --> Match[Match by provider:path]
-    Match --> Artifact[Exact artifact v2]
-```
-
-One mirror failure remains visible as `ERROR` and does not hide later mirrors. Incomplete selected observation suppresses executable artifact output.
-
-### Audit a multi-mirror plan without mutation
-
-```mermaid
-flowchart LR
-    Artifact[Exact artifact v2] --> Bind[Bind provider:path to current aliases]
-    Bind --> Scope[Validate topology, policy, and branches]
-    Scope --> Intent[Execution record v3 INTENT]
+    Config[Topology + policy] --> Observe[Observe canonical and mirrors]
+    Observe --> Artifact[Exact artifact v2]
+    Artifact --> Prepare[Prepare all selected repositories]
+    Prepare --> Intent[Immutable INTENT]
     Intent --> Preflight[Validate every expected OID]
-    Preflight --> Result[Execution record v3 RESULT]
+    Preflight --> Execute[Sequential independent pushes]
+    Execute --> Result[Apply v3 + immutable RESULT]
 ```
 
-Artifact aliases and mirror positions are not target authority. A stale later target produces ordered skipped/stale evidence and zero pushes.
+Mirror identity is provider/path. Configuration order determines deterministic review and execution order but is not identity. Runtime aliases are local details and cannot retarget imported intent.
 
-### Apply one mirror
+After complete preflight, one mirror failure does not prevent later independent mirrors. A valid result may be:
 
-```mermaid
-flowchart LR
-    Artifact[Exact artifact] --> Intent[Immutable INTENT]
-    Intent --> Preflight[Complete stale preflight]
-    Preflight --> Executor[Push or lease-protected overwrite]
-    Executor --> Result[Immutable RESULT]
+```text
+APPLIED, FAILED, APPLIED
 ```
 
-Real multi-mirror apply/sync still fails before observation rather than choosing the first mirror implicitly.
+Successful earlier mirrors are not rolled back. The command returns nonzero and retry requires a fresh status observation and new artifact.
 
 ## Configuration
 
@@ -113,8 +92,6 @@ repos:
         destructive: require-force
 ```
 
-`id` is the operational label. `uid` is durable identity. Provider/path is durable target identity. Array position and Git aliases are deterministic runtime details only.
-
 Credentials must not be embedded in configuration. Authentication is delegated to system Git and credential helpers.
 
 See [`docs/configuration/provider-path-topology-v1.md`](docs/configuration/provider-path-topology-v1.md).
@@ -129,38 +106,37 @@ repoctl plan -f repora.yaml
 repoctl plan -f repora.yaml --artifact > plan.json
 
 repoctl apply -f repora.yaml --dry-run
-repoctl apply -f repora.yaml --plan-file plan.json --dry-run
+repoctl apply -f repora.yaml --plan-file plan.json --dry-run --json
 
-# Real mutation currently requires a single-mirror configuration.
-repoctl apply -f single-mirror.yaml --plan-file plan.json
-repoctl apply -f single-mirror.yaml --plan-file plan.json --force
+repoctl apply -f repora.yaml --plan-file plan.json
+repoctl apply -f repora.yaml --plan-file plan.json --force --json
 ```
 
 `sync` is currently an alias for `apply`.
 
-Multi-mirror `apply --dry-run --json` is intentionally rejected until a versioned per-target apply result contract is available.
+Output compatibility:
+
+- single-mirror-only selections retain `repora.apply` v2;
+- mixed or multi-mirror selections use `repora.apply` v3.
 
 Exit codes:
 
 - `0`: success;
-- `1`: operational, validation, stale, journal, execution, or output failure;
-- `2`: complete unsafe status/planning or missing authorization for a destructive real mutation.
+- `1`: operational failure, stale preflight, journal failure, or partial success;
+- `2`: complete destructive intent requires `--force`.
 
 ## Contracts and architecture
 
 - [Current architecture](docs/architecture/current-system.md)
-- [Multi-mirror status](docs/architecture/multi-mirror-status.md)
 - [Failure and recovery semantics](docs/architecture/failure-semantics.md)
 - [Exact reconciliation artifact](docs/architecture/reconciliation-plan-artifact.md)
 - [Execution journal](docs/architecture/execution-journal.md)
-- [Closed ref policy](docs/architecture/ref-policy.md)
+- [Apply v3 migration](docs/cli/apply-v3.md)
+- [Architecture decisions](docs/decisions/README.md)
 - [Active implementation plan](docs/plans/current.md)
-- [Architecture decision index](docs/decisions/README.md)
 - [Versioned schemas](schemas/)
 
 ## Development
-
-Repora uses [mise](https://mise.jdx.sh/) for tool and task management.
 
 ```bash
 mise install
@@ -178,24 +154,19 @@ Current controls include:
 
 - credentials delegated to system Git;
 - credential-bearing HTTP URLs rejected;
-- stable identity separated from transport and runtime aliases;
+- durable identity separated from transport and runtime aliases;
 - closed default-branch-only ref policy;
-- destructive intent visible in the exact artifact;
-- explicit force authorization for real mutation;
-- complete all-target preflight;
-- force-with-lease defense in depth;
-- fail-closed journal intent persistence;
-- path-bound execution evidence;
-- sanitized diagnostics and safe relative evidence references;
-- strict denial of implicit multi-mirror mutation.
+- reviewed destructive intent plus explicit command authorization;
+- complete all-target stale-ref preflight;
+- force-with-lease for every forced action;
+- fail-closed intent persistence;
+- path-bound per-target result evidence;
+- sanitized diagnostics and safe relative journal references;
+- no implicit target selection, replay, rollback, or atomicity claim.
 
 ## Roadmap
 
-Immediate critical path:
-
-1. independent ordered multi-mirror mutation with continuation after runtime failure;
-2. versioned per-target apply output and applied/failed/skipped journal evidence;
-3. v0.1 release packaging, checksums, verification, and installation guidance.
+The mirror-controller implementation path is complete. The immediate critical path is v0.1 release packaging, checksums, packaged-binary smoke coverage, verification, and installation guidance.
 
 The authoritative order is maintained in [`docs/plans/current.md`](docs/plans/current.md) and GitHub issues.
 
@@ -211,7 +182,7 @@ See [LICENSE](LICENSE).
 
 ## Project status
 
-Pre-alpha and actively evolving. Expect explicit version migrations and architecture refinement.
+Pre-alpha and actively evolving. Expect explicit version migrations until v0.1 packaging is complete.
 
 External contributions are currently closed while the core model stabilizes. Concrete use cases and failure reports are welcome.
 
