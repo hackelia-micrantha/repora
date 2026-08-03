@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"repoctl/internal/refpolicy"
 )
 
 type Spec struct {
@@ -15,11 +17,16 @@ type Spec struct {
 }
 
 type Repo struct {
-	ID        string     `json:"id" yaml:"id"`
-	UID       string     `json:"uid" yaml:"uid"`
-	Canonical Endpoint   `json:"canonical" yaml:"canonical"`
-	Mirrors   []Endpoint `json:"mirrors" yaml:"mirrors"`
-	Mode      string     `json:"mode" yaml:"mode"`
+	ID        string           `json:"id" yaml:"id"`
+	UID       string           `json:"uid" yaml:"uid"`
+	Canonical Endpoint         `json:"canonical" yaml:"canonical"`
+	Mirrors   []Endpoint       `json:"mirrors" yaml:"mirrors"`
+	Mode      string           `json:"mode" yaml:"mode"`
+	Policy    RepositoryPolicy `json:"policy,omitempty" yaml:"policy,omitempty"`
+}
+
+type RepositoryPolicy struct {
+	Refs refpolicy.Policy `json:"refs,omitempty" yaml:"refs,omitempty"`
 }
 
 type Endpoint struct {
@@ -33,6 +40,10 @@ func (r Repo) DurableID() string {
 		return r.UID
 	}
 	return r.ID
+}
+
+func (r Repo) EffectiveRefPolicy() (refpolicy.Policy, error) {
+	return r.Policy.Refs.Normalize()
 }
 
 func Load(path string) (Spec, error) {
@@ -105,6 +116,11 @@ func validate(spec Spec) error {
 		if repo.Mode != "mirror" {
 			return fmt.Errorf("unsupported mode %q for repo %q: only mirror is supported", repo.Mode, repo.ID)
 		}
+		policy, err := repo.EffectiveRefPolicy()
+		if err != nil {
+			return fmt.Errorf("invalid ref policy for repo %q: %w", repo.ID, err)
+		}
+		repo.Policy.Refs = policy
 		spec.Repos[i] = repo
 	}
 	return nil

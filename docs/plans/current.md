@@ -4,7 +4,7 @@ Status: Active
 
 ## Release objective
 
-The next meaningful Repora release is a coherent, local-first Git mirror controller with one trustworthy observation, planning, execution, and evidence path.
+The next meaningful Repora release is a coherent, local-first Git mirror controller with one trustworthy observation, planning, execution, policy, and evidence path.
 
 The release is intentionally narrower than the broader repository-control-plane vision.
 
@@ -14,12 +14,12 @@ A v0.1-quality controller must:
 
 - load durable repository topology from strict configuration;
 - resolve runtime transport without persisting credentials or derived URLs as identity;
-- observe one canonical and one mirror default branch;
-- classify equal, behind, ahead, and diverged state;
+- observe one canonical and one or more mirror default branches;
+- classify equal, behind, ahead, and diverged state per mirror;
 - produce one deterministic executable plan artifact;
 - export and execute that exact artifact;
 - reject invalid or stale plans before mutation;
-- enforce explicit destructive-change policy;
+- enforce explicit closed reference and destructive-change policy;
 - execute with lease protection;
 - return detailed partial results and correct process status;
 - persist durable pre/post execution evidence;
@@ -31,68 +31,44 @@ A v0.1-quality controller must:
 | --- | --- | --- |
 | Durable `uid` identity | Complete | Cache and durable artifacts use logical identity rather than location. |
 | Provider/path topology | Complete for built-in GitHub/GitLab HTTPS | Configurable bases and transport selection remain outside the current slice. |
-| Status classification | Complete for one mirror/default branch | Classification and canonical/mirror commit evidence fail together when required refs cannot be resolved. |
+| Status classification | Complete for one mirror/default branch | Classification and required commit evidence fail together. |
 | Planner/executor separation | Complete | Planning is deterministic and the executor does not recompute policy. |
-| Exact executable plan artifact | Complete for current scope | `plan --artifact` exports the exact artifact; `apply --plan-file` consumes it without rebuilding intent. |
+| Exact executable plan artifact | Complete for one mirror/default branch | `plan --artifact` exports the exact artifact; `apply --plan-file` consumes it without rebuilding intent. |
 | Stale-plan validation | Complete | Complete action preflight occurs before action zero. |
-| Public CLI JSON envelopes | Complete for status, compatibility plan, and apply | Versioned schemas and representative golden contracts exist. |
-| Execution results | Partially complete | Executor preserves detailed outcomes; public apply results still collapse them. |
+| Public CLI JSON envelopes | Complete for current status, compatibility plan, apply, and execution records | Contract changes require explicit versions and retained historical schemas. |
 | Apply exit semantics | Complete | Repository execution failures preserve output and return non-zero. |
-| Journal persistence substrate | Partially complete | Versioned records, executor projection, and a safe append-only writer exist; apply integration and required pre/post persistence do not. |
-| Branch/ref policy | Not started | Current force flag remains transitional. |
-| Multi-mirror runtime | Deferred until policy/evidence gates | Read-side status must precede apply expansion. |
+| Execution journals | Complete for current apply/dry-run | Immutable intent/result entries are required; intent failure is fail-closed and result-write failure is non-zero. |
+| Branch/ref policy | Complete for version 1 | Omitted policy normalizes to default-branch-only and require-force; unsupported expansion is rejected. |
+| Multi-mirror status | Not started | Read-side observation and stable target identity are the next gate. |
+| Multi-mirror apply | Blocked | Must follow the read-side model and preserve per-mirror evidence. |
 | Release packaging | Not started | CI builds verification binaries but does not publish supported releases. |
 
 ## Immediate sequence
 
-### 1. Integrate execution evidence vertically
+### 1. Expand read-side topology
 
 Exit condition:
 
-- pre-mutation intent is persisted before action zero;
-- final applied, failed, stale, and skipped outcomes are persisted;
-- required journal write failure is fail-closed;
-- human and JSON output expose a safe relative journal reference;
-- retention and filesystem ownership are documented.
-
-### 2. Define explicit ref policy
-
-Exit condition:
-
-- default behavior remains default-branch-only and deny-by-default;
-- tags and non-default refs are explicitly governed;
-- protected refs and force behavior are policy inputs;
-- planner explains allowed, skipped, and rejected refs;
-- executor rejects policy-invalid artifacts defensively.
-
-### 3. Expose detailed execution outcomes
-
-Exit condition:
-
-- public apply results preserve action-level applied/failed/skipped/stale state;
-- before, desired, and resulting OIDs are available where safe;
-- partial success and retry guidance are machine-readable;
-- compatibility changes use an explicit JSON contract version.
-
-### 4. Expand read-side topology
-
-Exit condition:
-
+- configuration accepts unambiguous multiple mirror targets;
 - status evaluates every configured mirror independently;
 - one mirror failure does not hide other results;
 - aggregate status semantics are deterministic;
-- stable mirror targeting identity is defined before mutation expansion.
+- stable provider/path mirror identity is defined;
+- JSON contract changes use an explicit version;
+- plan/apply remain explicitly gated until mutation support exists.
 
-### 5. Add multi-mirror apply
+### 2. Add multi-mirror apply
 
 Exit condition:
 
-- actions and results are per mirror;
-- explicit targeting is unambiguous;
-- no cross-remote atomicity is implied;
-- partial failure is journaled and retry-safe through re-planning.
+- exact artifacts identify every target unambiguously;
+- complete policy and stale-ref preflight occurs before action zero;
+- actions, results, and journal evidence are per mirror;
+- later independent mirrors may still be attempted after a runtime failure;
+- no cross-remote atomicity or rollback is implied;
+- retry requires fresh observation and re-planning.
 
-### 6. Package v0.1
+### 3. Package v0.1
 
 Exit condition:
 
@@ -106,6 +82,7 @@ Exit condition:
 
 The following tracks are valid but are not on the current release critical path:
 
+- tags, non-default branches, wildcard refspecs, and deleted-ref reconciliation;
 - managed repository artifacts and README templating;
 - advanced document routing, trust tiers, receipts, summaries, and AST selectors;
 - repository assessment and evidence reports;
@@ -121,8 +98,9 @@ These tracks must reuse the core plan, policy, execution, and evidence substrate
 - Prefer vertical capabilities over long sequences of disconnected internal models.
 - Do not add a package solely to match an architecture diagram.
 - Unify versioned envelopes and safety conventions, not unrelated domain semantics.
-- Add generic abstractions only after at least two implemented consumers demonstrate the shared behavior.
+- Add generic abstractions only after at least two implemented consumers demonstrate shared behavior.
 - Keep compatibility serializers as views, never decision authorities.
+- Keep ref-policy v1 closed until runtime and artifact contracts intentionally version broader scope.
 - Use GitHub issues for task state; do not duplicate every checkbox here.
 
 ## Definition of done

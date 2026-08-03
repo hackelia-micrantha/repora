@@ -19,6 +19,7 @@ func FromPreflight(executionID string, artifact planartifact.Artifact, result ex
 		return Record{}, err
 	}
 
+	failedAction := false
 	for i, executed := range result.Actions {
 		if executed.Index != i {
 			return Record{}, fmt.Errorf("preflight action %d has non-deterministic index %d", i, executed.Index)
@@ -29,11 +30,15 @@ func FromPreflight(executionID string, artifact planartifact.Artifact, result ex
 
 		action := &record.Actions[i]
 		if preflightErr == nil {
+			if executed.Outcome != executor.OutcomeSkipped || executed.Stale || strings.TrimSpace(executed.Error) != "" {
+				return Record{}, fmt.Errorf("preflight action %d contains inconsistent executor evidence for a successful preflight", i)
+			}
 			action.Outcome = OutcomeValidated
 			continue
 		}
 		switch executed.Outcome {
 		case executor.OutcomeFailed:
+			failedAction = true
 			if executed.Stale {
 				action.Outcome = OutcomeStale
 			} else {
@@ -47,6 +52,9 @@ func FromPreflight(executionID string, artifact planartifact.Artifact, result ex
 		default:
 			return Record{}, fmt.Errorf("preflight action %d has unsupported outcome %q", i, executed.Outcome)
 		}
+	}
+	if preflightErr != nil && !failedAction {
+		return Record{}, fmt.Errorf("preflight failure does not identify a failed action")
 	}
 
 	if err := record.Validate(); err != nil {

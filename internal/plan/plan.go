@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"repoctl/internal/config"
+	"repoctl/internal/refpolicy"
 	"repoctl/internal/status"
 )
 
@@ -112,13 +113,16 @@ func RequiresRefObservation(result status.Result) bool {
 func Reconcile(repo config.Repo, result status.Result, observed Observation, force bool) (ReconciliationPlan, error) {
 	repoPlan := ReconciliationPlan{ID: repo.ID, UID: repo.DurableID(), Actions: []PlannedAction{}}
 
-	switch result.State {
-	case status.StateEqual:
+	policy, err := repo.EffectiveRefPolicy()
+	if err != nil {
+		return repoPlan, fmt.Errorf("invalid ref policy for repo %q: %w", repo.ID, err)
+	}
+	decision, err := policy.Decide(refpolicy.Relationship(result.State))
+	if err != nil {
+		return repoPlan, fmt.Errorf("unsupported state %q for repo %q: %w", result.State, repo.ID, err)
+	}
+	if !decision.Action {
 		return repoPlan, nil
-	case status.StateBehind, status.StateAhead, status.StateDiverged:
-		// Continue below.
-	default:
-		return repoPlan, fmt.Errorf("unsupported state %q for repo %q", result.State, repo.ID)
 	}
 
 	if len(repo.Mirrors) != 1 {
@@ -155,19 +159,14 @@ func Reconcile(repo config.Repo, result status.Result, observed Observation, for
 			Name:     "mirror",
 			Branch:   targetBranch,
 		},
+		Force:             decision.Force,
 		ExpectedSource:    expectedSource,
 		ExpectedOldTarget: expectedTarget,
-		Reason:            fmt.Sprintf("mirror is %s", strings.ToLower(string(result.State))),
+		Reason:            decision.Reason,
 	}
 
-	if result.State == status.StateBehind {
-		repoPlan.Actions = append(repoPlan.Actions, action)
-		return repoPlan, nil
-	}
-
-	action.Force = true
 	repoPlan.Actions = append(repoPlan.Actions, action)
-	if !force {
+	if decision.Force && !force {
 		return repoPlan, fmt.Errorf("repo %q is %s; rerun with --force to overwrite mirror default branch using a lease against %s", repo.ID, result.State, shortOID(action.ExpectedOldTarget))
 	}
 	return repoPlan, nil
