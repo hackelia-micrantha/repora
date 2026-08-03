@@ -3,12 +3,15 @@ package journal
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"repoctl/internal/executor"
 	"repoctl/internal/plan"
 	"repoctl/internal/planartifact"
 )
+
+var embeddedAbsolutePathPattern = regexp.MustCompile(`(^|[[:space:]'"])/[^[:space:]'"]+`)
 
 // FromPreflight projects one dry-run preflight result into a validated RESULT
 // entry. Successful actions become VALIDATED; stale or failed actions preserve
@@ -126,7 +129,7 @@ func safeDiagnostic(value string) string {
 	if value == "" {
 		return "execution failed"
 	}
-	if unsafeValue(value) {
+	if unsafeValue(value) || embeddedAbsolutePathPattern.MatchString(value) {
 		return "execution diagnostic redacted"
 	}
 	return value
