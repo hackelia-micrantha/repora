@@ -155,8 +155,9 @@ func publicDiagnostic(value string) string {
 	if value == "" {
 		return "execution failed"
 	}
+	value = publicEmbeddedAbsolutePathPattern.ReplaceAllString(value, `${1}[REDACTED_PATH]`)
 	lower := strings.ToLower(value)
-	if strings.Contains(lower, "://") || strings.Contains(lower, "token=") || strings.Contains(lower, "password=") || strings.Contains(lower, "authorization:") || strings.Contains(lower, "\\") || strings.HasPrefix(lower, "/") || strings.HasPrefix(lower, "file:") || strings.Contains(lower, "@") || publicEmbeddedAbsolutePathPattern.MatchString(value) {
+	if strings.Contains(lower, "://") || strings.Contains(lower, "token=") || strings.Contains(lower, "password=") || strings.Contains(lower, "authorization:") || strings.Contains(lower, "\\") || strings.HasPrefix(lower, "/") || strings.HasPrefix(lower, "file:") || strings.Contains(lower, "@") {
 		return "execution diagnostic redacted"
 	}
 	return value
