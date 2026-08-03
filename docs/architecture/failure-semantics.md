@@ -2,128 +2,124 @@
 
 Status: Current
 
-Repora controls durable Git state. Failures must be explicit in human output, machine-readable output, journal evidence where applicable, and process exit status.
+Repora controls durable Git state. Failures must be explicit in human output, versioned machine-readable output, journal evidence, and process exit status.
 
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
 | `0` | Requested operation completed successfully. |
-| `1` | Configuration, observation, planning, artifact, stale input, journal, execution, serialization, or other operational failure. |
-| `2` | Observation/planning is complete but unsafe state or a real destructive mutation requires explicit authorization. |
+| `1` | Configuration, observation, planning, artifact, stale input, journal, execution, serialization, or other operational failure, including partial success. |
+| `2` | Complete destructive intent requires explicit command authorization. |
 
-Operational failure takes precedence over unsafe-state reporting because incomplete observation cannot prove the rest of the topology safe.
+Operational failure takes precedence over unsafe-state reporting.
 
-## Configuration and observation failures
+## Preparation failures
 
-Strict configuration validation occurs before Git work. Unsupported providers, modes, policies, invalid paths, duplicate targets, no mirrors, credential-bearing URLs, and ambiguous multi-mirror legacy URLs return `1`.
+Before any selected repository mutates, Repora completes observation and exact-artifact preparation for every selected repository.
 
-Canonical failure makes the whole repository observation incomplete. Mirror-local failure retains the stable `provider:path` result as `ERROR`, does not hide later mirrors, and returns `1`.
+Configuration, observation, artifact version/cardinality, planning, topology, or serialization failure:
 
-## Multi-mirror planning
+- performs no selected mutation;
+- writes no intent;
+- returns `1`;
+- emits valid apply v3 `ERROR` results for affected repositories when structured output was requested.
 
-`repoctl plan` supports one or more mirrors and matches status results to configuration by stable target identity rather than array position.
+Exact artifact export is similarly suppressed when selected planning is incomplete.
 
-Planning returns `1` when observation, identity, policy, default-branch, OID, or generated-artifact evidence is incomplete. `plan --artifact` never emits a partial executable artifact. Complete forced intent remains visible and returns `2` unless acknowledged with `--force`.
+## Force authorization
 
-The historical `plan --json` v1 compatibility view is rejected for multi-mirror topology; use `--artifact`.
+Ahead or diverged state creates forced intent in the artifact. A real selected execution containing any forced action requires `--force` before audit initialization or mutation.
 
-## Audited multi-mirror dry-run
+Missing authorization:
 
-`apply|sync --dry-run` supports one or more mirrors. It accepts a freshly built exact artifact or `--plan-file` artifact v2.
+- performs no mutation;
+- writes no intent;
+- returns `2`.
 
-Before journal intent, Repora validates:
+The flag authorizes only actions already marked forced and never changes the plan.
 
-- durable repository identity;
-- configured canonical provider/path;
-- every configured mirror target exactly once;
-- complete current status evidence;
-- state/action/force agreement under ref-policy v1;
-- current canonical and mirror default branches through runtime-bound aliases.
+## Repository preflight
 
-Failure at this boundary performs no mutation, writes no journal intent, and returns `1`.
+Before intent persistence, Repora validates durable identity, canonical and mirror provider/path topology, current status, state/action/force agreement, and current default branches.
 
-After intent persistence, executor preflight checks every expected source and target OID before action zero. If any target is missing or changed:
+Failure here writes no intent, performs no mutation for that repository, and returns `1`.
 
-- no action is attempted;
-- earlier actions remain `SKIPPED`;
+After intent persistence, every expected source and target OID is checked before action zero. If any action is stale:
+
+- no action in that repository is attempted;
+- earlier and later unattempted actions remain `SKIPPED`;
 - the offending action is `STALE`;
-- later actions remain `SKIPPED`;
-- execution-record v3 result persistence is attempted;
-- the command returns `1`;
-- retry requires complete re-observation and a new exact artifact.
+- result persistence is attempted;
+- the command returns `1`.
 
-Runtime aliases are resolved from current `provider:path` configuration. Serialized aliases and array positions cannot retarget an imported artifact.
+Runtime aliases are derived from current provider/path configuration. Serialized aliases and positions cannot retarget imported intent.
 
-Multi-mirror dry-run human output is supported. Multi-mirror `--json` returns `1` until a versioned per-target apply result contract is published.
+## Independent runtime mutation
 
-## Real mutation topology gate
+After complete repository preflight, mirror actions execute sequentially in exact artifact order.
 
-Real apply and sync currently require exactly one configured mirror. A multi-mirror repository without `--dry-run` is rejected before reconciliation observation with exit `1`. The CLI never chooses the first mirror implicitly.
+If one runtime push fails:
 
-## Artifact failures
+- that action becomes `FAILED`;
+- later independent actions are still attempted;
+- successful actions become `APPLIED` with their resulting OID;
+- earlier success is not rolled back;
+- all available outcomes are preserved in apply v3 and execution-record v3;
+- the command returns `1`.
 
-Invalid kind/version/UID/topology/path/action/ref/OID values, unknown targets, duplicate actions, policy mismatch, or state/action/force mismatch fail closed with exit `1`.
-
-Artifact v2 path mismatch is rejected before repository ref reads. Artifact v1 remains limited to historical single-mirror provider/alias execution. Imported artifacts are not repaired, reordered, retargeted, or partially reinterpreted.
-
-## Force behavior
-
-The closed ref policy records ahead/diverged reconciliation as forced intent. `--force` authorizes only a real action already marked forced; it does not alter the plan.
-
-Dry-run may review and stale-check forced intent without authorizing mutation. Force never bypasses topology, policy, branch, OID, lease, journal, or Git failures.
+A result such as `APPLIED, FAILED, APPLIED` is valid. It is partial success, not a transaction.
 
 ## Journal failures
 
-Apply and dry-run require one immutable intent/result pair per repository execution.
+Each repository execution requires one immutable intent/result pair.
 
-- intent-write failure performs zero mutation and returns `1`;
+- intent-write failure prevents every push in that repository and returns `1`;
 - stale or runtime failure still attempts result persistence;
-- result-write failure returns `1` even if mutation completed;
-- available safe execution ID and references remain in output;
-- a present intent without a result requires reconciliation against current Git state before retry.
+- result-write failure returns `1` even if one or more pushes completed;
+- safe execution ID and available references remain in output;
+- an intent without a result requires reconciliation against current Git state before retry.
 
-Path-bound plan v2 uses execution-record v3 with provider paths. Historical v1/v2 records remain parseable. Journals are evidence, never replay authority.
-
-## Runtime mutation failure
-
-The current real mutation path remains single-mirror and returns nonzero without rollback.
-
-The next multi-mirror mutation slice must continue independent later actions after one remote fails, preserve every target outcome, and avoid atomicity claims.
+Path-bound artifact v2 uses execution-record v3. Historical records remain parseable. Journals are evidence, never replay authority.
 
 ## Multi-repository aggregation
 
-Repository tasks may complete out of order; output is restored to configuration or artifact order. One repository failure does not erase available results from other repositories.
+All selected repositories prepare before mutation. After preparation and force authorization, repository executions may run concurrently and are independent.
 
-Exact plan artifacts are stricter: incomplete selected planning suppresses the complete artifact rather than emitting a partial executable document.
+One repository failure does not erase outcomes from other repositories. Output is restored to configuration or artifact order. There is no cross-repository rollback or transaction.
 
-## Output failure
+## Output contracts
 
-Failure to serialize or write requested structured output returns `1`. Human diagnostics belong on stderr; structured results belong on stdout.
+- single-mirror-only selections retain apply v2;
+- mixed or multi-mirror selections use apply v3;
+- apply v3 exposes per-target before, desired, after, outcome, and sanitized error;
+- structured serialization failure returns `1` even if Git work completed;
+- human diagnostics belong on stderr and requested JSON belongs on stdout.
 
 ## Retry rules
 
-1. inspect status, dry-run/apply, and journal evidence;
+After stale or partial failure:
+
+1. inspect apply and execution-record evidence;
 2. observe every current target again;
 3. build a new exact artifact;
 4. review destructive intent again;
-5. execute only through the supported boundary.
+5. execute the new artifact.
 
-Do not edit expected OIDs, weaken policy or lease checks, infer identity from mirror position, or replay an artifact after drift is reported.
+Do not edit expected OIDs, infer identity from position, replay journal evidence, or attempt an automatic rollback.
 
 ## Test obligations
 
-Changes must test the applicable boundary:
+Changes must test:
 
-- invalid input performs zero mutation;
-- one mirror failure does not hide later status results;
-- observations and imported actions are matched by stable target identity;
-- incomplete planning suppresses exact artifact output;
-- real multi-mirror mutation remains gated before observation;
-- multi-mirror dry-run validates every target before action zero;
-- alias reordering cannot retarget an artifact;
-- a stale later target produces ordered skipped/stale evidence and zero mutation;
-- intent-write failure prevents mutation;
-- result-write failure remains nonzero;
-- diagnostics exclude secrets and unnecessary absolute paths;
-- retry re-plans from current state.
+- preparation or authorization failure performs zero mutation and writes no intent;
+- all expected refs validate before action zero;
+- alias reordering cannot retarget an action;
+- a stale later action yields skipped/stale evidence and zero pushes;
+- runtime failure of a middle mirror does not prevent a later mirror push;
+- force-with-lease uses the reviewed target OID;
+- apply v3 and execution-record v3 preserve ordered partial outcomes;
+- intent and result persistence failures remain nonzero;
+- real local bare mirrors reproduce partial success and recovery evidence;
+- diagnostics exclude secrets and absolute paths;
+- retry requires fresh planning.
