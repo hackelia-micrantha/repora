@@ -4,7 +4,7 @@ Status: Active
 
 ## Release objective
 
-The next meaningful Repora release is a supported v0.1 binary distribution of the completed local-first multi-mirror controller.
+The next meaningful Repora release is a reviewed v0.1 tag of the completed local-first multi-mirror controller.
 
 ## Required v0.1 capability
 
@@ -32,35 +32,31 @@ A v0.1-quality controller must:
 | Exact multi-mirror planning | Complete | Artifact v2 actions are identity-matched and deterministic. |
 | Runtime target rebinding | Complete | Provider/path binds to current aliases without rewriting intent. |
 | Complete preflight | Complete | Topology, policy, branches, and all expected OIDs validate before action zero. |
-| Multi-mirror dry-run | Complete | Path-bound execution-record v3 intent/result evidence. |
 | Multi-mirror mutation | Complete | Sequential independent actions continue after runtime failure without rollback. |
-| Apply output v3 | Complete | Per-target before/desired/after/outcome evidence and partial-success reporting. |
-| Release packaging | Active next gate | CI verifies builds but does not publish supported artifacts. |
+| Apply output and journals | Complete | Apply v3 and execution-record v3 preserve per-target outcomes. |
+| Release packaging | Complete in code | Tag-only workflow builds four archives, checksums, metadata, and verification. |
+| Release hardening | Active next gate | Reconcile remaining security scope, release checklist, changelog, and bounded benchmark evidence. |
 
 ## Immediate sequence
 
-### 1. Package v0.1
+### 1. Validate and merge release packaging
 
 Exit condition:
 
-- supported operating systems and architectures are explicit;
-- tagged binaries are built from a reviewed commit;
-- checksums are published beside release assets;
-- packaged binaries receive installation and command smoke coverage;
-- release workflow permissions remain least privilege;
-- artifact naming and version embedding are deterministic;
-- installation, checksum verification, compatibility, and rollback guidance are documented;
-- a repeatable release checklist identifies required CI/security gates;
-- issues #5 and #11 are reconciled or closed through the implementation.
+- pull-request release packaging and verification are green;
+- workflow policy confirms tag-only publication and least privilege;
+- issue #5 acceptance criteria are reconciled and closed.
 
-### 2. Post-v0.1 hardening
+### 2. Complete v0.1 hardening
 
-After packaging, prioritize evidence-backed needs rather than broad abstraction:
+Under #11:
 
-- remaining supply-chain CI from #10;
-- operator experience found during real multi-mirror use;
-- additional ref scope only through a new policy version and ADR;
-- provider or transport expansion only with explicit identity/authentication contracts.
+- reconcile remaining #10 security and supply-chain requirements against the existing CI architecture;
+- add a concise repeatable release checklist;
+- define generated release notes or a manual changelog policy;
+- add bounded informational benchmark evidence or explicitly defer it with rationale;
+- document reproducibility expectations and limitations;
+- run the final tagged-release readiness review.
 
 ## Explicit deferrals
 
@@ -71,24 +67,23 @@ After packaging, prioritize evidence-backed needs rather than broad abstraction:
 - advanced document routing and repository assessments;
 - optional Anthesis policy integration;
 - provider provisioning or hosted control-plane behavior;
-- generalized cross-domain diff engines.
+- package managers, containers, signing, and full provenance.
 
-Deferred tracks must reuse the current plan, policy, execution, result, and evidence substrate rather than create parallel mutation paths.
+Deferred tracks must reuse the current plan, policy, execution, result, and evidence substrate rather than create parallel paths.
 
 ## Simplicity constraints
 
 - Prefer vertical capabilities over disconnected internal models.
-- Do not add a package solely to match an architecture diagram.
-- Add generic abstractions only after multiple implemented consumers prove shared behavior.
-- Keep compatibility serializers as views, never decision authorities.
-- Treat configuration order and runtime aliases as execution details, never durable mirror identity.
-- Keep ref-policy v1 closed.
-- Keep mirrors sequential unless measured need justifies a concurrent execution decision.
-- Do not imply cross-remote atomicity or rollback.
+- Keep GitHub Releases as the initial distribution mechanism.
+- Keep release packages limited to plain archives and checksums.
+- Preserve tag-only publication and least-privilege workflow permissions.
+- Treat compatibility serializers as views, never decision authorities.
+- Keep ref-policy v1 closed and mirrors sequential.
+- Do not imply cross-remote atomicity, rollback, signing, or native validation where only cross-compilation exists.
 
 ## Definition of done
 
-A slice is complete only when observable behavior, failure/recovery tests, versioned contracts, architecture updates, issue acceptance criteria, and CI/security validation are complete.
+A slice is complete only when observable behavior, failure/recovery tests, versioned contracts where applicable, documentation, issue acceptance criteria, independent review, and CI/security validation are complete.
 
 ## Maintenance
 
