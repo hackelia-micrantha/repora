@@ -74,14 +74,13 @@ func TestExecuteRepositoryArtifactAuditedRedactsEmbeddedLocalPath(t *testing.T) 
 	writer := &recordingJournalWriter{}
 
 	got, err := ExecuteRepositoryArtifactAudited(repo, observed, artifact, git, false, false, Audit{ExecutionID: "run-redacted", Writer: writer})
-	if err == nil || strings.Contains(err.Error(), "/tmp/private") {
-		t.Fatalf("error = %v, want sanitized public failure", err)
+	if err == nil || strings.Contains(err.Error(), "/tmp/private") || !strings.Contains(err.Error(), "github:org/payments-api") {
+		t.Fatalf("error = %v, want sanitized failure with stable target", err)
 	}
-	if got.Error != "execution diagnostic redacted" || got.Actions[0].Error != "execution diagnostic redacted" {
-		t.Fatalf("result = %#v, want redacted aggregate and action diagnostics", got)
-	}
-	if len(writer.records) != 2 || writer.records[1].Actions[0].Error != "execution diagnostic redacted" {
-		t.Fatalf("records = %#v, want redacted durable diagnostic", writer.records)
+	for _, diagnostic := range []string{got.Error, got.Actions[0].Error, writer.records[1].Actions[0].Error} {
+		if strings.Contains(diagnostic, "/tmp/private") || !strings.Contains(diagnostic, "[REDACTED_PATH]") {
+			t.Fatalf("diagnostic = %q, want targeted path redaction", diagnostic)
+		}
 	}
 }
 
