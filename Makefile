@@ -1,4 +1,8 @@
-.PHONY: check format-check module-check vet test coverage integration e2e build build-target build-all workflow-check deep-repeat deep-integration
+VERSION ?= dev
+COMMIT ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || printf unknown)
+BUILD_LDFLAGS ?= -X main.version=$(VERSION) -X main.commit=$(COMMIT)
+
+.PHONY: check format-check module-check vet test coverage integration e2e build build-target build-all workflow-check deep-repeat deep-integration release-package release-verify
 
 check: format-check module-check vet test integration e2e build
 
@@ -37,14 +41,14 @@ e2e: build
 
 build:
 	mkdir -p bin
-	go build -trimpath -o ./bin/repoctl ./cmd/repoctl
+	go build -trimpath -buildvcs=false -ldflags "$(BUILD_LDFLAGS)" -o ./bin/repoctl ./cmd/repoctl
 
 build-target:
 	@test -n "$(GOOS)" || { echo 'GOOS is required' >&2; exit 2; }
 	@test -n "$(GOARCH)" || { echo 'GOARCH is required' >&2; exit 2; }
 	mkdir -p bin
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) \
-		go build -trimpath \
+		go build -trimpath -buildvcs=false -ldflags "$(BUILD_LDFLAGS)" \
 		-o ./bin/repoctl-$(GOOS)-$(GOARCH)$(if $(filter windows,$(GOOS)),.exe,) \
 		./cmd/repoctl
 
@@ -53,6 +57,12 @@ build-all:
 	$(MAKE) build-target GOOS=windows GOARCH=amd64
 	$(MAKE) build-target GOOS=darwin GOARCH=amd64
 	$(MAKE) build-target GOOS=darwin GOARCH=arm64
+
+release-package:
+	bash ./scripts/release/package.sh
+
+release-verify:
+	bash ./scripts/release/verify.sh
 
 workflow-check:
 	go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
