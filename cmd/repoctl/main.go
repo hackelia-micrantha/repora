@@ -69,6 +69,10 @@ func main() {
 }
 
 func run(args []string) int {
+	if isVersionRequest(args) {
+		printVersion(os.Stdout)
+		return 0
+	}
 	if isHelpRequest(args) {
 		printHelp(os.Stdout)
 		return 0
