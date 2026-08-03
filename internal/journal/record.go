@@ -202,6 +202,9 @@ func (r Record) Validate() error {
 	if !planartifact.SupportedVersion(r.Plan.Version) || r.Plan.Kind != planartifact.Kind || !digestPattern.MatchString(r.Plan.SHA256) {
 		return fmt.Errorf("plan reference must identify a supported artifact with a SHA-256 digest")
 	}
+	if r.Version == PathVersion && r.Plan.Version != planartifact.Version {
+		return fmt.Errorf("execution record version %d requires plan artifact version %d", PathVersion, planartifact.Version)
+	}
 	if !validIdentifier(r.Repository.UID) || !validIdentifier(r.Repository.ID) {
 		return fmt.Errorf("repository requires valid uid and id")
 	}
