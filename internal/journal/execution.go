@@ -129,7 +129,8 @@ func safeDiagnostic(value string) string {
 	if value == "" {
 		return "execution failed"
 	}
-	if unsafeValue(value) || embeddedAbsolutePathPattern.MatchString(value) {
+	value = embeddedAbsolutePathPattern.ReplaceAllString(value, `${1}[REDACTED_PATH]`)
+	if unsafeValue(value) {
 		return "execution diagnostic redacted"
 	}
 	return value
