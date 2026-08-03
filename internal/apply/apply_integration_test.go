@@ -52,14 +52,14 @@ func TestExecuteSynchronizesBehindMirrorUsingLocalGitRepos(t *testing.T) {
 	git(t, canonicalWork, "commit", "-m", "canonical ahead")
 	git(t, canonicalWork, "push", "origin", "main")
 
-	repo := config.Repo{
+	transportRepo := config.Repo{
 		ID:        "payments-api",
 		Canonical: config.Endpoint{Provider: "gitlab", URL: canonicalBare},
 		Mirrors:   []config.Endpoint{{Provider: "github", URL: mirrorBare}},
 		Mode:      "mirror",
 	}
 
-	st, err := status.Check(repo, gitwrap.Client{})
+	st, err := status.Check(transportRepo, gitwrap.Client{})
 	if err != nil {
 		t.Fatalf("status check before apply: %v", err)
 	}
@@ -67,7 +67,16 @@ func TestExecuteSynchronizesBehindMirrorUsingLocalGitRepos(t *testing.T) {
 		t.Fatalf("state before apply = %s, want %s", st.State, status.StateBehind)
 	}
 
-	result, err := apply.Execute(repo, st, gitwrap.Client{}, false, false)
+	// Apply uses the same durable cache but supplies provider/path identity for
+	// the exact v2 artifact. Runtime remotes remain the local URLs configured by
+	// the preceding status observation.
+	identityRepo := config.Repo{
+		ID:        transportRepo.ID,
+		Canonical: config.Endpoint{Provider: "gitlab", Path: "org/payments-api"},
+		Mirrors:   []config.Endpoint{{Provider: "github", Path: "org/payments-api"}},
+		Mode:      "mirror",
+	}
+	result, err := apply.Execute(identityRepo, st, gitwrap.Client{}, false, false)
 	if err != nil {
 		t.Fatalf("apply execute: %v", err)
 	}
@@ -78,7 +87,7 @@ func TestExecuteSynchronizesBehindMirrorUsingLocalGitRepos(t *testing.T) {
 		t.Fatalf("action count = %d, want 1", len(result.Actions))
 	}
 
-	after, err := status.Check(repo, gitwrap.Client{})
+	after, err := status.Check(transportRepo, gitwrap.Client{})
 	if err != nil {
 		t.Fatalf("status check after apply: %v", err)
 	}
