@@ -52,8 +52,6 @@ var (
 	digestPattern     = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
 
-// Record is one immutable journal entry for a repository execution. Version 2
-// uses separate INTENT and RESULT entries sharing one execution ID.
 type Record struct {
 	Version     int        `json:"version"`
 	Kind        string     `json:"kind"`
@@ -65,7 +63,6 @@ type Record struct {
 	Actions     []Action   `json:"actions"`
 }
 
-// PlanRef identifies the exact serialized plan artifact used for the run.
 type PlanRef struct {
 	Version int    `json:"version"`
 	Kind    string `json:"kind"`
@@ -83,8 +80,6 @@ type Ref struct {
 	Branch   string `json:"branch"`
 }
 
-// Action records planned ref state and an entry-specific outcome. After is
-// present only when a mutation produced a resulting object ID.
 type Action struct {
 	Index   int     `json:"index"`
 	Type    string  `json:"type"`
@@ -98,7 +93,6 @@ type Action struct {
 	Error   string  `json:"error,omitempty"`
 }
 
-// FromPlan creates deterministic INTENT evidence for exactly one repository.
 func FromPlan(executionID string, mode Mode, artifact planartifact.Artifact) (Record, error) {
 	encoded, err := artifact.Marshal()
 	if err != nil {
@@ -189,7 +183,7 @@ func (r Record) Validate() error {
 	if !validMode(r.Mode) {
 		return fmt.Errorf("unsupported execution mode %q", r.Mode)
 	}
-	if r.Plan.Version != planartifact.Version || r.Plan.Kind != planartifact.Kind || !digestPattern.MatchString(r.Plan.SHA256) {
+	if !planartifact.SupportedVersion(r.Plan.Version) || r.Plan.Kind != planartifact.Kind || !digestPattern.MatchString(r.Plan.SHA256) {
 		return fmt.Errorf("plan reference must identify a supported artifact with a SHA-256 digest")
 	}
 	if !validIdentifier(r.Repository.UID) || !validIdentifier(r.Repository.ID) {
