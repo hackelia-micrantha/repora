@@ -72,7 +72,7 @@ func TestMultiMirrorApplyContinuesAfterBareRemoteFailure(t *testing.T) {
 	}
 	git(t, root, "clone", "--mirror", canonicalBare, cachePath)
 	git(t, cachePath, "remote", "rename", "origin", "canonical")
-	git(t, cachePath, "fetch", "canonical")
+	git(t, cachePath, "fetch", "canonical", "+refs/heads/*:refs/remotes/canonical/*")
 	git(t, cachePath, "remote", "set-head", "canonical", "main")
 	for i, mirror := range mirrors {
 		remote := fmt.Sprintf("mirror-%d", i)
