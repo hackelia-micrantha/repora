@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/cli-status-v2.schema.json",
+  "title": "Repora status output v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "repos"],
+  "properties": {
+    "kind": { "const": "repora.status" },
+    "version": { "const": 2 },
+    "repos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "uid", "canonical", "mirrors"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "uid": { "type": "string", "minLength": 1 },
+          "canonical": { "$ref": "#/$defs/ref" },
+          "error": { "type": "string", "minLength": 1 },
+          "mirrors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["target", "provider", "path", "ref", "commit", "state", "ahead", "behind"],
+              "properties": {
+                "target": { "type": "string", "pattern": "^(github|gitlab):[^\\s]+/[^\\s]+$" },
+                "provider": { "enum": ["github", "gitlab"] },
+                "path": { "type": "string", "pattern": "^[^\\s]+/[^\\s]+$" },
+                "ref": { "type": "string", "minLength": 1 },
+                "commit": { "type": "string" },
+                "state": { "enum": ["EQUAL", "BEHIND", "AHEAD", "DIVERGED", "ERROR"] },
+                "ahead": { "type": "integer", "minimum": 0 },
+                "behind": { "type": "integer", "minimum": 0 },
+                "error": { "type": "string", "minLength": 1 }
+              },
+              "allOf": [
+                {
+                  "if": { "properties": { "state": { "const": "ERROR" } } },
+                  "then": { "required": ["error"] },
+                  "else": { "not": { "required": ["error"] } }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "commit"],
+      "properties": {
+        "ref": { "type": "string", "minLength": 1 },
+        "commit": { "type": "string" }
+      }
+    }
+  }
+}
