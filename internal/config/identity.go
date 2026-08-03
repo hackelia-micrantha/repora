@@ -8,9 +8,9 @@ import (
 
 // RepositoryPath returns the safe provider-relative identity path for an
 // endpoint. Preferred path configuration is returned directly; bounded legacy
-// URLs are reduced to repository path only.
+// network URLs are reduced to repository path only.
 func (e Endpoint) RepositoryPath() (string, error) {
-	if path := strings.Trim(strings.TrimSpace(e.Path), "/"); path != "" {
+	if path := strings.TrimSpace(e.Path); path != "" {
 		return validateRepositoryPath(path)
 	}
 
@@ -21,14 +21,25 @@ func (e Endpoint) RepositoryPath() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("parse legacy repository URL: %w", err)
 		}
-		path = parsed.Path
+		switch strings.ToLower(parsed.Scheme) {
+		case "http", "https", "ssh", "git":
+		default:
+			return "", fmt.Errorf("legacy repository URL scheme %q cannot provide durable provider identity", parsed.Scheme)
+		}
+		if strings.TrimSpace(parsed.Host) == "" {
+			return "", fmt.Errorf("legacy repository URL requires a host")
+		}
+		path = strings.Trim(parsed.Path, "/")
 	} else if at := strings.LastIndex(raw, "@"); at >= 0 {
 		hostAndPath := raw[at+1:]
 		if colon := strings.Index(hostAndPath, ":"); colon >= 0 {
-			path = hostAndPath[colon+1:]
+			if strings.TrimSpace(hostAndPath[:colon]) == "" {
+				return "", fmt.Errorf("legacy repository URL requires a host")
+			}
+			path = strings.Trim(hostAndPath[colon+1:], "/")
 		}
 	}
-	path = strings.TrimSuffix(strings.Trim(strings.TrimSpace(path), "/"), ".git")
+	path = strings.TrimSuffix(strings.TrimSpace(path), ".git")
 	if path == "" {
 		return "", fmt.Errorf("legacy repository URL does not contain a safe provider-relative path")
 	}
@@ -49,13 +60,16 @@ func (e Endpoint) TargetID() (string, error) {
 }
 
 func validateRepositoryPath(path string) (string, error) {
-	path = strings.Trim(strings.TrimSpace(path), "/")
+	path = strings.TrimSpace(path)
+	if path == "" || strings.HasPrefix(path, "/") || strings.HasSuffix(path, "/") {
+		return "", fmt.Errorf("repository path contains an unsafe segment")
+	}
 	parts := strings.Split(path, "/")
 	if len(parts) < 2 {
 		return "", fmt.Errorf("repository path must include an owner or namespace")
 	}
 	for _, part := range parts {
-		if part == "" || part == "." || part == ".." || strings.ContainsAny(part, `\\:@?#`) || strings.ContainsAny(part, " \t\r\n") {
+		if part == "" || part == "." || part == ".." || strings.ContainsAny(part, `\:@?#`) || strings.ContainsAny(part, " \t\r\n") {
 			return "", fmt.Errorf("repository path contains an unsafe segment")
 		}
 	}
