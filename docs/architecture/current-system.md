@@ -11,8 +11,8 @@ Repora is a local-first Git mirror controller exposed through the `repoctl` Go C
 For each repository entry it currently supports:
 
 - one GitLab canonical repository;
-- one or more GitHub/GitLab mirrors for status and exact planning;
-- exactly one mirror for apply/sync;
+- one or more GitHub/GitLab mirrors for status, exact planning, and audited dry-run;
+- exactly one mirror for real apply/sync mutation;
 - provider-relative `provider + path` topology with bounded single-mirror legacy URL compatibility;
 - stable target identity as `provider:path`;
 - runtime HTTPS transport resolution;
@@ -20,11 +20,12 @@ For each repository entry it currently supports:
 - independent `EQUAL`, `BEHIND`, `AHEAD`, `DIVERGED`, or `ERROR` status per mirror;
 - provider/path-bound exact plan artifact v2 export across all required mirror actions;
 - historical single-mirror plan artifact v1 import compatibility;
+- complete multi-target topology, policy, branch, and OID preflight without mutation;
 - normal single-mirror pushes and explicitly authorized lease-protected overwrites;
-- fail-closed immutable intent/result journal evidence for current apply/dry-run;
+- fail-closed immutable intent/result journal evidence;
 - bounded repository-level concurrency.
 
-It does not provide multi-mirror apply/sync, multi-mirror audited dry-run, tags, non-default branches, deleted-ref reconciliation, provider provisioning, or a hosted control plane.
+It does not provide real multi-mirror mutation, tags, non-default branches, deleted-ref reconciliation, provider provisioning, or a hosted control plane.
 
 ## Runtime flows
 
@@ -54,16 +55,31 @@ configuration and closed ref policy
 
 Equal mirrors contribute no action. Behind mirrors contribute normal actions. Ahead and diverged mirrors contribute forced intent. Observation array order is not authority; artifact actions follow configuration order after identity matching.
 
-### Apply and sync
+### Multi-mirror audited dry-run
+
+```text
+configuration and exact artifact v2
+  -> complete current multi-mirror observation
+  -> bind each provider:path target to its current Git remote alias
+  -> validate repository UID, topology, state/action/force intent, and default branches
+  -> persist one repository-level execution-record v3 INTENT
+  -> validate every expected source and target OID before action zero
+  -> persist one repository-level execution-record v3 RESULT
+  -> render stable provider:path actions and journal references
+```
+
+The reviewed artifact remains unchanged. Runtime aliases are local execution details and are never target authority. Dry-run performs no push and does not require force authorization for reviewed destructive intent.
+
+### Real apply and sync
 
 ```text
 configuration and closed ref policy
   -> explicit exactly-one-mirror gate
   -> observation and classification
-  -> path-bound exact artifact v2
+  -> path-bound exact artifact
   -> immutable journal intent
   -> complete structural and stale-ref preflight
-  -> mutation or dry-run validation
+  -> mutation
   -> immutable journal result
   -> structured output and process status
 ```
@@ -75,16 +91,16 @@ configuration and closed ref policy
 | `internal/config` | strict YAML, durable identity, safe endpoint path identity, topology/ref-policy normalization, duplicate target rejection | Runtime URL derivation or Git operations |
 | `internal/refpolicy` | closed versioned ref scope and relationship-to-intent decisions | Git operations or CLI authorization parsing |
 | `internal/transport` | runtime provider/path URL resolution | Durable identity or policy |
-| `internal/status` | single-mirror reconciliation observation plus multi-mirror read-side observation, target identity, divergence, and commit evidence | Mutation decisions or pushes |
+| `internal/status` | single- and multi-mirror observation, target identity, divergence, and commit evidence | Mutation decisions or pushes |
 | `internal/plan` | deterministic reconciliation actions and compatibility projection | Git reads/writes or durable serialization |
 | `internal/planartifact` | versioned exact artifact parsing, provider-path validation, historical compatibility, and plan conversion | Observation or execution policy |
-| `internal/executor` | complete preflight, ordered single-mirror mutation, and action outcomes | Recomputing status or policy |
-| `internal/apply` | single-mirror execution orchestration plus exact multi-mirror artifact construction from status observations | Independent reconciliation policy or implicit target selection |
-| `internal/journal` | immutable intent/result evidence, artifact digest reference, redaction, and append-only local persistence | Mutation or replay authority |
+| `internal/executor` | complete OID preflight, optional runtime alias bindings, ordered mutation, and action outcomes | Recomputing status or policy |
+| `internal/apply` | artifact construction, configuration/status/policy binding, audited dry-run orchestration, authorization, and public apply results | Implicit target selection or independent policy |
+| `internal/journal` | immutable intent/result evidence, artifact digest reference, path-bound record v3, redaction, and local persistence | Mutation or replay authority |
 | `internal/git` | bounded Git subprocesses, cache safety, refs, pushes, leases, timeouts, and redaction | Product policy or identity |
-| `cmd/repoctl` | command routing, concurrency, status aggregation, exact multi-mirror plan aggregation, mutation gate, artifact I/O, rendering, and exit semantics | Git mechanics or duplicated planning |
+| `cmd/repoctl` | command routing, concurrency, status/plan aggregation, dry-run routing, mutation gate, artifact I/O, rendering, and exit semantics | Git mechanics or duplicated planning |
 
-## Identity and location
+## Identity and runtime binding
 
 Repora distinguishes:
 
@@ -94,9 +110,9 @@ Repora distinguishes:
 - configuration index: deterministic order only;
 - resolved URL and Git remote alias: ephemeral transport state.
 
-Status v2 and plan artifact v2 use provider/path identity. URLs, credentials, local filesystem paths, and array indexes are excluded. Runtime aliases remain in the artifact only as execution details and are not target authority.
+Status v2, plan artifact v2, and execution-record v3 use provider/path identity. URLs, credentials, local filesystem paths, and array indexes are excluded.
 
-When multiple mirrors are configured, each must use provider/path form and duplicate targets are rejected. Single-mirror legacy URLs remain compatibility input and can be reduced to a safe provider-relative path for new exact plans when supported.
+Imported artifacts are matched to configuration by durable UID and provider/path. The executor receives a separate runtime-binding map from stable target identity to current local alias. Artifact aliases remain serialized compatibility/execution detail and cannot retarget an action after mirror reordering.
 
 ## Reference policy
 
@@ -105,62 +121,42 @@ Ref-policy version 1 has one interpretation:
 - `scope: default-branch-only`;
 - `destructive: require-force`.
 
-Omission normalizes to these values. Unsupported expansion fails configuration loading. Planning records destructive intent; real mutation separately requires `--force`.
+Omission normalizes to these values. Unsupported expansion fails configuration loading. Planning records destructive intent. Real mutation separately requires `--force`; dry-run may validate forced intent without authorizing mutation.
 
-## Status semantics
+## Planning and preflight safety
 
-`status.Check` remains the exact one-mirror observation used by the current apply path.
+`repoctl plan --artifact` is the authoritative machine-readable multi-mirror plan contract. The legacy `repoctl plan --json` compatibility view remains single-mirror only.
 
-`status.CheckAll` shares canonical setup and observes each declared mirror sequentially. Mirror-specific failures produce state `ERROR` and remain in output with stable target identity. Later mirrors are still observed.
+Before audited multi-mirror dry-run writes intent, Repora validates:
 
-Aggregate exit status:
+- artifact version, kind, repository cardinality, and durable UID;
+- configured canonical provider/path;
+- every configured mirror target exactly once;
+- current status completeness;
+- one action exactly when policy requires one;
+- force intent against the observed relationship;
+- current default branches through runtime-bound aliases.
 
-- incomplete canonical or mirror evidence: `1`;
-- otherwise any ahead/diverged mirror: `2`;
-- otherwise: `0`.
-
-Operational failure takes precedence over unsafe-state reporting.
-
-## Exact multi-mirror planning
-
-`apply.BuildRepositoryArtifact` accepts one complete status result and matches each observation to configured topology by target identity. It resolves canonical branch and source OID once, then resolves branches and target OIDs only for mirrors requiring action.
-
-Actions are emitted in configuration order. Missing, duplicate, error-bearing, or identity-mismatched observations suppress exact artifact creation.
-
-`repoctl plan --artifact` is the machine-readable multi-mirror plan contract. Human plan output also shows stable targets. The legacy `repoctl plan --json` compatibility view remains single-mirror only and is rejected for multi-mirror topology rather than silently changing version-1 semantics.
-
-Planning may return exit `2` when the complete artifact contains destructive intent and `--force` was not supplied. The artifact is still emitted for review.
-
-## Plan artifact compatibility
-
-New production plans emit reconciliation artifact version 2. Every ref contains provider, provider-relative path, runtime alias, and branch.
-
-Version 1 remains parseable under its historical single-mirror provider/alias contract. It cannot authorize multi-mirror targeting and is never interpreted as path-bound identity.
-
-## Planning and execution safety
-
-Plan supports multiple mirrors. Apply/sync still reject multi-mirror repositories before Git observation and never select `mirrors[0]` implicitly.
-
-For an accepted single-mirror execution, apply validates artifact metadata, UID/topology/path binding, state/action/force intent, default branches, and all expected OIDs before action zero. Forced actions additionally use force-with-lease.
+After intent persistence, executor preflight validates every expected source and target OID. A later stale target leaves earlier actions `SKIPPED`, marks the offending action `STALE`, performs no mutation, and still attempts result persistence.
 
 ## Execution journal
 
-Apply and dry-run write immutable version-2 intent/result records under the configuration directory:
+Path-bound plan artifact v2 writes execution-record v3 evidence. Version 3 adds provider-relative `path` to each source and target ref. Historical execution-record v1 and v2 remain parseable; their schemas remain committed.
+
+Entries remain:
 
 ```text
 .repora/journal/<uid>--<execution-id>--intent.json
 .repora/journal/<uid>--<execution-id>--result.json
 ```
 
-Intent failure prevents mutation. Result-write failure returns nonzero even after completed mutation. Journals may reference exact plan artifact version 1 or 2 through the serialized artifact digest. Journals are evidence, never replay authority.
-
-Multi-mirror plan does not create journal evidence because it does not enter the execution boundary.
+One command-level execution ID is shared across selected repositories, while each repository writes its own correlated pair. Intent failure prevents mutation. Result-write failure returns nonzero. Journals are evidence, never replay authority.
 
 ## Concurrency and atomicity
 
-Repository entries use bounded concurrency. Mirrors inside status and planning are processed sequentially in configuration order after identity matching.
+Repository entries use bounded concurrency. Mirrors inside one repository are observed, planned, and preflighted deterministically.
 
-There is no cross-repository or cross-remote transaction. Future multi-mirror execution must define continuation and partial outcomes explicitly and must not claim rollback or atomicity.
+There is no cross-repository or cross-remote transaction. Real multi-mirror execution must continue independent later actions after a runtime failure, preserve every target outcome, and make no rollback or atomicity claim.
 
 ## Public contracts
 
@@ -169,17 +165,16 @@ Current public envelopes include:
 - `repora.status` v2;
 - compatibility `repora.plan` v1 for single-mirror topology;
 - exact reconciliation plan v2, including multiple actions, with v1 historical import support;
-- `repora.apply` v2;
-- execution record v2.
+- `repora.apply` v2 for the existing public result view;
+- execution record v3, with v1/v2 historical parsing support.
 
-Historical schemas remain committed. Consumers must inspect `kind` and `version`.
+Multi-mirror dry-run human output is supported. Multi-mirror `apply --dry-run --json` is intentionally rejected until a versioned per-target apply output is published.
 
 ## Immediate architecture gaps
 
-1. mapping each path-bound imported target to its current runtime alias;
-2. complete all-target preflight and audited dry-run;
-3. independent ordered multi-mirror mutation with continuation after runtime failure;
-4. per-mirror apply and journal outcomes with non-atomic recovery;
-5. supported v0.1 release packaging and verification.
+1. versioned per-target apply output for multi-mirror execution;
+2. independent ordered real mutation that continues after one remote fails;
+3. path-bound applied/failed/skipped evidence for real multi-mirror mutation;
+4. supported v0.1 release packaging and verification.
 
 Managed artifacts, advanced document routing, assessments, and Anthesis integration remain deferred and must reuse the core plan, policy, execution, and evidence boundaries.
