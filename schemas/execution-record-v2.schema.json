@@ -16,7 +16,7 @@
       "additionalProperties": false,
       "required": ["version", "kind", "sha256"],
       "properties": {
-        "version": { "const": 1 },
+        "version": { "enum": [1, 2] },
         "kind": { "const": "repora.io/reconciliation-plan" },
         "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       }
@@ -78,9 +78,7 @@
         "properties": {
           "actions": {
             "items": {
-              "properties": {
-                "outcome": { "const": "PLANNED" }
-              },
+              "properties": { "outcome": { "const": "PLANNED" } },
               "not": { "anyOf": [{ "required": ["after"] }, { "required": ["error"] }] }
             }
           }
@@ -92,11 +90,7 @@
       "then": {
         "properties": {
           "actions": {
-            "items": {
-              "properties": {
-                "outcome": { "not": { "const": "PLANNED" } }
-              }
-            }
+            "items": { "properties": { "outcome": { "not": { "const": "PLANNED" } } } }
           }
         }
       }
