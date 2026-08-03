@@ -4,6 +4,11 @@ set -euo pipefail
 binary="${1:-./bin/repoctl}"
 
 "$binary" --help >/dev/null
+version_output="$("$binary" --version)"
+if [[ ! "$version_output" =~ ^repoctl\ .+\ \(.+\)$ ]]; then
+  printf '%s --version produced unexpected output: %q\n' "$binary" "$version_output" >&2
+  exit 1
+fi
 
 assert_subcommand_help() {
   local command="$1"
