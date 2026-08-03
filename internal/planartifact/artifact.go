@@ -60,14 +60,34 @@ func SupportedVersion(version int) bool {
 	return version == LegacyVersion || version == Version
 }
 
-// FromPlans emits the current v2 artifact. Every serialized ref must include
-// stable provider-relative path identity in addition to its runtime alias.
+// FromPlans preserves compatibility for focused internal callers: plans with
+// complete provider paths emit v2, while historical alias-only plans emit v1.
+// Production observation-to-artifact paths must use FromCurrentPlans.
 func FromPlans(plans ...plan.ReconciliationPlan) Artifact {
-	return fromPlans(Version, plans...)
+	version := Version
+	for _, planned := range plans {
+		for _, action := range planned.Actions {
+			if strings.TrimSpace(action.Source.Path) == "" || strings.TrimSpace(action.Target.Path) == "" {
+				version = LegacyVersion
+				break
+			}
+		}
+		if version == LegacyVersion {
+			break
+		}
+	}
+	return fromPlans(version, plans...)
 }
 
-// FromLegacyPlans exists only for historical v1 fixtures and compatibility
-// tests. New production plans must use FromPlans.
+// FromCurrentPlans creates and validates a provider/path-bound v2 artifact.
+func FromCurrentPlans(plans ...plan.ReconciliationPlan) (Artifact, error) {
+	artifact := fromPlans(Version, plans...)
+	if err := artifact.Validate(); err != nil {
+		return Artifact{}, err
+	}
+	return artifact, nil
+}
+
 func FromLegacyPlans(plans ...plan.ReconciliationPlan) Artifact {
 	return fromPlans(LegacyVersion, plans...)
 }
@@ -79,7 +99,7 @@ func fromPlans(version int, plans ...plan.ReconciliationPlan) Artifact {
 		for _, action := range planned.Actions {
 			source := Ref{Provider: action.Source.Provider, Remote: action.Source.Name, Branch: action.Source.Branch}
 			target := Ref{Provider: action.Target.Provider, Remote: action.Target.Name, Branch: action.Target.Branch}
-			if version >= Version {
+			if version == Version {
 				source.Path = action.Source.Path
 				target.Path = action.Target.Path
 			}
