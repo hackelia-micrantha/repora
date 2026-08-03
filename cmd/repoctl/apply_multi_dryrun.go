@@ -154,6 +154,15 @@ func preparePathBoundRepositories(spec config.Spec, parallel int, artifact *plan
 			} else {
 				single, err = repositoryPlanBuild(repo, observed)
 			}
+			if err == nil && len(single.Repositories) != 1 {
+				err = fmt.Errorf("repo %q planner returned %d repositories", repo.ID, len(single.Repositories))
+			}
+			if err == nil && single.Version != planartifact.Version {
+				err = fmt.Errorf("repo %q path-bound execution requires plan artifact version %d", repo.ID, planartifact.Version)
+			}
+			if err == nil {
+				err = single.Validate()
+			}
 			resultsCh <- preparedRepository{index: i, observed: observed, artifact: single, err: err}
 		}()
 	}
@@ -170,26 +179,25 @@ func preparePathBoundRepositories(spec config.Spec, parallel int, artifact *plan
 }
 
 func renderPreparationFailures(spec config.Spec, prepared []preparedRepository, jsonFlag, dryRun bool) int {
-	results := make([]apply.DetailedResult, len(spec.Repos))
-	failed := 0
+	results := make([]apply.DetailedResult, 0)
 	var firstErr error
 	for i, item := range prepared {
 		if item.err == nil {
 			continue
 		}
-		failed++
 		if firstErr == nil {
 			firstErr = item.err
 		}
-		results[i] = apply.DetailedResult{
+		results = append(results, apply.DetailedResult{
 			ID:      spec.Repos[i].ID,
 			UID:     spec.Repos[i].DurableID(),
+			State:   status.StateError,
 			DryRun:  dryRun,
 			Actions: []apply.DetailedAction{},
 			Error:   item.err.Error(),
-		}
+		})
 	}
-	if failed == 0 {
+	if len(results) == 0 {
 		return 0
 	}
 	output := apply.NewDetailedOutput(results)
@@ -201,7 +209,7 @@ func renderPreparationFailures(spec config.Spec, prepared []preparedRepository, 
 	} else {
 		printDetailedApply(output)
 	}
-	fmt.Fprintf(os.Stderr, "repoctl: %d repositories failed before execution: %v\n", failed, firstErr)
+	fmt.Fprintf(os.Stderr, "repoctl: %d repositories failed before execution: %v\n", len(results), firstErr)
 	return 1
 }
 
