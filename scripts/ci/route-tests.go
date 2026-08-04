@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -44,8 +45,16 @@ type fallback struct {
 type router struct {
 	Version   int        `yaml:"version"`
 	Kind      string     `yaml:"kind"`
+	Manifests []string   `yaml:"manifests"`
 	Routes    []route    `yaml:"routes"`
 	Fallbacks []fallback `yaml:"fallbacks"`
+}
+
+type manifest struct {
+	Version int     `yaml:"version"`
+	Kind    string  `yaml:"kind"`
+	Owner   string  `yaml:"owner"`
+	Routes  []route `yaml:"routes"`
 }
 
 type fixtureFile struct {
@@ -78,6 +87,8 @@ func main() {
 		fatalf("router must define at least one fallback")
 	}
 
+	r.Routes = composeRoutes(os.Args[1], r.Routes, r.Manifests)
+
 	var fixtures fixtureFile
 	readJSON(os.Args[2], &fixtures)
 	if fixtures.Version != 1 || fixtures.Kind != "document-route-tests" {
@@ -101,7 +112,56 @@ func main() {
 		}
 		fmt.Printf("ok: %s\n", tc.Name)
 	}
-	fmt.Printf("validated %d deterministic route fixtures\n", len(fixtures.Cases))
+	fmt.Printf("validated %d deterministic route fixtures across %d manifests\n", len(fixtures.Cases), len(r.Manifests))
+}
+
+func composeRoutes(routerPath string, rootRoutes []route, manifestPaths []string) []route {
+	baseDir := filepath.Dir(routerPath)
+	routes := append([]route(nil), rootRoutes...)
+	seen := map[string]string{}
+	for _, candidate := range routes {
+		registerRoute(seen, candidate, "root router")
+	}
+
+	manifestSeen := map[string]struct{}{}
+	for _, configuredPath := range manifestPaths {
+		clean := filepath.Clean(configuredPath)
+		if configuredPath == "" || filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+			fatalf("unsafe manifest path %q", configuredPath)
+		}
+		if _, ok := manifestSeen[clean]; ok {
+			fatalf("duplicate manifest path %q", configuredPath)
+		}
+		manifestSeen[clean] = struct{}{}
+
+		path := filepath.Join(baseDir, "..", clean)
+		var m manifest
+		readYAML(path, &m)
+		if m.Version != 1 || m.Kind != "document-route-manifest" {
+			fatalf("unsupported manifest %q: version=%d kind=%q", configuredPath, m.Version, m.Kind)
+		}
+		if strings.TrimSpace(m.Owner) == "" {
+			fatalf("manifest %q must declare an owner", configuredPath)
+		}
+		if len(m.Routes) == 0 {
+			fatalf("manifest %q contains no routes", configuredPath)
+		}
+		for _, candidate := range m.Routes {
+			registerRoute(seen, candidate, configuredPath)
+			routes = append(routes, candidate)
+		}
+	}
+	return routes
+}
+
+func registerRoute(seen map[string]string, candidate route, source string) {
+	if strings.TrimSpace(candidate.ID) == "" {
+		fatalf("route in %s has an empty id", source)
+	}
+	if previous, ok := seen[candidate.ID]; ok {
+		fatalf("duplicate route id %q in %s and %s", candidate.ID, previous, source)
+	}
+	seen[candidate.ID] = source
 }
 
 func validateCase(r router, tc fixture) error {
