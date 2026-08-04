@@ -46,6 +46,7 @@ The choice is pragmatic rather than ideological. Repora delegates Git protocol a
 - execution-record v3 immutable intent/result evidence;
 - bounded repository concurrency;
 - versioned Linux, macOS, and Windows release packaging with SHA-256 checksums;
+- vulnerability, CodeQL, Git-history secret, dependency-license, and workflow-policy validation;
 - historical artifact v1, apply v2, and execution-record v1/v2 compatibility.
 
 ## Current limitations
@@ -153,6 +154,10 @@ Exit codes:
 - [Execution journal](docs/architecture/execution-journal.md)
 - [Apply v3 migration](docs/cli/apply-v3.md)
 - [Release installation and verification](docs/release.md)
+- [Release checklist](docs/release-checklist.md)
+- [Security CI and finding triage](docs/security-ci.md)
+- [Benchmark scope](docs/benchmarks.md)
+- [Changelog](CHANGELOG.md)
 - [Architecture decisions](docs/decisions/README.md)
 - [Active implementation plan](docs/plans/current.md)
 - [Versioned schemas](schemas/)
@@ -184,11 +189,14 @@ Current controls include:
 - path-bound per-target result evidence;
 - sanitized diagnostics and safe relative journal references;
 - no implicit target selection, replay, rollback, or atomicity claim;
-- tag-only release publication with least-privilege workflow permissions.
+- tag-only release publication with least-privilege workflow permissions;
+- reachable-vulnerability, CodeQL, secret, dependency-license, and workflow-policy gates.
 
 ## Roadmap
 
-The mirror-controller implementation and initial release-packaging boundary are complete. The immediate critical path is v0.1 release-hardening reconciliation: remaining security scope, bounded benchmark evidence, release checklist, and changelog policy.
+The mirror-controller implementation, initial release-packaging boundary, and v0.1 hardening controls are complete in code. The immediate critical path is final review, merge, first-tag publication, and independent verification of the downloaded v0.1 assets.
+
+Anthesis policy integration is explicitly deferred and is not part of the current or immediate post-release execution path. Managed artifacts, advanced routing, assessments, package managers, signing, and full provenance also remain separate future decisions.
 
 The authoritative order is maintained in [`docs/plans/current.md`](docs/plans/current.md) and GitHub issues.
 
