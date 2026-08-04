@@ -6,6 +6,9 @@ metadata:
   description: >-
     Deterministic document routing profile for context selection and token reduction.
 
+manifests:
+  - docs/routing/router.manifest.yaml
+
 defaults:
   strategy: score_then_prune
   sort: path_lexicographic
@@ -200,30 +203,6 @@ routes:
       max_files: 10
       max_bytes: 100000
       max_tokens_hint: 10000
-
-  - id: prompts-and-routing
-    class: prompts
-    priority: 95
-    when:
-      any_of:
-        - prompt
-        - prompt overlay
-        - system prompt
-        - routing
-        - document router
-        - context router
-        - token usage
-    include:
-      - prompts/**
-      - .repora/document-router.yaml
-      - docs/routing/**
-      - README.md
-    exclude:
-      - tests/**
-    budget:
-      max_files: 8
-      max_bytes: 90000
-      max_tokens_hint: 9000
 
   - id: operations-and-workflows
     class: operations
