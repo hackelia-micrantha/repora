@@ -1,8 +1,10 @@
 VERSION ?= dev
 COMMIT ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || printf unknown)
 BUILD_LDFLAGS ?= -X main.version=$(VERSION) -X main.commit=$(COMMIT)
+GITLEAKS_VERSION ?= v8.30.1
+GO_LICENSES_VERSION ?= v1.6.0
 
-.PHONY: check format-check module-check vet test coverage integration e2e build build-target build-all workflow-check deep-repeat deep-integration release-package release-verify
+.PHONY: check format-check module-check vet test coverage integration e2e build build-target build-all workflow-check deep-repeat deep-integration security-secrets security-licenses release-package release-verify
 
 check: format-check module-check vet test integration e2e build
 
@@ -57,6 +59,19 @@ build-all:
 	$(MAKE) build-target GOOS=windows GOARCH=amd64
 	$(MAKE) build-target GOOS=darwin GOARCH=amd64
 	$(MAKE) build-target GOOS=darwin GOARCH=arm64
+
+security-secrets:
+	go run github.com/zricethezav/gitleaks/v8@$(GITLEAKS_VERSION) \
+		git --redact --no-banner --no-color .
+
+security-licenses:
+	mkdir -p artifacts/security
+	go run github.com/google/go-licenses@$(GO_LICENSES_VERSION) \
+		check ./cmd/repoctl --ignore repoctl
+	go run github.com/google/go-licenses@$(GO_LICENSES_VERSION) \
+		report ./cmd/repoctl --ignore repoctl | \
+		LC_ALL=C sort > artifacts/security/licenses.csv
+	test -s artifacts/security/licenses.csv
 
 release-package:
 	bash ./scripts/release/package.sh
