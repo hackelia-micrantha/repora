@@ -55,13 +55,13 @@ type fixtureFile struct {
 }
 
 type fixture struct {
-	Name          string   `json:"name"`
-	Query         string   `json:"query"`
-	ExpectRoutes  []string `json:"expect_routes"`
-	ExpectFallback string  `json:"expect_fallback,omitempty"`
-	ExpectInclude []string `json:"expect_include,omitempty"`
-	ExpectExclude []string `json:"expect_exclude,omitempty"`
-	ExpectBudget  *budget  `json:"expect_budget,omitempty"`
+	Name           string   `json:"name"`
+	Query          string   `json:"query"`
+	ExpectRoutes   []string `json:"expect_routes"`
+	ExpectFallback string   `json:"expect_fallback,omitempty"`
+	ExpectInclude  []string `json:"expect_include,omitempty"`
+	ExpectExclude  []string `json:"expect_exclude,omitempty"`
+	ExpectBudget   *budget  `json:"expect_budget,omitempty"`
 }
 
 func main() {
