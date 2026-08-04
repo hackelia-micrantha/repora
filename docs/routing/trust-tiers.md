@@ -27,7 +27,7 @@ Routing applies these stages in order:
 
 1. Match one or more routes from the normalized query.
 2. Expand route include and exclude patterns.
-3. Classify candidate paths using the first matching trust rule in configuration order.
+3. Classify candidate paths using the most specific matching trust pattern.
 4. Remove candidates whose tier is not eligible for the operation.
 5. Apply deterministic path ordering, deduplication, and route budgets.
 6. Record trust decisions in a future context receipt.
@@ -42,13 +42,15 @@ Explicit inclusion must be narrow. Enabling an entire excluded tier globally mer
 
 ## Precedence and overlap
 
-Trust rules are evaluated in declared order and the first matching rule wins. More specific paths therefore belong before broad globs. Conflicting or duplicate path classifications should fail validation once route schema validation is promoted into the runtime.
+When multiple patterns match a path, the pattern with the greatest literal specificity wins. Pattern length breaks an equal-literal tie, and declaration order is the final deterministic tie-breaker. Duplicate patterns are invalid.
 
-Examples:
+This means a narrow excluded classification cannot be shadowed by a broad eligible classification:
 
-- `docs/archive/**` must classify as `archived` before the broad `docs/**` canonical rule is applied.
-- `artifacts/**` remains generated even if it contains copied Markdown.
+- `docs/archive/**` classifies as `archived` rather than matching broad `docs/**` as canonical;
+- `artifacts/**` remains generated even if it contains copied Markdown;
 - vendored source remains external rather than implementation owned by Repora.
+
+The checked-in trust fixtures validate vocabulary, policy completeness, specificity precedence, fail-closed unclassified paths, default exclusion, and explicit inclusion.
 
 ## Security rationale
 
@@ -72,6 +74,16 @@ Changes to trust tiers or path rules are security-sensitive routing-policy chang
 - which deterministic route fixtures prove precedence and exclusion behavior.
 
 Future subsystem manifests may contribute trust metadata only through explicit top-level composition. Automatic discovery and automatic trust scoring remain out of scope.
+
+## Validation
+
+Run:
+
+```sh
+make route-test
+```
+
+The trust-policy validator is dependency-free and executes in the standard portable validation contract. It rejects unknown tiers, incomplete eligibility sets, duplicate patterns, missing paths, unsupported fixture contracts, and behavior that violates the checked-in examples.
 
 ## Relationship to context receipts
 
