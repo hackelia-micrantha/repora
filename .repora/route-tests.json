@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "kind": "document-route-tests",
+  "cases": [
+    {
+      "name": "overview class",
+      "query": "Give me a quickstart overview of repoctl",
+      "expect_routes": ["repo-overview"],
+      "expect_include": ["README.md", "docs/index.md", "docs/overview/**"],
+      "expect_exclude": ["examples/**", "tests/**"],
+      "expect_budget": {
+        "max_files": 4,
+        "max_bytes": 40000,
+        "max_tokens_hint": 4000
+      }
+    },
+    {
+      "name": "architecture class",
+      "query": "Explain planner and executor architecture",
+      "expect_routes": ["architecture-core"],
+      "expect_include": ["README.md", "docs/architecture/**", "docs/adr/**", "docs/req/**", "cmd/**", "internal/**"],
+      "expect_exclude": ["examples/**", "tests/**", "docs/archive/**"],
+      "expect_budget": {
+        "max_files": 10,
+        "max_bytes": 120000,
+        "max_tokens_hint": 12000
+      }
+    },
+    {
+      "name": "policy class",
+      "query": "Review the security policy and governance requirements",
+      "expect_routes": ["policy-and-governance"],
+      "expect_budget": {
+        "max_files": 12,
+        "max_bytes": 140000,
+        "max_tokens_hint": 14000
+      }
+    },
+    {
+      "name": "configuration class",
+      "query": "Show the YAML configuration schema",
+      "expect_routes": ["config-and-schema"],
+      "expect_budget": {
+        "max_files": 10,
+        "max_bytes": 100000,
+        "max_tokens_hint": 10000
+      }
+    },
+    {
+      "name": "prompts class",
+      "query": "How does the document router reduce token usage?",
+      "expect_routes": ["prompts-and-routing"],
+      "expect_budget": {
+        "max_files": 8,
+        "max_bytes": 90000,
+        "max_tokens_hint": 9000
+      }
+    },
+    {
+      "name": "operations class",
+      "query": "Explain the release workflow and CI pipeline",
+      "expect_routes": ["operations-and-workflows"],
+      "expect_budget": {
+        "max_files": 10,
+        "max_bytes": 100000,
+        "max_tokens_hint": 10000
+      }
+    },
+    {
+      "name": "priority ordering across matches",
+      "query": "Review configuration schema architecture and release workflow",
+      "expect_routes": ["config-and-schema", "architecture-core", "operations-and-workflows"]
+    },
+    {
+      "name": "lexicographic tie break",
+      "query": "Review architecture security policy",
+      "expect_routes": ["architecture-core", "policy-and-governance"]
+    },
+    {
+      "name": "fallback docs first",
+      "query": "Explain the project in an unrelated phrasing with no route keyword",
+      "expect_routes": [],
+      "expect_fallback": "docs-first",
+      "expect_include": ["README.md", "docs/**", "schemas/**", ".repora/**"],
+      "expect_exclude": ["tests/**", "examples/**"],
+      "expect_budget": {
+        "max_files": 8,
+        "max_bytes": 100000,
+        "max_tokens_hint": 10000
+      }
+    }
+  ]
+}
