@@ -4,6 +4,8 @@ Status: Current
 
 Repora publishes versioned `repoctl` archives through GitHub Releases. The initial distribution is intentionally limited to plain archives and SHA-256 checksums.
 
+Release operators must follow [`release-checklist.md`](release-checklist.md). User-visible capability, compatibility, security, and release-process changes are curated in [`../CHANGELOG.md`](../CHANGELOG.md).
+
 ## Supported release targets
 
 | Operating system | Architecture | Archive |
@@ -80,7 +82,18 @@ A trusted `v*` tag push starts `.github/workflows/release.yml`. The workflow:
 
 Pull requests that change the release boundary run the same package and verification scripts with validation metadata, but receive only read permissions and cannot publish a release. Validation builds the packages twice and requires identical checksum manifests.
 
-Repository administrators should protect release tags so only the intended release process can create or move `v*` refs.
+Repository administrators should protect release tags so only the intended release process can create `v*` refs. Published version tags must not be moved or reused.
+
+## Release notes and changelog
+
+The release workflow uses GitHub-generated notes for commit and contributor detail. Before creating a tag, the release manager must:
+
+1. move applicable entries from `CHANGELOG.md`'s Unreleased section to `## [<version>] - YYYY-MM-DD`;
+2. review the changes for operator impact, compatibility, security, and known limitations;
+3. compare the generated release notes with the curated changelog;
+4. add any missing upgrade, limitation, or security context to the published release description.
+
+Generated notes are not the compatibility authority. The changelog is the curated user-facing record.
 
 ## Local reproduction
 
@@ -98,16 +111,34 @@ make release-verify
 
 Outputs are written to `dist/`. Re-running with the same source, Go toolchain, metadata, and packaging tools is expected to produce identical archive checksums. The pull-request workflow verifies that expectation by comparing two complete builds.
 
-## Rollback
+## Independent post-publication verification
 
-Repora does not include an automatic updater or rollback mechanism. To roll back:
+A successful publication job is necessary but not sufficient. After publication, download the release assets from GitHub and verify them independently:
+
+1. verify each archive against the published `checksums.txt`;
+2. extract and execute the Linux amd64 binary;
+3. confirm `repoctl --version` reports the tag and exact release commit;
+4. run a bounded local-repository status, plan, and dry-run smoke workflow;
+5. record the workflow run, tag, commit, release URL, and verification result in the release issue.
+
+The first v0.1 milestone is not complete until this downloaded-asset verification succeeds.
+
+## Rollback and failed releases
+
+Repora does not include an automatic updater or rollback mechanism. To roll back an installed binary:
 
 1. download a previously reviewed release;
 2. verify its checksum;
 3. replace the installed binary;
 4. confirm the selected version with `repoctl --version`.
 
+If a published release is defective, do not move or reuse its tag. Document the defect, stop recommending the affected version, and publish a reviewed patch version. Preserve the failed workflow and verification evidence.
+
 Repository mutation recovery remains separate: after a stale or partial mirror operation, observe current state and create a new exact plan rather than replaying old journal evidence.
+
+## Security and benchmark gates
+
+Release security expectations and suppression rules are defined in [`security-ci.md`](security-ci.md). The v0.1 benchmark decision and future benchmark triggers are defined in [`benchmarks.md`](benchmarks.md).
 
 ## Deferred distribution work
 
