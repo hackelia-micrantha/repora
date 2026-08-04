@@ -4,11 +4,14 @@ on:
   pull_request:
     paths:
       - .github/workflows/release.yml
+      - CHANGELOG.md
       - Makefile
       - cmd/repoctl/main.go
       - cmd/repoctl/version.go
       - scripts/ci/cli-smoke.sh
       - scripts/release/**
+      - docs/benchmarks.md
+      - docs/release-checklist.md
       - docs/release.md
       - README.md
   push:
