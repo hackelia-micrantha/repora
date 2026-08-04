@@ -27,7 +27,11 @@ This runs formatting verification, module hygiene, `go vet`, fast race-enabled t
 | `make e2e` | Build the CLI and exercise its command boundary. |
 | `make build` | Build the native `repoctl` binary. |
 | `make build-all` | Verify all current native and cross-compilation targets. |
+| `make security-secrets` | Scan the available Git history for secrets using a pinned Gitleaks version with redacted output. |
+| `make security-licenses` | Check shipped Go dependencies for forbidden or unknown licenses and write a CSV inventory. |
 | `make workflow-check` | Run `actionlint`, workflow-policy regression tests, and Repora's workflow security policy. |
+| `make release-package` | Build normalized cross-platform release archives and checksums. |
+| `make release-verify` | Verify checksums, archive contents, metadata, and the Linux packaged binary. |
 
 ## Coverage evidence
 
@@ -50,7 +54,7 @@ CI produces explicitly named binaries and retains each one for 7 days:
 
 Artifact names include the target operating system and architecture. Windows binaries use the `.exe` suffix.
 
-These binaries are unsigned, short-lived, non-release verification artifacts. Successful cross-compilation demonstrates build compatibility only; it does not claim runtime validation or platform support. Releases, signing, provenance attestations, and a formal support matrix require separate work.
+These binaries are unsigned, short-lived, non-release verification artifacts. Successful cross-compilation demonstrates build compatibility only; it does not claim runtime validation or platform support. Release archives use the same target set but pass the stronger package verification documented in [`release.md`](release.md).
 
 ## Test classification
 
@@ -74,7 +78,7 @@ Integration tests must use `t.TempDir()` or another disposable workspace and mus
 
 Go 1.22 is the minimum supported toolchain line declared by `go.mod`. Go 1.25.8 is the current validated toolchain. Compatibility jobs are scheduled evidence, not release artifacts.
 
-Reachable-vulnerability scanning and CodeQL are intentionally not duplicated. The scheduled `security` workflow owns those checks.
+Reachable-vulnerability scanning, secret detection, license validation, and CodeQL are intentionally not duplicated. The scheduled `security` workflow owns those checks.
 
 The repository currently has no Go fuzz targets. Bounded fuzzing is deferred until a reviewed `Fuzz...` target exists with a stable corpus boundary. When added, failures must retain the generated corpus input or seed and print a local reproduction command.
 
@@ -100,6 +104,21 @@ The repository maintainer reviewing automation failures owns initial triage. Sch
 
 Scheduled workflows use read-only repository permissions, explicit job timeouts, concurrency cancellation, fake Git identities, and no secrets.
 
+## Security validation
+
+`.github/workflows/security.yml` runs on pull requests, pushes to `main`, weekly schedule, and manual dispatch. It contains separate failure boundaries for:
+
+- reachable dependency vulnerabilities through `govulncheck`;
+- Git-history secret detection through Gitleaks;
+- dependency-license checks and a retained CSV inventory through `go-licenses`;
+- CodeQL `security-extended` analysis.
+
+The license inventory is retained for 14 days as `dependency-licenses`. The shipped command package is checked while Repora's own BSL-licensed packages are excluded from third-party dependency classification.
+
+Use a full Git checkout when reproducing `make security-secrets`; a shallow clone cannot prove the same historical scan scope. Scanner logs remain redacted. Do not reproduce a matched secret in an issue or pull request.
+
+Finding thresholds, release blocking, and suppression requirements are defined in [`security-ci.md`](security-ci.md).
+
 ## Workflow policy
 
 `make workflow-check` requires Go, network access for the pinned `actionlint` module when it is not cached, and Python 3.10 or newer.
@@ -118,6 +137,14 @@ Workflows use least-privilege permissions. Untrusted pull-request code must not 
 
 Dependabot checks GitHub Actions and Go modules weekly in separate groups. Minor and patch updates may be grouped; major updates remain separate. Dependency-update pull requests are not auto-merged.
 
+## Release validation
+
+`.github/workflows/release.yml` runs package validation on pull requests that change the release boundary and publishes only from trusted `v*` tag pushes.
+
+Pull-request validation builds the release packages twice and compares checksum manifests before running package verification. The publication job grants `contents: write` only to the tag-only job and rejects a tag commit that is not reachable from `main`.
+
+The complete release process and independent downloaded-asset verification are documented in [`release-checklist.md`](release-checklist.md).
+
 ## GitHub-specific checks
 
-CodeQL, vulnerability scanning, coverage artifacts, cross-platform CI, and scheduled deep validation remain separate from `make check`. They are GitHub-hosted or intentionally isolated because they have different runtime, retention, and dependency characteristics.
+CodeQL, vulnerability scanning, secret detection, dependency-license inventory, coverage artifacts, cross-platform CI, scheduled deep validation, and tagged release publication remain separate from `make check`. They are GitHub-hosted or intentionally isolated because they have different runtime, retention, permissions, and dependency characteristics.
