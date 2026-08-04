@@ -35,6 +35,8 @@ integration:
 route-test:
 	go run ./scripts/ci/route-tests.go \
 		./.repora/document-router.yaml ./.repora/route-tests.json
+	python3 ./scripts/ci/trust-policy.py \
+		./.repora/document-router.yaml ./.repora/trust-tests.json
 
 deep-repeat:
 	REPEAT_COUNT="$${REPEAT_COUNT:-10}" bash ./scripts/ci/repeat-tests.sh ./...
