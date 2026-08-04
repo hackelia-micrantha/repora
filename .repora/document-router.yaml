@@ -21,6 +21,58 @@ defaults:
   follow_refs: true
   stop_after_first_exact: false
 
+trust:
+  tiers:
+    - canonical
+    - implementation
+    - generated
+    - experimental
+    - archived
+    - external
+  default_include:
+    - canonical
+    - implementation
+  explicit_include_required:
+    - generated
+    - experimental
+    - archived
+    - external
+  unclassified: exclude
+  rules:
+    - tier: canonical
+      paths:
+        - README.md
+        - SECURITY.md
+        - CHANGELOG.md
+        - docs/**
+        - schemas/**
+        - .repora/**
+    - tier: implementation
+      paths:
+        - cmd/**
+        - internal/**
+        - scripts/**
+        - Makefile
+        - go.mod
+        - go.sum
+    - tier: generated
+      paths:
+        - artifacts/**
+        - dist/**
+        - bin/**
+    - tier: experimental
+      paths:
+        - experiments/**
+        - spikes/**
+        - drafts/**
+    - tier: archived
+      paths:
+        - docs/archive/**
+    - tier: external
+      paths:
+        - vendor/**
+        - third_party/**
+
 classes:
   - id: overview
     description: High-level product and operating model
