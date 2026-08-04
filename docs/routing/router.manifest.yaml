@@ -1,0 +1,28 @@
+version: 1
+kind: document-route-manifest
+owner: routing
+
+routes:
+  - id: prompts-and-routing
+    class: prompts
+    priority: 95
+    when:
+      any_of:
+        - prompt
+        - prompt overlay
+        - system prompt
+        - routing
+        - document router
+        - context router
+        - token usage
+    include:
+      - prompts/**
+      - .repora/document-router.yaml
+      - docs/routing/**
+      - README.md
+    exclude:
+      - tests/**
+    budget:
+      max_files: 8
+      max_bytes: 90000
+      max_tokens_hint: 9000
