@@ -4,6 +4,8 @@ Repora records user-visible capability, compatibility, security, and release-pro
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-03
+
 ### Added
 
 - Local-first multi-mirror Git controller for one GitLab canonical and one or more GitHub/GitLab mirrors.
