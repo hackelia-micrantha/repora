@@ -151,8 +151,15 @@ Selected repositories use bounded concurrency after global preparation and force
 
 There is no cross-repository or cross-remote transaction. Repora performs no automatic rollback. A future concurrent mirror executor requires a separate decision because it would change ordering, evidence, and failure behavior.
 
-## Immediate architecture gap
+## Release and assurance boundary
 
-The mirror-controller critical path is complete. The next gate is supported v0.1 release packaging, checksums, installation/verification documentation, and packaged-binary smoke coverage.
+The mirror-controller and cross-platform packaging paths are complete in code. Security assurance includes reachable-vulnerability scanning, CodeQL, Git-history secret detection, dependency-license validation, workflow policy, race-enabled failure-path tests, and deterministic package verification.
 
-Managed artifacts, advanced document routing, assessments, and Anthesis integration remain deferred and must reuse the plan, policy, execution, and evidence boundaries.
+The final v0.1 gate is operational rather than architectural:
+
+- merge the release-hardening controls and documentation;
+- complete the release checklist and curated changelog entry;
+- publish the first protected `v0.1.0` tag from reviewed `main`;
+- independently download and verify the published assets.
+
+A repository-wide benchmark gate is explicitly deferred until a stable workload and useful threshold exist. Anthesis policy integration, managed artifacts, advanced document routing, and assessments remain outside the v0.1 path and must reuse the current plan, policy, execution, result, and evidence boundaries if later pursued.

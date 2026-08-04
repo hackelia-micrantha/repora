@@ -34,29 +34,42 @@ A v0.1-quality controller must:
 | Complete preflight | Complete | Topology, policy, branches, and all expected OIDs validate before action zero. |
 | Multi-mirror mutation | Complete | Sequential independent actions continue after runtime failure without rollback. |
 | Apply output and journals | Complete | Apply v3 and execution-record v3 preserve per-target outcomes. |
-| Release packaging | Complete in code | Tag-only workflow builds four archives, checksums, metadata, and verification. |
-| Release hardening | Active next gate | Reconcile remaining security scope, release checklist, changelog, and bounded benchmark evidence. |
+| Release packaging | Complete | Tag-only workflow builds four archives, checksums, metadata, and verification. |
+| Security and supply-chain CI | Complete in code | Vulnerability, CodeQL, secret, dependency-license, and workflow-policy validation are defined. |
+| Release checklist and changelog policy | Complete in code | Publication, independent verification, failure handling, and curated release notes are documented. |
+| Benchmark decision | Explicitly deferred | No stable workload or useful shared-CI threshold exists for v0.1; triggers are documented. |
+| First v0.1 publication | Active final gate | Merge the hardening changes, run final readiness review, publish the tag, and verify downloaded assets. |
 
 ## Immediate sequence
 
-### 1. Validate and merge release packaging
+### 1. Validate and merge v0.1 hardening
 
 Exit condition:
 
-- pull-request release packaging and verification are green;
-- workflow policy confirms tag-only publication and least privilege;
-- issue #5 acceptance criteria are reconciled and closed.
+- required CI, security, workflow-policy, and release-package validation are green;
+- issue #10 is reconciled against implemented controls;
+- issue #11 acceptance criteria are updated to reflect the benchmark deferral and documented release process;
+- current architecture, README, release guidance, and this plan agree.
 
-### 2. Complete v0.1 hardening
+### 2. Publish and independently verify v0.1
 
-Under #11:
+Follow `docs/release-checklist.md`.
 
-- reconcile remaining #10 security and supply-chain requirements against the existing CI architecture;
-- add a concise repeatable release checklist;
-- define generated release notes or a manual changelog policy;
-- add bounded informational benchmark evidence or explicitly defer it with rationale;
-- document reproducibility expectations and limitations;
-- run the final tagged-release readiness review.
+Exit condition:
+
+- the release tag points to the reviewed `main` commit and is not moved;
+- the tag-only workflow publishes four archives plus `checksums.txt`;
+- downloaded assets pass checksum verification;
+- the Linux binary reports the intended tag and exact commit;
+- a bounded local-repository status/plan/dry-run smoke workflow succeeds;
+- release evidence is recorded in issue #11 or #27.
+
+### 3. Close the v0.1 milestone
+
+- close #10 after its reconciled security scope is complete;
+- close #11 after the published release is independently verified;
+- close #27 after the first v0.1 path is validated;
+- choose one explicit post-v0.1 milestone before starting deferred product tracks.
 
 ## Explicit deferrals
 
@@ -65,11 +78,12 @@ Under #11:
 - automatic rollback or cross-repository/cross-remote transactions;
 - managed repository artifacts and README templating;
 - advanced document routing and repository assessments;
-- optional Anthesis policy integration;
+- Anthesis policy integration;
 - provider provisioning or hosted control-plane behavior;
-- package managers, containers, signing, and full provenance.
+- package managers, containers, signing, and full provenance;
+- repository-wide performance gates without a stable workload and threshold.
 
-Deferred tracks must reuse the current plan, policy, execution, result, and evidence substrate rather than create parallel paths.
+Deferred tracks must reuse the current plan, policy, execution, result, and evidence substrate rather than create parallel paths. Anthesis is not part of the v0.1 or immediate post-release execution path unless a later explicit decision reprioritizes it.
 
 ## Simplicity constraints
 
@@ -80,10 +94,13 @@ Deferred tracks must reuse the current plan, policy, execution, result, and evid
 - Treat compatibility serializers as views, never decision authorities.
 - Keep ref-policy v1 closed and mirrors sequential.
 - Do not imply cross-remote atomicity, rollback, signing, or native validation where only cross-compilation exists.
+- Do not add Anthesis integration as release hardening or incidental follow-up.
 
 ## Definition of done
 
 A slice is complete only when observable behavior, failure/recovery tests, versioned contracts where applicable, documentation, issue acceptance criteria, independent review, and CI/security validation are complete.
+
+A release is complete only after published assets—not merely local packages or a successful publication workflow—have been independently downloaded and verified.
 
 ## Maintenance
 
