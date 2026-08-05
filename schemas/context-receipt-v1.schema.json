@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hackelia-micrantha/repora/schemas/context-receipt-v1.schema.json",
+  "title": "Repora context receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "kind",
+    "query",
+    "repository",
+    "routing",
+    "budget",
+    "selected",
+    "excluded"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "context-receipt"
+    },
+    "query": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "dirty"
+      ],
+      "properties": {
+        "revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "dirty": {
+          "type": "boolean"
+        }
+      }
+    },
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "policy_sha256",
+        "routes",
+        "fallback",
+        "manifests"
+      ],
+      "properties": {
+        "policy_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "policy_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "match_terms"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "match_terms": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              }
+            }
+          }
+        },
+        "fallback": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        },
+        "manifests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/path"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_files",
+        "max_bytes",
+        "max_tokens_hint",
+        "selected_files",
+        "selected_bytes",
+        "estimated_tokens"
+      ],
+      "properties": {
+        "max_files": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_tokens_hint": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selected_files": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selected_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "estimated_tokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "selected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "trust_tier",
+          "reason",
+          "bytes",
+          "content_sha256",
+          "snippets"
+        ],
+        "properties": {
+          "path": {
+            "$ref": "#/$defs/path"
+          },
+          "trust_tier": {
+            "$ref": "#/$defs/trustTier"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "content_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "snippets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "index",
+                "sha256",
+                "bytes"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "sha256": {
+                  "$ref": "#/$defs/sha256"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4096
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "excluded": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "reason"
+        ],
+        "properties": {
+          "path": {
+            "$ref": "#/$defs/path"
+          },
+          "trust_tier": {
+            "$ref": "#/$defs/trustTier"
+          },
+          "reason": {
+            "enum": [
+              "route_exclude",
+              "trust_exclude",
+              "budget_exceeded",
+              "unclassified",
+              "duplicate"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*\\\\)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "trustTier": {
+      "enum": [
+        "canonical",
+        "implementation",
+        "generated",
+        "experimental",
+        "archived",
+        "external"
+      ]
+    }
+  }
+}
