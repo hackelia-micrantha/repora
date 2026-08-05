@@ -1,0 +1,75 @@
+{
+  "budget": {
+    "estimated_tokens": 3580,
+    "max_bytes": 90000,
+    "max_files": 8,
+    "max_tokens_hint": 9000,
+    "selected_bytes": 14320,
+    "selected_files": 2
+  },
+  "excluded": [
+    {
+      "path": "docs/archive/old-router.md",
+      "reason": "trust_exclude",
+      "trust_tier": "archived"
+    },
+    {
+      "path": "tests/**",
+      "reason": "route_exclude"
+    }
+  ],
+  "kind": "context-receipt",
+  "query": "explain document routing trust tiers",
+  "repository": {
+    "dirty": false,
+    "revision": "b8c4668940076356d6c79fdf0cd2627926670d41"
+  },
+  "routing": {
+    "fallback": null,
+    "manifests": [
+      "docs/routing/router.manifest.yaml"
+    ],
+    "policy_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "policy_version": 1,
+    "routes": [
+      {
+        "id": "prompts-and-routing",
+        "match_terms": [
+          "document router",
+          "routing"
+        ]
+      }
+    ]
+  },
+  "selected": [
+    {
+      "bytes": 6500,
+      "content_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "path": ".repora/document-router.yaml",
+      "reason": "exact route configuration input",
+      "snippets": [
+        {
+          "bytes": 1536,
+          "index": 0,
+          "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+        }
+      ],
+      "trust_tier": "canonical"
+    },
+    {
+      "bytes": 7820,
+      "content_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "path": "docs/routing/trust-tiers.md",
+      "reason": "matched prompts-and-routing include pattern",
+      "snippets": [
+        {
+          "bytes": 2048,
+          "index": 0,
+          "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+        }
+      ],
+      "trust_tier": "canonical"
+    }
+  ],
+  "version": 1
+}
