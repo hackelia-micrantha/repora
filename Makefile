@@ -33,6 +33,8 @@ integration:
 	go test -race -count=1 ./internal/apply
 
 route-test:
+	python3 ./scripts/ci/validate_manifest_paths.py \
+		./.repora/document-router.yaml
 	go run ./scripts/ci/route-tests.go \
 		./.repora/document-router.yaml ./.repora/route-tests.json
 	python3 ./scripts/ci/trust-policy.py \
