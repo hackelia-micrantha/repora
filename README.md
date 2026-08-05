@@ -14,6 +14,10 @@
 
 Repora is pre-alpha. The broader repository-control-plane model is product direction, not a claim about current runtime capability.
 
+## Name
+
+**Repora** is a coined name combining **repo**—the common shorthand for a source-code repository—with the botanical cadence of **flora**. It reflects the project’s role in managing a collection or ecosystem of repositories while fitting the broader Micrantha naming family.
+
 ## Why Go
 
 Go was chosen for `repoctl` because it fits the operational shape of a repository-control CLI:
