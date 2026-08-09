@@ -62,6 +62,13 @@
         "when": {
           "type": "object"
         },
+        "trust_include": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["canonical", "implementation", "generated", "experimental", "archived", "external"]
+          }
+        },
         "include": {
           "type": "array",
           "items": {
