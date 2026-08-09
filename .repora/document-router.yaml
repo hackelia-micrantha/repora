@@ -61,7 +61,8 @@ trust:
     - tier: generated
       paths:
         - docs/SUMMARY.md
-        - docs/**/SUMMARY.md
+        - docs/architecture/SUMMARY.md
+        - docs/routing/SUMMARY.md
         - schemas/SUMMARY.md
         - artifacts/**
         - dist/**
