@@ -7,64 +7,40 @@
       "query": "Give me a quickstart overview of repoctl",
       "expect_routes": ["summary-docs", "repo-overview"],
       "expect_include": ["docs/SUMMARY.md"],
-      "expect_budget": {
-        "max_files": 1,
-        "max_bytes": 12000,
-        "max_tokens_hint": 1200
-      }
+      "expect_budget": {"max_files": 1, "max_bytes": 12000, "max_tokens_hint": 1200}
     },
     {
       "name": "architecture class loads summary first",
       "query": "Explain planner and executor architecture",
       "expect_routes": ["summary-architecture", "architecture-core"],
       "expect_include": ["docs/architecture/SUMMARY.md"],
-      "expect_budget": {
-        "max_files": 1,
-        "max_bytes": 12000,
-        "max_tokens_hint": 1200
-      }
+      "expect_budget": {"max_files": 1, "max_bytes": 12000, "max_tokens_hint": 1200}
     },
     {
       "name": "policy class",
       "query": "Review the security policy and governance requirements",
       "expect_routes": ["policy-and-governance"],
-      "expect_budget": {
-        "max_files": 12,
-        "max_bytes": 140000,
-        "max_tokens_hint": 14000
-      }
+      "expect_budget": {"max_files": 12, "max_bytes": 140000, "max_tokens_hint": 14000}
     },
     {
       "name": "configuration class loads schema summary first",
       "query": "Show the YAML configuration schema",
       "expect_routes": ["summary-schema", "config-and-schema"],
       "expect_include": ["schemas/SUMMARY.md"],
-      "expect_budget": {
-        "max_files": 1,
-        "max_bytes": 12000,
-        "max_tokens_hint": 1200
-      }
+      "expect_budget": {"max_files": 1, "max_bytes": 12000, "max_tokens_hint": 1200}
     },
     {
       "name": "prompts class loads routing summary first",
       "query": "How does the document router reduce token usage?",
       "expect_routes": ["summary-routing", "prompts-and-routing"],
       "expect_include": ["docs/routing/SUMMARY.md"],
-      "expect_budget": {
-        "max_files": 1,
-        "max_bytes": 12000,
-        "max_tokens_hint": 1200
-      }
+      "expect_budget": {"max_files": 1, "max_bytes": 12000, "max_tokens_hint": 1200}
     },
     {
       "name": "operations class",
       "query": "Explain the release workflow and CI pipeline",
       "expect_routes": ["operations-and-workflows"],
-      "expect_budget": {
-        "max_files": 10,
-        "max_bytes": 100000,
-        "max_tokens_hint": 10000
-      }
+      "expect_budget": {"max_files": 10, "max_bytes": 100000, "max_tokens_hint": 10000}
     },
     {
       "name": "priority ordering across matches includes summaries first",
@@ -79,13 +55,9 @@
     {
       "name": "explicit docs summary route",
       "query": "Show the documentation summary",
-      "expect_routes": ["summary-docs"],
+      "expect_routes": ["summary-docs", "repo-overview"],
       "expect_include": ["docs/SUMMARY.md"],
-      "expect_budget": {
-        "max_files": 1,
-        "max_bytes": 12000,
-        "max_tokens_hint": 1200
-      }
+      "expect_budget": {"max_files": 1, "max_bytes": 12000, "max_tokens_hint": 1200}
     },
     {
       "name": "fallback docs first",
@@ -94,11 +66,7 @@
       "expect_fallback": "docs-first",
       "expect_include": ["README.md", "docs/**", "schemas/**", ".repora/**"],
       "expect_exclude": ["tests/**", "examples/**"],
-      "expect_budget": {
-        "max_files": 8,
-        "max_bytes": 100000,
-        "max_tokens_hint": 10000
-      }
+      "expect_budget": {"max_files": 8, "max_bytes": 100000, "max_tokens_hint": 10000}
     }
   ]
 }
