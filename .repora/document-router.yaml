@@ -60,6 +60,9 @@ trust:
         - go.sum
     - tier: generated
       paths:
+        - docs/SUMMARY.md
+        - docs/**/SUMMARY.md
+        - schemas/SUMMARY.md
         - artifacts/**
         - dist/**
         - bin/**
