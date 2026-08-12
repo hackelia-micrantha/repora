@@ -6,7 +6,7 @@ Status: Current
 
 Repora assessment artifacts capture a point-in-time engineering review without replacing GitHub as the source of truth for code, issues, pull requests, commits, or work status.
 
-The assessment framework currently provides versioned contracts, templates, a concrete example, local validation, and read-only `repoctl validate-report` and `repoctl list-findings` commands. Report generation, score generation, repository mutation, pull-request creation, and CI enforcement remain outside the current slice.
+The assessment framework currently provides versioned contracts, templates, a concrete example, local validation, and read-only `repoctl validate-report`, `repoctl list-findings`, and `repoctl generate-scorecard` commands. Report skeleton generation, repository mutation, pull-request creation, and CI enforcement remain outside the current slice.
 
 ## Artifact model
 
@@ -84,6 +84,20 @@ Scorecards use integer values from 0 through 5 for bounded dimensions such as ar
 
 Scores are not objective project grades. Each score requires a rationale and may cite evidence IDs. Scope must be explicit: a score supported only by routing evidence must not be presented as a whole-repository architecture score.
 
+Render the scorecard already present in a validated report with:
+
+```sh
+repoctl generate-scorecard path/to/assessment.json
+```
+
+Despite the command name, `generate-scorecard` does not calculate, average, infer, normalize, or re-rank scores. It projects the validated scorecard in report order. Each output row is tab-separated as:
+
+```text
+DIMENSION<TAB>SCORE<TAB>JSON-EVIDENCE-ID-ARRAY<TAB>JSON-QUOTED-RATIONALE
+```
+
+This keeps the report itself authoritative for score values and evidence linkage. A score of `0` is preserved as a valid explicit value rather than treated as missing. Machine-readable command JSON remains deferred until a dedicated compatibility contract is justified.
+
 ## Templates and examples
 
 - `templates/assessments/repository-assessment-v1.json` is a valid skeleton for general reviews.
@@ -115,7 +129,6 @@ That target exercises the same Go parser and validator used by the production co
 Issue #24 continues to own the broader assessment framework. Remaining follow-up work includes:
 
 - `repora assess` report skeleton generation;
-- `repora generate-scorecard`;
 - automated architecture/security/resume-evidence templates beyond the repository and QART skeletons;
-- a stabilized machine-readable `list-findings` projection if needed;
+- stabilized machine-readable projections for assessment helper commands if needed;
 - automatic repository mutation, PR creation, or CI policy enforcement.

@@ -11,6 +11,7 @@ Usage:
   repoctl <command> [options]
   repoctl validate-report FILE
   repoctl list-findings FILE
+  repoctl generate-scorecard FILE
   repoctl --help
   repoctl --version
 
@@ -21,6 +22,7 @@ Commands:
   sync     alias for apply
   validate-report  validate a repository assessment report without mutation
   list-findings    list validated assessment findings without mutation
+  generate-scorecard  render validated scorecard dimensions without recalculation
   version  show embedded version and commit metadata
   help     show this help
 

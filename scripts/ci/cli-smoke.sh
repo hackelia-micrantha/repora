@@ -39,3 +39,5 @@ assert_subcommand_help apply
 "$binary" validate-report ./examples/repository-assessment-v1.json >/dev/null
 "$binary" list-findings --help >/dev/null
 "$binary" list-findings ./examples/repository-assessment-v1.json >/dev/null
+"$binary" generate-scorecard --help >/dev/null
+"$binary" generate-scorecard ./examples/repository-assessment-v1.json >/dev/null
