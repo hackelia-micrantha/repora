@@ -28,7 +28,8 @@
       "type": "string",
       "minLength": 1,
       "allOf": [
-        { "not": { "pattern": "^/|/$|\\.$|\\.\\.|//|@\\{|[ ~^:?*\\[\\\\]" } },
+        { "not": { "pattern": "\\s" } },
+        { "not": { "pattern": "^/|/$|\\.$|\\.\\.|//|@\\{|[~^:?*\\[\\\\]" } },
         { "not": { "pattern": "(^|/)\\." } },
         { "not": { "pattern": "(^|/)[^/]*\\.lock($|/)" } }
       ]
@@ -98,7 +99,7 @@
         "observed": { "$ref": "#/$defs/observedState" },
         "desired": { "$ref": "#/$defs/desiredState" },
         "template_sha256": { "$ref": "#/$defs/sha256" },
-        "diff": { "type": "string", "minLength": 1, "maxLength": 4194304 }
+        "diff": { "type": "string", "minLength": 1, "maxLength": 2162688 }
       }
     },
     "repositoryPlan": {
