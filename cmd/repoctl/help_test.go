@@ -57,6 +57,7 @@ func TestPrintHelp(t *testing.T) {
 		"sync     alias for apply",
 		"validate-report",
 		"list-findings",
+		"generate-scorecard",
 		"-h, --help",
 	} {
 		if !strings.Contains(text, expected) {
