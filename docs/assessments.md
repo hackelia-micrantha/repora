@@ -6,7 +6,7 @@ Status: Current
 
 Repora assessment artifacts capture a point-in-time engineering review without replacing GitHub as the source of truth for code, issues, pull requests, commits, or work status.
 
-The first assessment slice is intentionally data-only. It defines versioned contracts, templates, a concrete example, and local validation. It does not yet add assessment-generation CLI commands, scorecard automation, repository mutation, pull-request creation, or CI enforcement.
+The assessment framework currently provides versioned contracts, templates, a concrete example, local validation, and a read-only `repoctl validate-report` command. Report generation, finding listing, score generation, repository mutation, pull-request creation, and CI enforcement remain outside the current slice.
 
 ## Artifact model
 
@@ -80,31 +80,27 @@ Template placeholder values are not findings or evidence and must be replaced be
 
 ## Validation
 
-Run:
+Validate one report directly with the standalone CLI command:
+
+```sh
+repoctl validate-report path/to/assessment.json
+```
+
+`validate-report` is read-only and does not load `repora.yaml`, inspect remotes, or perform Git operations. It currently accepts only `repora.repository-assessment` version 1. Unknown JSON fields, unsupported versions, malformed timestamps, missing required fields, invalid vocabularies, duplicate IDs, and unresolved evidence links fail validation.
+
+Run the repository validation set with:
 
 ```sh
 make assessment-test
 ```
 
-The dependency-free validator checks the committed example and templates for:
-
-- artifact kind/version boundaries;
-- snapshot revision shape;
-- valid finding, severity, status, evidence, and score vocabularies;
-- unique finding and evidence IDs;
-- evidence references required by non-unsupported strength;
-- finding evidence IDs resolving to declared evidence;
-- unique scorecard dimensions;
-- scorecard evidence IDs resolving to declared evidence.
-
-The normal schema test also verifies every committed `*.schema.json` document is valid JSON.
+That target exercises the same Go parser and validator used by the production command against the committed example and templates. The normal schema test also verifies every committed `*.schema.json` document is valid JSON.
 
 ## Deferred work
 
-Issue #24 continues to own the broader assessment framework. This slice explicitly defers:
+Issue #24 continues to own the broader assessment framework. Remaining follow-up work includes:
 
 - `repora assess` report skeleton generation;
-- `repora validate-report` CLI behavior;
 - `repora list-findings`;
 - `repora generate-scorecard`;
 - automated architecture/security/resume-evidence templates beyond the repository and QART skeletons;

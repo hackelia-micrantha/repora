@@ -48,10 +48,9 @@ receipt-test:
 	python3 -m unittest discover -s scripts/ci -p 'test_context_receipt.py'
 
 assessment-test:
-	python3 ./scripts/ci/assessment-contract.py \
-		./examples/repository-assessment-v1.json \
-		./templates/assessments/repository-assessment-v1.json \
-		./templates/assessments/qart-review-v1.json
+	go run ./cmd/repoctl validate-report ./examples/repository-assessment-v1.json
+	go run ./cmd/repoctl validate-report ./templates/assessments/repository-assessment-v1.json
+	go run ./cmd/repoctl validate-report ./templates/assessments/qart-review-v1.json
 
 deep-repeat:
 	REPEAT_COUNT="$${REPEAT_COUNT:-10}" bash ./scripts/ci/repeat-tests.sh ./...

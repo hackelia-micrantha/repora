@@ -5,10 +5,11 @@ import (
 	"io"
 )
 
-const helpText = `repoctl manages configured Git repository mirrors.
+const helpText = `repoctl manages configured Git repository mirrors and validates Repora report artifacts.
 
 Usage:
   repoctl <command> [options]
+  repoctl validate-report FILE
   repoctl --help
   repoctl --version
 
@@ -17,10 +18,11 @@ Commands:
   plan     show planned mirror updates or export an executable artifact
   apply    apply current observations or an exact plan artifact
   sync     alias for apply
+  validate-report  validate a repository assessment report without mutation
   version  show embedded version and commit metadata
   help     show this help
 
-Options:
+Options for mirror commands:
   -f string
         path to SCHEMA-0001 YAML config (default "repora.yaml")
   --json

@@ -55,6 +55,7 @@ func TestPrintHelp(t *testing.T) {
 		"plan",
 		"apply",
 		"sync     alias for apply",
+		"validate-report",
 		"-h, --help",
 	} {
 		if !strings.Contains(text, expected) {
