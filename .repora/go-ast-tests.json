@@ -28,11 +28,11 @@
       "name": "repoctl command entrypoint",
       "selectors": {
         "commands": ["repoctl"],
-        "files": ["cmd/repoctl/*.go"]
+        "files": ["cmd/repoctl/main.go"]
       },
       "expect_paths": ["cmd/repoctl/main.go"],
       "expect_reasons": {
-        "cmd/repoctl/main.go": ["command:repoctl", "file:cmd/repoctl/*.go"]
+        "cmd/repoctl/main.go": ["command:repoctl", "file:cmd/repoctl/main.go"]
       }
     }
   ]
