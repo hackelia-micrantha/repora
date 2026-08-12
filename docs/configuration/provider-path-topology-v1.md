@@ -78,6 +78,35 @@ micrantha/laboratory/dubnium
 hackelia-micrantha/repora
 ```
 
+### `artifacts.readme`
+
+README management is an opt-in configuration extension under issue #12. The configuration/parser and deterministic renderer may land before end-to-end README planning/apply; until the remaining #12 slices are implemented, this block does not change mirror `status`, `plan`, or `apply` behavior.
+
+Shape:
+
+```yaml
+artifacts:
+  readme:
+    template: templates/README.md.tmpl
+    values:
+      title: Repora
+      summary: Deterministic repository mirror management
+```
+
+Rules for the configuration slice:
+
+- `readme` is the only recognized artifact field; strict YAML decoding rejects unknown artifact types;
+- `template` is required and uses a portable slash-separated relative path;
+- absolute paths, traversal segments, URLs/drive-style paths, and backslashes are rejected;
+- template symlink containment and regular-file checks occur when the template is opened by later planning code;
+- `values` is optional inert string data keyed by `[A-Za-z][A-Za-z0-9_-]*` identifiers;
+- values are never environment-expanded, shell-evaluated, or recursively interpreted as template syntax;
+- configuring README management never grants authority over a path other than repository-root `README.md`.
+
+The dedicated renderer recognizes only `{{repo.id}}`, `{{repo.uid}}`, `{{canonical.provider}}`, `{{canonical.path}}`, and configured `{{value.<key>}}` tokens. Rendering is single-pass, normalizes line endings to LF, rejects malformed/unknown placeholders and invalid UTF-8/NUL text, and caps template and rendered output at 256 KiB.
+
+See [`../architecture/managed-artifacts.md`](../architecture/managed-artifacts.md) and ADR-0017 for the proposed full plan/apply boundary.
+
 ### `policy.refs`
 
 Omission normalizes to:
@@ -131,10 +160,12 @@ Implemented:
 - default-branch-only closed ref policy;
 - sequential independent mirror mutation with force-with-lease;
 - runtime HTTPS resolution;
-- bounded single-mirror legacy URL compatibility.
+- bounded single-mirror legacy URL compatibility;
+- strict opt-in `artifacts.readme` configuration parsing and bounded deterministic README rendering primitives.
 
 Not implemented:
 
+- end-to-end managed README observation, plan artifact, dry-run, commit creation, or push;
 - tags, non-default branches, wildcard refs, or deleted-ref reconciliation;
 - provider provisioning;
 - custom provider bases or user-selectable transport;
