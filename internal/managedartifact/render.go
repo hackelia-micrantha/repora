@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode/utf8"
 )
@@ -79,24 +80,36 @@ func RenderREADME(template []byte, data RenderData) ([]byte, error) {
 }
 
 func renderReplacements(data RenderData) (map[string]string, error) {
-	values := map[string]string{
-		"repo.id":            data.RepoID,
-		"repo.uid":           data.RepoUID,
-		"canonical.provider": data.CanonicalProvider,
-		"canonical.path":     data.CanonicalPath,
+	values := make(map[string]string, 4+len(data.Values))
+	builtins := []struct {
+		token string
+		raw   string
+	}{
+		{token: "repo.id", raw: data.RepoID},
+		{token: "repo.uid", raw: data.RepoUID},
+		{token: "canonical.provider", raw: data.CanonicalProvider},
+		{token: "canonical.path", raw: data.CanonicalPath},
 	}
-	for token, raw := range values {
-		normalized, err := normalizeText(token, raw)
+	for _, builtin := range builtins {
+		normalized, err := normalizeText(builtin.token, builtin.raw)
 		if err != nil {
 			return nil, err
 		}
-		values[token] = normalized
+		if normalized != "" {
+			values[builtin.token] = normalized
+		}
 	}
-	for key, raw := range data.Values {
+
+	keys := make([]string, 0, len(data.Values))
+	for key := range data.Values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
 		if !valueKeyPattern.MatchString(key) {
 			return nil, fmt.Errorf("README render value key %q is invalid", key)
 		}
-		normalized, err := normalizeText("value."+key, raw)
+		normalized, err := normalizeText("value."+key, data.Values[key])
 		if err != nil {
 			return nil, err
 		}
