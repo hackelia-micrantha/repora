@@ -41,3 +41,9 @@ assert_subcommand_help apply
 "$binary" list-findings ./examples/repository-assessment-v1.json >/dev/null
 "$binary" generate-scorecard --help >/dev/null
 "$binary" generate-scorecard ./examples/repository-assessment-v1.json >/dev/null
+
+assessment_tmpdir="$(mktemp -d)"
+trap 'rm -rf "$assessment_tmpdir"' EXIT
+"$binary" assess --help >/dev/null
+"$binary" assess "$assessment_tmpdir/assessment.json" >/dev/null
+"$binary" validate-report "$assessment_tmpdir/assessment.json" >/dev/null
