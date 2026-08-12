@@ -17,8 +17,12 @@ func TestListFindingsPrintsReportOrder(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("run returned %d, want 0", code)
 	}
-	want := "routing-determinism\tinformational\timplemented\tfinding\t\"Document routing has deterministic regression fixtures\"\n" +
-		"assessment-automation-deferred\tlow\topen\tgap\t\"Assessment automation remains outside this schema slice\"\n"
+	want := "routing-refinement-question\tinformational\taccepted\tquestion\t\"How should AST selectors compose with route-first retrieval?\"\n" +
+		"routing-determinism\tinformational\timplemented\tfinding\t\"Document routing has deterministic regression fixtures\"\n" +
+		"routing-monotonic-refinement\tmedium\timplemented\trecommendation\t\"Keep AST selectors as monotonic route refinements\"\n" +
+		"deterministic-routing-tradeoff\tlow\taccepted\ttradeoff\t\"Deterministic routing trades flexibility for auditability\"\n" +
+		"route-fixture-drift-risk\tmedium\topen\trisk\t\"Intentional route changes can drift from fixture expectations\"\n" +
+		"assessment-automation-deferred-at-snapshot\tlow\topen\tgap\t\"Assessment automation was deferred at this snapshot\"\n"
 	if got := stdout.String(); got != want {
 		t.Fatalf("stdout = %q, want %q", got, want)
 	}
@@ -48,9 +52,9 @@ func TestListFindingsJSONQuotesTitle(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("run returned %d, want 0", code)
 	}
-	wantFirstLine := "routing-determinism\tinformational\timplemented\tfinding\t\"Line one\\tline two\\nquote \\\" and control \\u0001\"\n"
-	if !strings.HasPrefix(stdout.String(), wantFirstLine) {
-		t.Fatalf("stdout = %q, want prefix %q", stdout.String(), wantFirstLine)
+	wantLine := "routing-determinism\tinformational\timplemented\tfinding\t\"Line one\\tline two\\nquote \\\" and control \\u0001\"\n"
+	if !strings.Contains(stdout.String(), wantLine) {
+		t.Fatalf("stdout = %q, want line %q", stdout.String(), wantLine)
 	}
 }
 

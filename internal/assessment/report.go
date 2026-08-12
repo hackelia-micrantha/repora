@@ -167,6 +167,7 @@ func walkNulls(value any, path string) error {
 			if err := walkNulls(child, fmt.Sprintf("%s[%d]", path, i)); err != nil {
 				return err
 			}
+		}
 	}
 	return nil
 }

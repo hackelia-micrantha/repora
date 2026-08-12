@@ -277,7 +277,7 @@ func validateProviderPath(path string) error {
 		return fmt.Errorf("provider path must include an owner or namespace")
 	}
 	for _, part := range parts {
-		if part == "" || part == "." || part == ".." || strings.ContainsAny(part, `\\:@?#`) || strings.ContainsAny(part, " \t\r\n") {
+		if part == "" || part == "." || part == ".." || strings.ContainsAny(part, `\:@?#`) || strings.ContainsAny(part, " \t\r\n") {
 			return fmt.Errorf("provider path contains an unsafe segment")
 		}
 	}
@@ -306,7 +306,8 @@ func SHA256(data []byte) string {
 
 func rejectNullValues(data []byte) error {
 	var value any
-	if err := json.Unmarshal(data, &value); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if err := decoder.Decode(&value); err != nil {
 		return fmt.Errorf("decode managed artifact plan: %w", err)
 	}
 	return walkNulls(value, "$")
@@ -332,13 +333,15 @@ func walkNulls(value any, path string) error {
 			if err := walkNulls(child, fmt.Sprintf("%s[%d]", path, i)); err != nil {
 				return err
 			}
+		}
 	}
 	return nil
 }
 
 func requireZeroValuedFields(data []byte) error {
 	var root map[string]json.RawMessage
-	if err := json.Unmarshal(data, &root); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if err := decoder.Decode(&root); err != nil {
 		return fmt.Errorf("decode managed artifact plan: %w", err)
 	}
 	repositoriesRaw, ok := root["repositories"]
