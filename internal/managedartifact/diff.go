@@ -17,9 +17,6 @@ func ReviewDiff(observedPresent bool, observed, desired []byte) (string, error) 
 	if !observedPresent && len(observed) != 0 {
 		return "", fmt.Errorf("absent README review input must not include observed content")
 	}
-	if observedPresent && bytes.Equal(observed, desired) {
-		return "", nil
-	}
 	if len(observed) > MaxTextBytes || len(desired) > MaxTextBytes {
 		return "", fmt.Errorf("README review input exceeds %d-byte limit", MaxTextBytes)
 	}
@@ -30,6 +27,9 @@ func ReviewDiff(observedPresent bool, observed, desired []byte) (string, error) 
 	}
 	if err := validateManagedText("desired README content", string(desired), false); err != nil {
 		return "", err
+	}
+	if observedPresent && bytes.Equal(observed, desired) {
+		return "", nil
 	}
 
 	oldLines := splitReviewLines(observedPresent, string(observed))
