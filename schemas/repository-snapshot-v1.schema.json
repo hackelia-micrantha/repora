@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/repository-snapshot-v1.schema.json",
+  "title": "Repora Repository Snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "repository", "revision", "captured_at"],
+  "properties": {
+    "kind": {"const": "repora.repository-snapshot"},
+    "version": {"const": 1},
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["full_name"],
+      "properties": {
+        "provider": {"type": "string", "minLength": 1},
+        "full_name": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "minLength": 1},
+        "default_branch": {"type": "string", "minLength": 1}
+      }
+    },
+    "revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "dirty"],
+      "properties": {
+        "commit": {"type": "string", "pattern": "^[0-9a-fA-F]{7,64}$"},
+        "dirty": {"type": "boolean"}
+      }
+    },
+    "captured_at": {"type": "string", "format": "date-time"}
+  }
+}
