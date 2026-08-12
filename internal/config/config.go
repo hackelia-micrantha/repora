@@ -161,6 +161,9 @@ func validateArtifacts(repo *Repo, index int) error {
 	if readme == nil {
 		return nil
 	}
+	if strings.TrimSpace(repo.Canonical.Path) == "" {
+		return fmt.Errorf("README artifact for repo %q requires provider/path canonical identity", repo.ID)
+	}
 
 	readme.Template = strings.TrimSpace(readme.Template)
 	if err := validateArtifactTemplatePath(readme.Template); err != nil {
