@@ -48,12 +48,15 @@ When an ADR and source disagree, either the source is defective or the ADR is st
 | [ADR-0014](0014-path-bound-plan-artifact-v2.md) | Provider-path-bound reconciliation artifact v2 | Implemented by PR #77. |
 | [ADR-0015](0015-path-bound-multi-mirror-preflight.md) | Provider-path runtime binding and audited multi-mirror preflight | Implemented by PR #79. |
 | [ADR-0016](0016-independent-multi-mirror-execution.md) | Independent ordered multi-mirror execution and partial-result evidence | Implemented by PR #80. |
+| [ADR-0017](0017-managed-artifact-domain.md) | Bounded managed artifact mutation domain | Accepted; README implementation is pending #12. |
 
 ## Future decision gates
 
 Before reference scope expands beyond policy v1, a new decision must define branch/tag eligibility, protected refs, wildcard behavior, artifact binding, and compatibility. Existing artifacts must not be reinterpreted under broader policy.
 
 Before a future concurrent mirror executor, an accepted decision must define ordering, cancellation, provider rate limits, evidence determinism, and the effect of concurrent failures. The current implementation is intentionally sequential inside one repository.
+
+Before any managed artifact type beyond root `README.md`, a separate issue or ADR must define bounded output ownership, input authority, deterministic rendering, stale-state preflight, mutation/recovery semantics, and evidence. Managed artifacts do not imply arbitrary file generation or plugin execution.
 
 ## ADR writing guidance
 
