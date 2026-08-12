@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -142,7 +143,7 @@ func validate(spec Spec) error {
 		if repo.Mode != "mirror" {
 			return fmt.Errorf("unsupported mode %q for repo %q: only mirror is supported", repo.Mode, repo.ID)
 		}
-		if err := validateArtifacts(repo.Artifacts, repo.ID); err != nil {
+		if err := validateArtifacts(repo); err != nil {
 			return err
 		}
 		policy, err := repo.EffectiveRefPolicy()
@@ -155,24 +156,33 @@ func validate(spec Spec) error {
 	return nil
 }
 
-func validateArtifacts(artifacts RepositoryArtifacts, repoID string) error {
-	if artifacts.README == nil {
+func validateArtifacts(repo Repo) error {
+	if repo.Artifacts.README == nil {
 		return nil
 	}
-	template := strings.TrimSpace(artifacts.README.Template)
+	if strings.TrimSpace(repo.Canonical.Path) == "" {
+		return fmt.Errorf("artifacts.readme requires provider/path canonical identity for repo %q", repo.ID)
+	}
+	template := strings.TrimSpace(repo.Artifacts.README.Template)
 	if template == "" {
-		return fmt.Errorf("artifacts.readme.template is required for repo %q", repoID)
+		return fmt.Errorf("artifacts.readme.template is required for repo %q", repo.ID)
 	}
 	if err := validateArtifactTemplatePath(template); err != nil {
-		return fmt.Errorf("invalid artifacts.readme.template for repo %q: %w", repoID, err)
+		return fmt.Errorf("invalid artifacts.readme.template for repo %q: %w", repo.ID, err)
 	}
-	artifacts.README.Template = template
-	for key, value := range artifacts.README.Values {
+	repo.Artifacts.README.Template = template
+	keys := make([]string, 0, len(repo.Artifacts.README.Values))
+	for key := range repo.Artifacts.README.Values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		value := repo.Artifacts.README.Values[key]
 		if !artifactValueKeyPattern.MatchString(key) {
-			return fmt.Errorf("invalid artifacts.readme.values key %q for repo %q", key, repoID)
+			return fmt.Errorf("invalid artifacts.readme.values key %q for repo %q", key, repo.ID)
 		}
 		if strings.ContainsRune(value, '\x00') {
-			return fmt.Errorf("artifacts.readme.values[%q] contains NUL for repo %q", key, repoID)
+			return fmt.Errorf("artifacts.readme.values[%q] contains NUL for repo %q", key, repo.ID)
 		}
 	}
 	return nil
@@ -217,7 +227,6 @@ func validateEndpoint(endpoint Endpoint, role, repoID string) error {
 			if part == "" || part == "." || part == ".." {
 				return fmt.Errorf("%s path contains an invalid segment for repo %q", role, repoID)
 			}
-		}
 	}
 	return nil
 }
