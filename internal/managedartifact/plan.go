@@ -229,6 +229,9 @@ func validateTarget(target Target) error {
 }
 
 func validatePlanProviderPath(value string) error {
+	if err := validatePlanDisplayText("provider path", value); err != nil {
+		return err
+	}
 	if value == "" || value != strings.TrimSpace(value) || strings.HasPrefix(value, "/") || strings.HasSuffix(value, "/") {
 		return fmt.Errorf("provider path contains an unsafe segment")
 	}
@@ -245,6 +248,9 @@ func validatePlanProviderPath(value string) error {
 }
 
 func validatePlanBranch(branch string) error {
+	if err := validatePlanDisplayText("branch", branch); err != nil {
+		return err
+	}
 	if branch == "" || branch != strings.TrimSpace(branch) || strings.HasPrefix(branch, "/") || strings.HasSuffix(branch, "/") || strings.HasSuffix(branch, ".") || strings.Contains(branch, "..") || strings.Contains(branch, "//") || strings.Contains(branch, "@{") {
 		return fmt.Errorf("branch is not a valid symbolic ref name")
 	}
@@ -254,6 +260,18 @@ func validatePlanBranch(branch string) error {
 	for _, segment := range strings.Split(branch, "/") {
 		if segment == "" || strings.HasPrefix(segment, ".") || strings.HasSuffix(segment, ".lock") {
 			return fmt.Errorf("branch is not a valid symbolic ref name")
+		}
+	}
+	return nil
+}
+
+func validatePlanDisplayText(label, value string) error {
+	if !utf8.ValidString(value) {
+		return fmt.Errorf("%s must be valid UTF-8", label)
+	}
+	for _, r := range value {
+		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) || r == '\u2028' || r == '\u2029' {
+			return fmt.Errorf("%s contains unsafe display character U+%04X", label, r)
 		}
 	}
 	return nil
