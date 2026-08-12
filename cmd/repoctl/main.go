@@ -91,6 +91,9 @@ func run(args []string) int {
 	if args[0] == "generate-scorecard" {
 		return runGenerateScorecard(args[1:])
 	}
+	if args[0] == "assess" {
+		return runAssess(args[1:])
+	}
 
 	command := args[0]
 	if command != "status" && command != "plan" && command != "apply" && command != "sync" {
@@ -197,4 +200,5 @@ func printUsageError() {
 	fmt.Fprintln(os.Stderr, "       repoctl validate-report FILE")
 	fmt.Fprintln(os.Stderr, "       repoctl list-findings FILE")
 	fmt.Fprintln(os.Stderr, "       repoctl generate-scorecard FILE")
+	fmt.Fprintln(os.Stderr, "       repoctl assess FILE")
 }
