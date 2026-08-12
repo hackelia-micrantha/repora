@@ -70,7 +70,7 @@
         {"type": "file", "value": "docs/routing/ast-routing.md"},
         {"type": "pull_request", "value": "https://github.com/hackelia-micrantha/repora/pull/92"}
       ],
-      "evidence_ids": ["routing-fixtures"]
+      "evidence_ids": ["ast-route-boundary"]
     },
     {
       "kind": "repora.finding",
@@ -87,7 +87,7 @@
         {"type": "file", "value": "docs/routing/document-routing.md"},
         {"type": "file", "value": "docs/routing/ast-routing.md"}
       ],
-      "evidence_ids": ["routing-fixtures"]
+      "evidence_ids": ["routing-fixtures", "ast-route-boundary"]
     },
     {
       "kind": "repora.finding",
@@ -136,6 +136,19 @@
         {"type": "file", "value": ".repora/route-tests.json"},
         {"type": "file", "value": "scripts/ci/route-tests.go"}
       ]
+    },
+    {
+      "kind": "repora.evidence",
+      "version": 1,
+      "id": "ast-route-boundary",
+      "category": "architecture",
+      "strength": "strong",
+      "claim": "AST-aware routing is implemented and documented as a refinement inside configured route include/exclude boundaries rather than an independent source-expansion mechanism.",
+      "rationale": "The routing documentation states the containment rule and the checked-in AST fixture runner applies route include/exclude filtering before selector matching.",
+      "references": [
+        {"type": "file", "value": "docs/routing/ast-routing.md"},
+        {"type": "file", "value": "scripts/ci/go-ast-routing.go"}
+      ]
     }
   ],
   "scorecard": {
@@ -146,13 +159,13 @@
         "name": "architecture",
         "score": 4,
         "rationale": "The example is limited to the routing subsystem and uses direct repository evidence; it is not a whole-project architecture score.",
-        "evidence_ids": ["routing-fixtures"]
+        "evidence_ids": ["routing-fixtures", "ast-route-boundary"]
       },
       {
         "name": "documentation",
         "score": 4,
         "rationale": "Routing behavior is documented alongside the checked-in configuration and fixtures; this score is illustrative and scoped to routing.",
-        "evidence_ids": ["routing-fixtures"]
+        "evidence_ids": ["routing-fixtures", "ast-route-boundary"]
       }
     ]
   },
