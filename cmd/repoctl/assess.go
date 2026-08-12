@@ -48,24 +48,16 @@ func writeNewAssessmentFile(path string, data []byte) error {
 		return fmt.Errorf("create assessment report: %w", err)
 	}
 
-	cleanup := true
-	defer func() {
-		if cleanup {
-			_ = file.Close()
-			_ = os.Remove(path)
-		}
-	}()
-
-	written, err := file.Write(data)
-	if err != nil {
-		return fmt.Errorf("write assessment report: %w", err)
+	written, writeErr := file.Write(data)
+	closeErr := file.Close()
+	if writeErr != nil {
+		return fmt.Errorf("write assessment report: %w; partially created file retained at %s", writeErr, path)
 	}
 	if written != len(data) {
-		return fmt.Errorf("write assessment report: short write %d of %d bytes", written, len(data))
+		return fmt.Errorf("write assessment report: short write %d of %d bytes; partially created file retained at %s", written, len(data), path)
 	}
-	if err := file.Close(); err != nil {
-		return fmt.Errorf("close assessment report: %w", err)
+	if closeErr != nil {
+		return fmt.Errorf("close assessment report: %w; created file retained at %s", closeErr, path)
 	}
-	cleanup = false
 	return nil
 }
