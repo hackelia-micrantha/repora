@@ -10,6 +10,7 @@ const helpText = `repoctl manages configured Git repository mirrors and validate
 Usage:
   repoctl <command> [options]
   repoctl validate-report FILE
+  repoctl list-findings FILE
   repoctl --help
   repoctl --version
 
@@ -19,6 +20,7 @@ Commands:
   apply    apply current observations or an exact plan artifact
   sync     alias for apply
   validate-report  validate a repository assessment report without mutation
+  list-findings    list validated assessment findings without mutation
   version  show embedded version and commit metadata
   help     show this help
 

@@ -6,7 +6,7 @@ Status: Current
 
 Repora assessment artifacts capture a point-in-time engineering review without replacing GitHub as the source of truth for code, issues, pull requests, commits, or work status.
 
-The assessment framework currently provides versioned contracts, templates, a concrete example, local validation, and a read-only `repoctl validate-report` command. Report generation, finding listing, score generation, repository mutation, pull-request creation, and CI enforcement remain outside the current slice.
+The assessment framework currently provides versioned contracts, templates, a concrete example, local validation, and read-only `repoctl validate-report` and `repoctl list-findings` commands. Report generation, score generation, repository mutation, pull-request creation, and CI enforcement remain outside the current slice.
 
 ## Artifact model
 
@@ -50,6 +50,20 @@ Supported finding types are:
 Severity is one of `critical`, `high`, `medium`, `low`, or `informational`.
 
 Finding status is one of `open`, `accepted`, `deferred`, `implemented`, or `rejected`. This status describes the finding inside the assessment artifact; it must not be used as a substitute for the live state of a linked GitHub issue or pull request.
+
+List findings from a validated report with:
+
+```sh
+repoctl list-findings path/to/assessment.json
+```
+
+`list-findings` validates the complete v1 report before producing output. Findings remain in report order; the command does not re-rank or infer priority. Each output row is tab-separated as:
+
+```text
+ID<TAB>SEVERITY<TAB>STATUS<TAB>TYPE<TAB>JSON-QUOTED-TITLE
+```
+
+Quoting the title keeps embedded tabs, newlines, quotes, or other escaped characters from changing row boundaries. A valid report with no findings exits successfully with no output. A separate stabilized JSON listing contract is intentionally deferred rather than implicitly exposing the in-memory Go representation.
 
 ## Evidence strength
 
@@ -101,7 +115,7 @@ That target exercises the same Go parser and validator used by the production co
 Issue #24 continues to own the broader assessment framework. Remaining follow-up work includes:
 
 - `repora assess` report skeleton generation;
-- `repora list-findings`;
 - `repora generate-scorecard`;
 - automated architecture/security/resume-evidence templates beyond the repository and QART skeletons;
+- a stabilized machine-readable `list-findings` projection if needed;
 - automatic repository mutation, PR creation, or CI policy enforcement.

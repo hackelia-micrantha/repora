@@ -17,17 +17,23 @@ func runValidateReport(args []string) int {
 		return 1
 	}
 
-	path := args[0]
-	data, err := os.ReadFile(path)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "repoctl: read assessment report: %v\n", err)
-		return 1
-	}
-	report, err := assessment.Parse(data)
+	report, err := loadAssessmentReport(args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "repoctl: %v\n", err)
 		return 1
 	}
 	fmt.Fprintf(os.Stdout, "valid assessment %s (%s)\n", report.ID, report.Snapshot.Revision.Commit)
 	return 0
+}
+
+func loadAssessmentReport(path string) (assessment.Report, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return assessment.Report{}, fmt.Errorf("read assessment report: %w", err)
+	}
+	report, err := assessment.Parse(data)
+	if err != nil {
+		return assessment.Report{}, err
+	}
+	return report, nil
 }
