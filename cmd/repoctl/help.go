@@ -12,6 +12,7 @@ Usage:
   repoctl validate-report FILE
   repoctl list-findings FILE
   repoctl generate-scorecard FILE
+  repoctl assess FILE
   repoctl --help
   repoctl --version
 
@@ -23,6 +24,7 @@ Commands:
   validate-report  validate a repository assessment report without mutation
   list-findings    list validated assessment findings without mutation
   generate-scorecard  render validated scorecard dimensions without recalculation
+  assess   create a new canonical assessment skeleton without overwriting files
   version  show embedded version and commit metadata
   help     show this help
 
