@@ -58,6 +58,7 @@ func TestPrintHelp(t *testing.T) {
 		"validate-report",
 		"list-findings",
 		"generate-scorecard",
+		"assess",
 		"-h, --help",
 	} {
 		if !strings.Contains(text, expected) {
