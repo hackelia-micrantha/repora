@@ -13,6 +13,7 @@ Use the smallest authoritative source that answers the question.
 | How do I install and verify a release? | [`release.md`](release.md) |
 | What is required to publish and verify a release? | [`release-checklist.md`](release-checklist.md) |
 | What security checks run and how are findings handled? | [`security-ci.md`](security-ci.md) |
+| How do repository assessments and evidence work? | [`assessments.md`](assessments.md) |
 | Why is there no v0.1 benchmark gate? | [`benchmarks.md`](benchmarks.md) |
 | How is the current implementation structured? | [`architecture/current-system.md`](architecture/current-system.md) |
 | How does multi-mirror status work? | [`architecture/multi-mirror-status.md`](architecture/multi-mirror-status.md) |
@@ -56,6 +57,7 @@ The RFC-0001 documentation set and `plans/implementation-plan-v0.1.md` predate s
 - **ADRs** own durable decisions and consequences; they do not act as project plans.
 - **Architecture documents** explain the current implementation and package ownership.
 - **Schemas** define machine-readable compatibility contracts.
+- **Assessment reports** capture point-in-time analysis and evidence; they reference GitHub state rather than replacing it.
 - **README files** provide orientation and current capability summaries, not detailed requirements.
 - **The changelog** records curated user-visible and compatibility changes; generated release notes provide commit and contributor detail.
 - **Release checklists** define accountable publication evidence but do not replace CI or implementation tests.
