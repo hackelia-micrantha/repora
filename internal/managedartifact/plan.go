@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	PlanKind        = "repora.io/managed-artifact-plan"
-	PlanVersion     = 1
+	PlanKind          = "repora.io/managed-artifact-plan"
+	PlanVersion       = 1
 	ActionWriteREADME = "WRITE_README"
-	READMEPath      = "README.md"
-	MaxDiffBytes    = 2*MaxTextBytes + 64*1024
+	READMEPath        = "README.md"
+	MaxDiffBytes      = 2*MaxTextBytes + 64*1024
 )
 
 var (
@@ -109,6 +109,8 @@ func (p Plan) Validate() error {
 	}
 
 	seenUIDs := make(map[string]struct{}, len(p.Repositories))
+	seenIDs := make(map[string]struct{}, len(p.Repositories))
+	seenTargets := make(map[string]struct{}, len(p.Repositories))
 	for i, repo := range p.Repositories {
 		if !validPlanIdentifier(repo.UID) || !validPlanIdentifier(repo.ID) {
 			return fmt.Errorf("repository %d requires valid uid and id", i)
@@ -117,9 +119,18 @@ func (p Plan) Validate() error {
 			return fmt.Errorf("duplicate managed artifact repository uid %q", repo.UID)
 		}
 		seenUIDs[repo.UID] = struct{}{}
+		if _, exists := seenIDs[repo.ID]; exists {
+			return fmt.Errorf("duplicate managed artifact repository id %q", repo.ID)
+		}
+		seenIDs[repo.ID] = struct{}{}
 		if err := validateTarget(repo.Target); err != nil {
 			return fmt.Errorf("repository %d target: %w", i, err)
 		}
+		targetKey := repo.Target.Provider + ":" + repo.Target.Path + "#" + repo.Target.Branch
+		if _, exists := seenTargets[targetKey]; exists {
+			return fmt.Errorf("duplicate managed artifact target %q", targetKey)
+		}
+		seenTargets[targetKey] = struct{}{}
 		if !planOIDPattern.MatchString(repo.BaseOID) {
 			return fmt.Errorf("repository %d base_oid must be a 40- or 64-character hexadecimal object ID", i)
 		}
@@ -227,7 +238,7 @@ func validatePlanProviderPath(value string) error {
 		return fmt.Errorf("provider path must include an owner or namespace")
 	}
 	for _, part := range parts {
-		if part == "" || part == "." || part == ".." || strings.ContainsAny(part, `\\:@?#`) || strings.ContainsAny(part, " \t\r\n") {
+		if part == "" || part == "." || part == ".." || strings.ContainsAny(part, `\:@?#`) || strings.ContainsAny(part, " \t\r\n") {
 			return fmt.Errorf("provider path contains an unsafe segment")
 		}
 	}
