@@ -92,7 +92,7 @@ func TestRenderREADMERejectsMalformedTokens(t *testing.T) {
 	}
 }
 
-func TestRenderREADMERejectsNULAndInvalidUTF8(t *testing.T) {
+func TestRenderREADMERejectsNULInvalidUTF8AndTerminalControls(t *testing.T) {
 	if _, err := RenderREADME([]byte{'a', 0, 'b'}, RenderData{}); err == nil {
 		t.Fatal("RenderREADME accepted NUL template")
 	}
@@ -101,6 +101,12 @@ func TestRenderREADMERejectsNULAndInvalidUTF8(t *testing.T) {
 	}
 	if _, err := RenderREADME([]byte("{{value.x}}"), RenderData{Values: map[string]string{"x": "a\x00b"}}); err == nil {
 		t.Fatal("RenderREADME accepted NUL replacement")
+	}
+	if _, err := RenderREADME([]byte("normal\x1b[31mred"), RenderData{}); err == nil || !strings.Contains(err.Error(), "control character") {
+		t.Fatalf("RenderREADME terminal-control error = %v", err)
+	}
+	if _, err := RenderREADME([]byte("{{value.x}}"), RenderData{Values: map[string]string{"x": "bell\a"}}); err == nil || !strings.Contains(err.Error(), "control character") {
+		t.Fatalf("RenderREADME replacement-control error = %v", err)
 	}
 }
 
