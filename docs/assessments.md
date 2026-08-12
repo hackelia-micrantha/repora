@@ -56,6 +56,21 @@ Use references for issues, pull requests, commits, files, or URLs. A report may 
 
 Every assessment must include the reviewed repository revision. A later repository state does not retroactively update an older assessment. Re-run or replace the assessment when freshness matters.
 
+## Persistence and redaction boundary
+
+Assessment artifacts are durable files, not ephemeral CLI output. Treat their storage and distribution as an explicit data-handling decision:
+
+- prefer repository-relative paths, commit SHAs, issue/PR references, and stable identifiers over absolute local paths or copied source;
+- do not embed secrets, credentials, tokens, private keys, credential-bearing URLs, or other authentication material as evidence;
+- avoid copying large source snippets when a file/commit reference is sufficient, especially when the referenced repository is private;
+- avoid recording private URLs or environment-specific filesystem paths unless they are necessary to the finding and appropriate for every intended reader;
+- keep private assessments in access-controlled storage; do not commit them to a public repository merely because the assessed repository has a public report format;
+- when sharing or publishing an assessment, redact sensitive values before distribution and preserve enough non-sensitive reference context for the claim to remain auditable.
+
+Redaction is a producer responsibility in v1. `repoctl assess`, `validate-report`, `list-findings`, and `generate-scorecard` do not inspect evidence for secrets or confidentiality, and schema validation proves structure rather than safe disclosure. A value such as `[redacted]` may be used in human-readable rationale when omission would make the evidence ambiguous; references should still identify the non-sensitive source artifact where possible.
+
+Because reports are point-in-time evidence, retaining an old report can also retain old sensitive metadata even after the underlying repository changes. Operators should apply the retention, access-control, and deletion policy appropriate to the report's contents rather than assuming a stale assessment is harmless.
+
 ## Findings
 
 Supported finding types are:
