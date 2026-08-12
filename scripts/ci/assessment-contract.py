@@ -8,6 +8,7 @@ import re
 import sys
 from pathlib import Path
 
+ASSESSMENT_SCOPES = {"quality", "architecture", "sdlc", "security", "operations", "documentation", "evidence"}
 FINDING_TYPES = {"question", "finding", "recommendation", "tradeoff", "risk", "gap", "overlap", "drift"}
 SEVERITIES = {"critical", "high", "medium", "low", "informational"}
 STATUSES = {"open", "accepted", "deferred", "implemented", "rejected"}
@@ -67,7 +68,12 @@ def validate_assessment(path: Path) -> None:
     require(isinstance(doc.get("id"), str) and ID_RE.fullmatch(doc["id"]), path, "invalid assessment id")
     require(isinstance(doc.get("title"), str) and doc["title"].strip(), path, "title is required")
     require(isinstance(doc.get("summary"), str) and doc["summary"].strip(), path, "summary is required")
-    require(isinstance(doc.get("scope"), list) and doc["scope"], path, "scope must be non-empty")
+
+    scope = doc.get("scope")
+    require(isinstance(scope, list) and scope, path, "scope must be non-empty")
+    require(all(isinstance(value, str) and value in ASSESSMENT_SCOPES for value in scope), path, "scope contains an unsupported value")
+    require(len(scope) == len(set(scope)), path, "scope values must be unique")
+
     validate_snapshot(path, doc.get("snapshot"))
 
     evidence = doc.get("evidence")
