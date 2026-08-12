@@ -14,13 +14,13 @@ Usage:
   repoctl --version
 
 Commands:
-  status           inspect canonical and mirror default-branch state
-  plan             show planned mirror updates or export an executable artifact
-  apply            apply current observations or an exact plan artifact
-  sync             alias for apply
+  status   inspect canonical and mirror default-branch state
+  plan     show planned mirror updates or export an executable artifact
+  apply    apply current observations or an exact plan artifact
+  sync     alias for apply
   validate-report  validate a repository assessment report without mutation
-  version          show embedded version and commit metadata
-  help             show this help
+  version  show embedded version and commit metadata
+  help     show this help
 
 Options for mirror commands:
   -f string
