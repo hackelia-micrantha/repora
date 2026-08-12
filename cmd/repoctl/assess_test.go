@@ -63,6 +63,25 @@ func TestAssessRefusesToOverwriteExistingFile(t *testing.T) {
 	}
 }
 
+func TestAssessDoesNotCreateParentDirectories(t *testing.T) {
+	parent := filepath.Join(t.TempDir(), "missing", "nested")
+	path := filepath.Join(parent, "assessment.json")
+
+	var stderr bytes.Buffer
+	code := withStderr(t, &stderr, func() int {
+		return run([]string{"assess", path})
+	})
+	if code != 1 {
+		t.Fatalf("run returned %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "create assessment report") {
+		t.Fatalf("stderr = %q, want create error", stderr.String())
+	}
+	if _, err := os.Stat(parent); !os.IsNotExist(err) {
+		t.Fatalf("parent directory unexpectedly exists or stat error = %v", err)
+	}
+}
+
 func TestAssessRequiresExactlyOneFile(t *testing.T) {
 	var stderr bytes.Buffer
 	code := withStderr(t, &stderr, func() int {
