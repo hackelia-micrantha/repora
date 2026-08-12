@@ -26,13 +26,14 @@ type matcher struct {
 }
 
 type route struct {
-	ID       string   `yaml:"id"`
-	Class    string   `yaml:"class"`
-	Priority int      `yaml:"priority"`
-	When     matcher  `yaml:"when"`
-	Include  []string `yaml:"include"`
-	Exclude  []string `yaml:"exclude"`
-	Budget   budget   `yaml:"budget"`
+	ID           string   `yaml:"id"`
+	Class        string   `yaml:"class"`
+	Priority     int      `yaml:"priority"`
+	When         matcher  `yaml:"when"`
+	TrustInclude []string `yaml:"trust_include"`
+	Include      []string `yaml:"include"`
+	Exclude      []string `yaml:"exclude"`
+	Budget       budget   `yaml:"budget"`
 }
 
 type fallback struct {
@@ -64,13 +65,14 @@ type fixtureFile struct {
 }
 
 type fixture struct {
-	Name           string   `json:"name"`
-	Query          string   `json:"query"`
-	ExpectRoutes   []string `json:"expect_routes"`
-	ExpectFallback string   `json:"expect_fallback,omitempty"`
-	ExpectInclude  []string `json:"expect_include,omitempty"`
-	ExpectExclude  []string `json:"expect_exclude,omitempty"`
-	ExpectBudget   *budget  `json:"expect_budget,omitempty"`
+	Name               string   `json:"name"`
+	Query              string   `json:"query"`
+	ExpectRoutes       []string `json:"expect_routes"`
+	ExpectFallback     string   `json:"expect_fallback,omitempty"`
+	ExpectTrustInclude []string `json:"expect_trust_include,omitempty"`
+	ExpectInclude      []string `json:"expect_include,omitempty"`
+	ExpectExclude      []string `json:"expect_exclude,omitempty"`
+	ExpectBudget       *budget  `json:"expect_budget,omitempty"`
 }
 
 func main() {
@@ -179,15 +181,18 @@ func validateCase(r router, tc fixture) error {
 		if tc.ExpectFallback != fb.ID {
 			return fmt.Errorf("fallback: got %q, want %q", fb.ID, tc.ExpectFallback)
 		}
-		return validateSelection(fb.Include, fb.Exclude, fb.Budget, tc)
+		return validateSelection(nil, fb.Include, fb.Exclude, fb.Budget, tc)
 	}
 	if tc.ExpectFallback != "" {
 		return errors.New("fixture expects fallback despite matched routes")
 	}
-	return validateSelection(matched[0].Include, matched[0].Exclude, matched[0].Budget, tc)
+	return validateSelection(matched[0].TrustInclude, matched[0].Include, matched[0].Exclude, matched[0].Budget, tc)
 }
 
-func validateSelection(include, exclude []string, b budget, tc fixture) error {
+func validateSelection(trustInclude, include, exclude []string, b budget, tc fixture) error {
+	if !equalStrings(trustInclude, tc.ExpectTrustInclude) {
+		return fmt.Errorf("trust_include: got %v, want %v", trustInclude, tc.ExpectTrustInclude)
+	}
 	if len(tc.ExpectInclude) > 0 && !equalStrings(include, tc.ExpectInclude) {
 		return fmt.Errorf("include: got %v, want %v", include, tc.ExpectInclude)
 	}
