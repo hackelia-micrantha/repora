@@ -181,6 +181,21 @@ func TestPlanRejectsNoOpREADMEAction(t *testing.T) {
 }
 
 func TestPlanRejectsUnsafeIdentityAndReviewDiff(t *testing.T) {
+	for name, mutate := range map[string]func(*Plan){
+		"uid whitespace":      func(plan *Plan) { plan.Repositories[0].UID = " repo.repora" },
+		"provider whitespace": func(plan *Plan) { plan.Repositories[0].Target.Provider = "gitlab " },
+		"path whitespace":     func(plan *Plan) { plan.Repositories[0].Target.Path = " micrantha/repora" },
+		"branch whitespace":   func(plan *Plan) { plan.Repositories[0].Target.Branch = "main " },
+	} {
+		t.Run(name, func(t *testing.T) {
+			plan := validManagedPlan()
+			mutate(&plan)
+			if err := plan.Validate(); err == nil {
+				t.Fatal("Validate() accepted non-canonical whitespace")
+			}
+		})
+	}
+
 	t.Run("provider path", func(t *testing.T) {
 		plan := validManagedPlan()
 		plan.Repositories[0].Target.Path = "micrantha/repo name"
