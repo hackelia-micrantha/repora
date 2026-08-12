@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/evidence-v1.schema.json",
+  "title": "Repora Evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "id", "category", "strength", "claim", "rationale", "references"],
+  "properties": {
+    "kind": {"const": "repora.evidence"},
+    "version": {"const": 1},
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "category": {
+      "enum": ["architecture", "security", "testing", "devops", "observability", "backend", "mobile", "frontend", "platform", "ai", "leadership", "mentorship"]
+    },
+    "strength": {"enum": ["strong", "moderate", "weak", "unsupported"]},
+    "claim": {"type": "string", "minLength": 1},
+    "rationale": {"type": "string", "minLength": 1},
+    "references": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/reference"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"strength": {"not": {"const": "unsupported"}}}},
+      "then": {"properties": {"references": {"minItems": 1}}}
+    }
+  ],
+  "$defs": {
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "value"],
+      "properties": {
+        "type": {"enum": ["issue", "pull_request", "commit", "file", "url"]},
+        "value": {"type": "string", "minLength": 1},
+        "note": {"type": "string"}
+      }
+    }
+  }
+}
