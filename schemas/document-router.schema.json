@@ -5,85 +5,50 @@
   "type": "object",
   "required": ["version", "kind", "routes"],
   "properties": {
-    "version": {
-      "type": "integer",
-      "minimum": 1
-    },
-    "kind": {
-      "const": "document-router"
-    },
-    "defaults": {
-      "$ref": "#/$defs/budgetConfig"
-    },
-    "routes": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/route"
-      }
-    },
-    "fallbacks": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/route"
-      }
-    }
+    "version": {"type": "integer", "minimum": 1},
+    "kind": {"const": "document-router"},
+    "defaults": {"$ref": "#/$defs/budgetConfig"},
+    "routes": {"type": "array", "items": {"$ref": "#/$defs/route"}},
+    "fallbacks": {"type": "array", "items": {"$ref": "#/$defs/route"}}
   },
   "$defs": {
     "budgetConfig": {
       "type": "object",
       "properties": {
-        "max_files": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "max_bytes": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "max_tokens_hint": {
-          "type": "integer",
-          "minimum": 1
-        }
+        "max_files": {"type": "integer", "minimum": 1},
+        "max_bytes": {"type": "integer", "minimum": 1},
+        "max_tokens_hint": {"type": "integer", "minimum": 1}
+      }
+    },
+    "sourceSelectors": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "language": {"const": "go"},
+        "packages": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "symbols": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "commands": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "files": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
       }
     },
     "route": {
       "type": "object",
       "required": ["id", "include"],
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "class": {
-          "type": "string"
-        },
-        "priority": {
-          "type": "integer"
-        },
-        "when": {
-          "type": "object"
-        },
+        "id": {"type": "string"},
+        "class": {"type": "string"},
+        "priority": {"type": "integer"},
+        "when": {"type": "object"},
         "trust_include": {
           "type": "array",
           "uniqueItems": true,
-          "items": {
-            "enum": ["canonical", "implementation", "generated", "experimental", "archived", "external"]
-          }
+          "items": {"enum": ["canonical", "implementation", "generated", "experimental", "archived", "external"]}
         },
-        "include": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "exclude": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "budget": {
-          "$ref": "#/$defs/budgetConfig"
-        }
+        "source_selectors": {"$ref": "#/$defs/sourceSelectors"},
+        "include": {"type": "array", "items": {"type": "string"}},
+        "exclude": {"type": "array", "items": {"type": "string"}},
+        "budget": {"$ref": "#/$defs/budgetConfig"}
       }
     }
   }
