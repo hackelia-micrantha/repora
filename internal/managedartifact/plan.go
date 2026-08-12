@@ -229,8 +229,7 @@ func validateTarget(target Target) error {
 }
 
 func validatePlanProviderPath(value string) error {
-	value = strings.TrimSpace(value)
-	if value == "" || strings.HasPrefix(value, "/") || strings.HasSuffix(value, "/") {
+	if value == "" || value != strings.TrimSpace(value) || strings.HasPrefix(value, "/") || strings.HasSuffix(value, "/") {
 		return fmt.Errorf("provider path contains an unsafe segment")
 	}
 	parts := strings.Split(value, "/")
@@ -246,11 +245,10 @@ func validatePlanProviderPath(value string) error {
 }
 
 func validatePlanBranch(branch string) error {
-	branch = strings.TrimSpace(branch)
-	if branch == "" || strings.HasPrefix(branch, "/") || strings.HasSuffix(branch, "/") || strings.HasSuffix(branch, ".") || strings.Contains(branch, "..") || strings.Contains(branch, "//") || strings.Contains(branch, "@{") {
+	if branch == "" || branch != strings.TrimSpace(branch) || strings.HasPrefix(branch, "/") || strings.HasSuffix(branch, "/") || strings.HasSuffix(branch, ".") || strings.Contains(branch, "..") || strings.Contains(branch, "//") || strings.Contains(branch, "@{") {
 		return fmt.Errorf("branch is not a valid symbolic ref name")
 	}
-	if strings.ContainsAny(branch, " ~^:?*[\\") {
+	if strings.ContainsAny(branch, " \t\r\n~^:?*[\\") {
 		return fmt.Errorf("branch is not a valid symbolic ref name")
 	}
 	for _, segment := range strings.Split(branch, "/") {
@@ -306,8 +304,7 @@ func validGitMode(mode string) bool {
 }
 
 func validPlanIdentifier(value string) bool {
-	value = strings.TrimSpace(value)
-	return value != "" && planIdentifierPattern.MatchString(value)
+	return value != "" && value == strings.TrimSpace(value) && planIdentifierPattern.MatchString(value)
 }
 
 func DigestSHA256(data []byte) string {
@@ -337,13 +334,11 @@ func walkPlanNulls(value any, path string) error {
 			if err := walkPlanNulls(current[key], path+"."+key); err != nil {
 				return err
 			}
-		}
 	case []any:
 		for i, child := range current {
 			if err := walkPlanNulls(child, fmt.Sprintf("%s[%d]", path, i)); err != nil {
 				return err
 			}
-		}
 	}
 	return nil
 }
