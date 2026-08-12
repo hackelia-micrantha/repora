@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -12,21 +14,33 @@ import (
 	"repoctl/internal/refpolicy"
 )
 
+var artifactValueKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9._-]*$`)
+
 type Spec struct {
 	Repos []Repo `json:"repos" yaml:"repos"`
 }
 
 type Repo struct {
-	ID        string           `json:"id" yaml:"id"`
-	UID       string           `json:"uid" yaml:"uid"`
-	Canonical Endpoint         `json:"canonical" yaml:"canonical"`
-	Mirrors   []Endpoint       `json:"mirrors" yaml:"mirrors"`
-	Mode      string           `json:"mode" yaml:"mode"`
-	Policy    RepositoryPolicy `json:"policy,omitempty" yaml:"policy,omitempty"`
+	ID        string              `json:"id" yaml:"id"`
+	UID       string              `json:"uid" yaml:"uid"`
+	Canonical Endpoint            `json:"canonical" yaml:"canonical"`
+	Mirrors   []Endpoint          `json:"mirrors" yaml:"mirrors"`
+	Mode      string              `json:"mode" yaml:"mode"`
+	Policy    RepositoryPolicy    `json:"policy,omitempty" yaml:"policy,omitempty"`
+	Artifacts RepositoryArtifacts `json:"artifacts,omitempty" yaml:"artifacts,omitempty"`
 }
 
 type RepositoryPolicy struct {
 	Refs refpolicy.Policy `json:"refs,omitempty" yaml:"refs,omitempty"`
+}
+
+type RepositoryArtifacts struct {
+	Readme *ReadmeArtifact `json:"readme,omitempty" yaml:"readme,omitempty"`
+}
+
+type ReadmeArtifact struct {
+	Template string            `json:"template" yaml:"template"`
+	Values   map[string]string `json:"values,omitempty" yaml:"values,omitempty"`
 }
 
 type Endpoint struct {
@@ -134,7 +148,50 @@ func validate(spec Spec) error {
 			return fmt.Errorf("invalid ref policy for repo %q: %w", repo.ID, err)
 		}
 		repo.Policy.Refs = policy
+		if err := validateArtifacts(&repo, i); err != nil {
+			return err
+		}
 		spec.Repos[i] = repo
+	}
+	return nil
+}
+
+func validateArtifacts(repo *Repo, index int) error {
+	readme := repo.Artifacts.Readme
+	if readme == nil {
+		return nil
+	}
+
+	readme.Template = strings.TrimSpace(readme.Template)
+	if err := validateArtifactTemplatePath(readme.Template); err != nil {
+		return fmt.Errorf("invalid README artifact template for repo %q at repos[%d]: %w", repo.ID, index, err)
+	}
+	for key, value := range readme.Values {
+		if !artifactValueKeyPattern.MatchString(key) {
+			return fmt.Errorf("invalid README artifact value key %q for repo %q", key, repo.ID)
+		}
+		if strings.ContainsRune(value, '\x00') {
+			return fmt.Errorf("README artifact value %q for repo %q contains NUL", key, repo.ID)
+		}
+	}
+	return nil
+}
+
+func validateArtifactTemplatePath(value string) error {
+	if value == "" {
+		return fmt.Errorf("template path is required")
+	}
+	if strings.ContainsAny(value, "\\:\x00\r\n\t") || strings.HasPrefix(value, "/") || strings.HasPrefix(value, "~") {
+		return fmt.Errorf("template path must be a portable configuration-root-relative path")
+	}
+	clean := path.Clean(value)
+	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") || clean != value {
+		return fmt.Errorf("template path must not contain traversal or redundant segments")
+	}
+	for _, segment := range strings.Split(clean, "/") {
+		if segment == "" || segment == "." || segment == ".." {
+			return fmt.Errorf("template path contains an invalid segment")
+		}
 	}
 	return nil
 }
