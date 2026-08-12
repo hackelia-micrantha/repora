@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -151,8 +152,13 @@ func walkNulls(value any, path string) error {
 	case nil:
 		return fmt.Errorf("assessment field %s must not be null", path)
 	case map[string]any:
-		for key, child := range current {
-			if err := walkNulls(child, path+"."+key); err != nil {
+		keys := make([]string, 0, len(current))
+		for key := range current {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			if err := walkNulls(current[key], path+"."+key); err != nil {
 				return err
 			}
 		}
@@ -161,7 +167,6 @@ func walkNulls(value any, path string) error {
 			if err := walkNulls(child, fmt.Sprintf("%s[%d]", path, i)); err != nil {
 				return err
 			}
-		}
 	}
 	return nil
 }
