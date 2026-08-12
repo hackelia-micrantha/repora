@@ -77,12 +77,12 @@ func TestRenderREADMERejectsUnknownMissingAndMalformedPlaceholders(t *testing.T)
 		Values:            map[string]string{"title": "Repora"},
 	}
 	for name, template := range map[string]string{
-		"unknown":   "{{repo.name}}",
-		"missing":   "{{value.summary}}",
-		"unclosed":  "{{value.title",
+		"unknown":    "{{repo.name}}",
+		"missing":    "{{value.summary}}",
+		"unclosed":   "{{value.title",
 		"close-only": "value.title}}",
 		"whitespace": "{{ value.title }}",
-		"nested":    "{{value.{{title}}}}",
+		"nested":     "{{value.{{title}}}}",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := RenderREADME([]byte(template), context); err == nil {
