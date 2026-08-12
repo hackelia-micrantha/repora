@@ -6,6 +6,7 @@
       "name": "overview class loads summary first",
       "query": "Give me a quickstart overview of repoctl",
       "expect_routes": ["summary-docs", "repo-overview"],
+      "expect_trust_include": ["generated"],
       "expect_include": ["docs/SUMMARY.md"],
       "expect_budget": {"max_files": 1, "max_bytes": 12000, "max_tokens_hint": 1200}
     },
@@ -13,6 +14,7 @@
       "name": "architecture class loads summary first",
       "query": "Explain planner and executor architecture",
       "expect_routes": ["summary-architecture", "architecture-core"],
+      "expect_trust_include": ["generated"],
       "expect_include": ["docs/architecture/SUMMARY.md"],
       "expect_budget": {"max_files": 1, "max_bytes": 12000, "max_tokens_hint": 1200}
     },
@@ -26,6 +28,7 @@
       "name": "configuration class loads schema summary first",
       "query": "Show the YAML configuration schema",
       "expect_routes": ["summary-schema", "config-and-schema"],
+      "expect_trust_include": ["generated"],
       "expect_include": ["schemas/SUMMARY.md"],
       "expect_budget": {"max_files": 1, "max_bytes": 12000, "max_tokens_hint": 1200}
     },
@@ -33,6 +36,7 @@
       "name": "prompts class loads routing summary first",
       "query": "How does the document router reduce token usage?",
       "expect_routes": ["summary-routing", "prompts-and-routing"],
+      "expect_trust_include": ["generated"],
       "expect_include": ["docs/routing/SUMMARY.md"],
       "expect_budget": {"max_files": 1, "max_bytes": 12000, "max_tokens_hint": 1200}
     },
@@ -45,17 +49,20 @@
     {
       "name": "priority ordering across matches includes summaries first",
       "query": "Review configuration schema architecture and release workflow",
-      "expect_routes": ["summary-architecture", "summary-schema", "config-and-schema", "architecture-core", "operations-and-workflows"]
+      "expect_routes": ["summary-architecture", "summary-schema", "config-and-schema", "architecture-core", "operations-and-workflows"],
+      "expect_trust_include": ["generated"]
     },
     {
       "name": "lexicographic tie break",
       "query": "Review architecture security policy",
-      "expect_routes": ["summary-architecture", "architecture-core", "policy-and-governance"]
+      "expect_routes": ["summary-architecture", "architecture-core", "policy-and-governance"],
+      "expect_trust_include": ["generated"]
     },
     {
       "name": "explicit docs summary route",
       "query": "Show the documentation summary",
       "expect_routes": ["summary-docs", "repo-overview"],
+      "expect_trust_include": ["generated"],
       "expect_include": ["docs/SUMMARY.md"],
       "expect_budget": {"max_files": 1, "max_bytes": 12000, "max_tokens_hint": 1200}
     },
