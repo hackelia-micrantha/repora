@@ -11,12 +11,28 @@
       "expect_budget": {"max_files": 1, "max_bytes": 12000, "max_tokens_hint": 1200}
     },
     {
-      "name": "architecture class loads summary first",
+      "name": "architecture class loads summary then source refinement",
       "query": "Explain planner and executor architecture",
-      "expect_routes": ["summary-architecture", "architecture-core"],
+      "expect_routes": ["summary-architecture", "source-plan-go", "architecture-core"],
       "expect_trust_include": ["generated"],
       "expect_include": ["docs/architecture/SUMMARY.md"],
       "expect_budget": {"max_files": 1, "max_bytes": 12000, "max_tokens_hint": 1200}
+    },
+    {
+      "name": "explicit planner source route",
+      "query": "Show Reconcile implementation",
+      "expect_routes": ["source-plan-go"],
+      "expect_include": ["internal/plan/**"],
+      "expect_exclude": ["internal/plan/*_test.go"],
+      "expect_budget": {"max_files": 4, "max_bytes": 50000, "max_tokens_hint": 5000}
+    },
+    {
+      "name": "explicit command entrypoint source route",
+      "query": "Show command entrypoint",
+      "expect_routes": ["source-repoctl-command"],
+      "expect_include": ["cmd/repoctl/**"],
+      "expect_exclude": ["cmd/repoctl/*_test.go"],
+      "expect_budget": {"max_files": 4, "max_bytes": 50000, "max_tokens_hint": 5000}
     },
     {
       "name": "policy class",
