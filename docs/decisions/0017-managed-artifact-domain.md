@@ -26,8 +26,9 @@ Repora introduces a separate managed-artifact domain with these v1 boundaries:
 - Configuration grants Repora ownership only of the configured README artifact.
 - Templates are local, configuration-root-relative inputs. Remote templates, absolute template paths, repository-escaping paths, and credential-bearing sources are forbidden.
 - Rendering is deterministic, non-executable token replacement. V1 has no functions, conditionals, loops, includes, environment expansion, shell execution, plugin hooks, or recursive evaluation.
+- Existing README state must be absent or a regular Git blob. Symlink, submodule, tree, or other non-regular entries at `README.md` fail planning rather than being silently replaced.
 - Managed artifact plans use their own versioned artifact kind rather than extending `repora.io/reconciliation-plan`.
-- Real apply requires a reviewed exact managed-artifact plan and revalidates repository and content preconditions before remote mutation.
+- Real apply requires a reviewed exact managed-artifact plan and revalidates repository, Git mode, and content preconditions before remote mutation.
 - Managed artifact apply changes the canonical default branch only. Mirror reconciliation is always re-planned afterward as a separate operation.
 
 ## Configuration shape
@@ -66,7 +67,7 @@ V1 recognizes only exact placeholders:
 
 Rendering is a single pass. Rendered values are data and are not interpreted again as templates. Unknown placeholders fail planning. Template and value line endings are normalized to LF before rendering so identical logical inputs do not depend on host checkout settings.
 
-The implementation must impose a bounded template/output size. V1 should use a conservative fixed limit suitable for README text rather than accepting unbounded input.
+Template input and observed README content must be valid UTF-8 text without NUL bytes. The implementation must impose a bounded template/output size; v1 should use a conservative fixed limit suitable for README text rather than accepting unbounded input.
 
 ## Domain-specific plan artifact
 
@@ -90,14 +91,16 @@ RepositoryPlan {
 ArtifactAction {
   type: WRITE_README
   path: README.md
-  observed: present + sha256
-  desired: sha256 + UTF-8 content
+  observed: present + git_mode + sha256
+  desired: git_mode + sha256 + UTF-8 content
   template_sha256: sha256
   diff: deterministic unified text diff
 }
 ```
 
-The artifact contains no template filesystem path, cache path, resolved transport URL, credential, environment value, author identity, or timestamp. The same topology, template bytes, values, canonical head, and observed README content must produce byte-identical plan serialization.
+For an existing regular README, desired Git mode is the exact observed regular-file mode so content management does not silently change executable state. A newly created README uses Git mode `100644`.
+
+The artifact contains no template filesystem path, cache path, resolved transport URL, credential, environment value, author identity, or timestamp. The same topology, template bytes, values, canonical head, and observed README mode/content must produce byte-identical plan serialization.
 
 ## Plan and apply semantics
 
@@ -106,21 +109,24 @@ Planning is read-only:
 1. load and validate configuration;
 2. resolve the canonical repository;
 3. observe the exact canonical default-branch OID;
-4. read `README.md` from that Git tree without modifying a user worktree;
-5. render the desired README deterministically;
-6. emit no action when bytes are already equal;
-7. otherwise emit exact content digests, desired content, and a deterministic unified diff.
+4. inspect root `README.md` in that Git tree without modifying a user worktree;
+5. if present, require a regular blob mode (`100644` or `100755`) and valid bounded UTF-8 text; preserve that mode as desired mode;
+6. if absent, use desired mode `100644`;
+7. render the desired README deterministically;
+8. emit no action when content bytes are already equal;
+9. otherwise emit exact mode/content preconditions, digests, desired content, and a deterministic unified diff.
 
 Apply consumes the reviewed artifact rather than re-rendering the template. Before any remote mutation it must:
 
 - validate artifact kind/version and repository identity;
 - require the configured canonical provider/path and default branch to match the plan;
 - require current canonical HEAD to equal `base_oid`;
-- require current README presence/content digest to equal the observed state;
-- validate the desired content digest and fixed `README.md` path;
+- require current README presence, Git mode, and content digest to equal the observed state;
+- require absent README state to remain absent;
+- validate the desired mode, content digest, and fixed `README.md` path;
 - fail closed before push on any stale or invalid input.
 
-Execution must use isolated Git plumbing or an isolated temporary work area, never mutate an unrelated user checkout. The new commit must be a direct child of the reviewed base commit and update only root `README.md`. Remote publication must retain an exact expected-head guard. Commit metadata is execution evidence, not part of deterministic planning.
+Execution must use isolated Git plumbing or an isolated temporary work area, never mutate an unrelated user checkout. The new commit must be a direct child of the reviewed base commit and update only root `README.md` content while preserving reviewed regular-file mode. Remote publication must retain an exact expected-head guard. Commit metadata is execution evidence, not part of deterministic planning.
 
 Dry-run performs the same artifact validation and stale preflight but creates no commit and pushes nothing.
 
@@ -148,7 +154,7 @@ Managed artifact results must expose enough evidence to explain the effect:
 - canonical provider/path/branch;
 - reviewed base OID;
 - resulting commit OID on success;
-- observed and desired README digests;
+- observed and desired README Git mode and content digests;
 - applied, stale, skipped, or failed outcome;
 - sanitized error when applicable.
 
@@ -161,9 +167,10 @@ There is no automatic rollback. Recovery from stale input or failed publication 
 - No configurable output path in v1.
 - No arbitrary file deletion or generation.
 - No mutation when README management is absent.
+- No replacement of symlink, submodule, tree, or non-text README state as if it were an ordinary text file.
 - No persistence of local template/cache paths in plan artifacts.
 - No credentials, tokenized URLs, environment values, or Git command lines in plans.
-- Exact canonical-head and content-digest preconditions fail closed on stale state.
+- Exact canonical-head, Git-mode, and content-digest preconditions fail closed on stale state.
 - Apply never mutates a user checkout implicitly.
 
 ## Alternatives rejected
@@ -192,6 +199,7 @@ Rejected. Content apply changes canonical HEAD and invalidates mirror observatio
 - The managed path and template language are narrowly bounded.
 - Plan review remains exact and deterministic.
 - Existing repositories remain unchanged by default.
+- Git file mode cannot change invisibly as a side effect of content management.
 - Future artifact types require explicit design review.
 
 ### Costs
