@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "kind": "go-ast-route-tests",
+  "cases": [
+    {
+      "name": "plan package and Reconcile symbol",
+      "selectors": {
+        "packages": ["internal/plan"],
+        "symbols": ["Reconcile"]
+      },
+      "expect_paths": ["internal/plan/plan.go"],
+      "expect_reasons": {
+        "internal/plan/plan.go": ["package:internal/plan", "symbol:Reconcile"]
+      }
+    },
+    {
+      "name": "plan package and ReconciliationPlan symbol",
+      "selectors": {
+        "packages": ["internal/plan"],
+        "symbols": ["ReconciliationPlan"]
+      },
+      "expect_paths": ["internal/plan/plan.go"],
+      "expect_reasons": {
+        "internal/plan/plan.go": ["package:internal/plan", "symbol:ReconciliationPlan"]
+      }
+    },
+    {
+      "name": "repoctl command entrypoint",
+      "selectors": {
+        "commands": ["repoctl"],
+        "files": ["cmd/repoctl/*.go"]
+      },
+      "expect_paths": ["cmd/repoctl/main.go"],
+      "expect_reasons": {
+        "cmd/repoctl/main.go": ["command:repoctl", "file:cmd/repoctl/*.go"]
+      }
+    }
+  ]
+}
