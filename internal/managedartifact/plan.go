@@ -364,6 +364,7 @@ func walkPlanNulls(value any, path string) error {
 			if err := walkPlanNulls(child, fmt.Sprintf("%s[%d]", path, i)); err != nil {
 				return err
 			}
+		}
 	}
 	return nil
 }
