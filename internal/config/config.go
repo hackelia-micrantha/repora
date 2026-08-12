@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -17,16 +18,26 @@ type Spec struct {
 }
 
 type Repo struct {
-	ID        string           `json:"id" yaml:"id"`
-	UID       string           `json:"uid" yaml:"uid"`
-	Canonical Endpoint         `json:"canonical" yaml:"canonical"`
-	Mirrors   []Endpoint       `json:"mirrors" yaml:"mirrors"`
-	Mode      string           `json:"mode" yaml:"mode"`
-	Policy    RepositoryPolicy `json:"policy,omitempty" yaml:"policy,omitempty"`
+	ID        string              `json:"id" yaml:"id"`
+	UID       string              `json:"uid" yaml:"uid"`
+	Canonical Endpoint            `json:"canonical" yaml:"canonical"`
+	Mirrors   []Endpoint          `json:"mirrors" yaml:"mirrors"`
+	Mode      string              `json:"mode" yaml:"mode"`
+	Policy    RepositoryPolicy    `json:"policy,omitempty" yaml:"policy,omitempty"`
+	Artifacts RepositoryArtifacts `json:"artifacts,omitempty" yaml:"artifacts,omitempty"`
 }
 
 type RepositoryPolicy struct {
 	Refs refpolicy.Policy `json:"refs,omitempty" yaml:"refs,omitempty"`
+}
+
+type RepositoryArtifacts struct {
+	README *READMEArtifact `json:"readme,omitempty" yaml:"readme,omitempty"`
+}
+
+type READMEArtifact struct {
+	Template string            `json:"template" yaml:"template"`
+	Values   map[string]string `json:"values,omitempty" yaml:"values,omitempty"`
 }
 
 type Endpoint struct {
@@ -34,6 +45,8 @@ type Endpoint struct {
 	Path     string `json:"path,omitempty" yaml:"path,omitempty"`
 	URL      string `json:"url,omitempty" yaml:"url,omitempty"`
 }
+
+var artifactValueKeyPattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*$`)
 
 func (r Repo) DurableID() string {
 	if r.UID != "" {
@@ -129,12 +142,51 @@ func validate(spec Spec) error {
 		if repo.Mode != "mirror" {
 			return fmt.Errorf("unsupported mode %q for repo %q: only mirror is supported", repo.Mode, repo.ID)
 		}
+		if err := validateArtifacts(repo.Artifacts, repo.ID); err != nil {
+			return err
+		}
 		policy, err := repo.EffectiveRefPolicy()
 		if err != nil {
 			return fmt.Errorf("invalid ref policy for repo %q: %w", repo.ID, err)
 		}
 		repo.Policy.Refs = policy
 		spec.Repos[i] = repo
+	}
+	return nil
+}
+
+func validateArtifacts(artifacts RepositoryArtifacts, repoID string) error {
+	if artifacts.README == nil {
+		return nil
+	}
+	template := strings.TrimSpace(artifacts.README.Template)
+	if template == "" {
+		return fmt.Errorf("artifacts.readme.template is required for repo %q", repoID)
+	}
+	if err := validateArtifactTemplatePath(template); err != nil {
+		return fmt.Errorf("invalid artifacts.readme.template for repo %q: %w", repoID, err)
+	}
+	artifacts.README.Template = template
+	for key, value := range artifacts.README.Values {
+		if !artifactValueKeyPattern.MatchString(key) {
+			return fmt.Errorf("invalid artifacts.readme.values key %q for repo %q", key, repoID)
+		}
+		if strings.ContainsRune(value, '\x00') {
+			return fmt.Errorf("artifacts.readme.values[%q] contains NUL for repo %q", key, repoID)
+		}
+	}
+	return nil
+}
+
+func validateArtifactTemplatePath(template string) error {
+	if strings.Contains(template, "\\") || strings.Contains(template, ":") || strings.HasPrefix(template, "/") || strings.HasSuffix(template, "/") {
+		return fmt.Errorf("template path must be a portable relative path")
+	}
+	parts := strings.Split(template, "/")
+	for _, part := range parts {
+		if part == "" || part == "." || part == ".." {
+			return fmt.Errorf("template path contains an unsafe segment")
+		}
 	}
 	return nil
 }
