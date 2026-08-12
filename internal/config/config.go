@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -169,7 +170,13 @@ func validateArtifacts(repo *Repo, index int) error {
 	if err := validateArtifactTemplatePath(readme.Template); err != nil {
 		return fmt.Errorf("invalid README artifact template for repo %q at repos[%d]: %w", repo.ID, index, err)
 	}
-	for key, value := range readme.Values {
+	keys := make([]string, 0, len(readme.Values))
+	for key := range readme.Values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		value := readme.Values[key]
 		if !artifactValueKeyPattern.MatchString(key) {
 			return fmt.Errorf("invalid README artifact value key %q for repo %q", key, repo.ID)
 		}
