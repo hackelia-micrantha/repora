@@ -54,6 +54,32 @@ func TestLoadRejectsUnknownArtifactType(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsREADMEArtifactWithLegacyCanonicalURL(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "repora.yaml")
+	content := `repos:
+  - id: repora
+    uid: repo.repora
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:micrantha/repora.git
+    mirrors:
+      - provider: github
+        url: git@github.com:hackelia-micrantha/repora.git
+    mode: mirror
+    artifacts:
+      readme:
+        template: templates/README.md.tmpl
+`
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := Load(path)
+	if err == nil || !strings.Contains(err.Error(), "requires provider/path canonical identity") {
+		t.Fatalf("Load() error = %v, want provider/path identity rejection", err)
+	}
+}
+
 func TestLoadRejectsUnsafeREADMEArtifactTemplatePaths(t *testing.T) {
 	for _, template := range []string{
 		"",
