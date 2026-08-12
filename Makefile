@@ -4,9 +4,9 @@ BUILD_LDFLAGS ?= -X main.version=$(VERSION) -X main.commit=$(COMMIT)
 GITLEAKS_VERSION ?= v8.30.1
 GO_LICENSES_VERSION ?= v1.6.0
 
-.PHONY: check format-check module-check vet test coverage integration route-test receipt-test e2e build build-target build-all workflow-check deep-repeat deep-integration security-secrets security-licenses release-package release-verify
+.PHONY: check format-check module-check vet test coverage integration route-test receipt-test assessment-test e2e build build-target build-all workflow-check deep-repeat deep-integration security-secrets security-licenses release-package release-verify
 
-check: format-check module-check vet test integration route-test receipt-test e2e build
+check: format-check module-check vet test integration route-test receipt-test assessment-test e2e build
 
 format-check:
 	@files="$$(find . -name '*.go' -not -path './.git/*' -exec gofmt -l {} +)"; \
@@ -46,6 +46,12 @@ receipt-test:
 	python3 ./scripts/ci/context-receipt.py \
 		./examples/context-receipt-v1.json
 	python3 -m unittest discover -s scripts/ci -p 'test_context_receipt.py'
+
+assessment-test:
+	python3 ./scripts/ci/assessment-contract.py \
+		./examples/repository-assessment-v1.json \
+		./templates/assessments/repository-assessment-v1.json \
+		./templates/assessments/qart-review-v1.json
 
 deep-repeat:
 	REPEAT_COUNT="$${REPEAT_COUNT:-10}" bash ./scripts/ci/repeat-tests.sh ./...
