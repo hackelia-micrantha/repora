@@ -17,13 +17,13 @@ import (
 )
 
 const (
-	Kind           = "repora.io/managed-artifact-plan"
-	Version        = 1
+	Kind              = "repora.io/managed-artifact-plan"
+	Version           = 1
 	ActionWriteREADME = "WRITE_README"
-	READMEPath     = "README.md"
-	ModeRegular    = "100644"
-	ModeExecutable = "100755"
-	MaxDiffBytes   = 4 << 20
+	READMEPath        = "README.md"
+	ModeRegular       = "100644"
+	ModeExecutable    = "100755"
+	MaxDiffBytes      = 4 << 20
 )
 
 var (
@@ -75,6 +75,9 @@ type DesiredState struct {
 
 func Parse(data []byte) (Artifact, error) {
 	if err := rejectNullValues(data); err != nil {
+		return Artifact{}, err
+	}
+	if err := requireZeroValuedFields(data); err != nil {
 		return Artifact{}, err
 	}
 
@@ -329,6 +332,63 @@ func walkNulls(value any, path string) error {
 			if err := walkNulls(child, fmt.Sprintf("%s[%d]", path, i)); err != nil {
 				return err
 			}
+	}
+	return nil
+}
+
+func requireZeroValuedFields(data []byte) error {
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(data, &root); err != nil {
+		return fmt.Errorf("decode managed artifact plan: %w", err)
+	}
+	repositoriesRaw, ok := root["repositories"]
+	if !ok {
+		return fmt.Errorf("decode managed artifact plan: repositories field is required")
+	}
+	var repositories []json.RawMessage
+	if err := json.Unmarshal(repositoriesRaw, &repositories); err != nil {
+		return nil
+	}
+	for i, repositoryRaw := range repositories {
+		var repository map[string]json.RawMessage
+		if err := json.Unmarshal(repositoryRaw, &repository); err != nil {
+			continue
+		}
+		actionsRaw, ok := repository["actions"]
+		if !ok {
+			continue
+		}
+		var actions []json.RawMessage
+		if err := json.Unmarshal(actionsRaw, &actions); err != nil {
+			continue
+		}
+		for j, actionRaw := range actions {
+			var action map[string]json.RawMessage
+			if err := json.Unmarshal(actionRaw, &action); err != nil {
+				continue
+			}
+			observedRaw, ok := action["observed"]
+			if !ok {
+				return fmt.Errorf("decode managed artifact plan: repositories[%d].actions[%d].observed field is required", i, j)
+			}
+			var observed map[string]json.RawMessage
+			if err := json.Unmarshal(observedRaw, &observed); err == nil {
+				if _, ok := observed["present"]; !ok {
+					return fmt.Errorf("decode managed artifact plan: repositories[%d].actions[%d].observed.present field is required", i, j)
+				}
+			}
+
+			desiredRaw, ok := action["desired"]
+			if !ok {
+				return fmt.Errorf("decode managed artifact plan: repositories[%d].actions[%d].desired field is required", i, j)
+			}
+			var desired map[string]json.RawMessage
+			if err := json.Unmarshal(desiredRaw, &desired); err == nil {
+				if _, ok := desired["content"]; !ok {
+					return fmt.Errorf("decode managed artifact plan: repositories[%d].actions[%d].desired.content field is required", i, j)
+				}
+			}
+		}
 	}
 	return nil
 }
