@@ -4,7 +4,12 @@
   "cases": [
     {"name":"canonical root doc","path":"README.md","expect_tier":"canonical","default_eligible":true},
     {"name":"implementation source","path":"internal/plan/plan.go","expect_tier":"implementation","default_eligible":true},
+    {"name":"documentation summary is generated","path":"docs/SUMMARY.md","expect_tier":"generated","default_eligible":false},
+    {"name":"nested architecture summary is generated","path":"docs/architecture/SUMMARY.md","expect_tier":"generated","default_eligible":false},
+    {"name":"schema summary is generated","path":"schemas/SUMMARY.md","expect_tier":"generated","default_eligible":false},
+    {"name":"explicit summary inclusion","path":"docs/routing/SUMMARY.md","expect_tier":"generated","explicit_include":["generated"],"default_eligible":false,"explicit_eligible":true},
     {"name":"archived doc overrides broad docs rule","path":"docs/archive/legacy.md","expect_tier":"archived","default_eligible":false},
+    {"name":"archived summary remains archived","path":"docs/archive/SUMMARY.md","expect_tier":"archived","default_eligible":false},
     {"name":"generated output","path":"artifacts/security/licenses.csv","expect_tier":"generated","default_eligible":false},
     {"name":"experimental draft","path":"drafts/new-policy.md","expect_tier":"experimental","default_eligible":false},
     {"name":"external source","path":"vendor/example/module.go","expect_tier":"external","default_eligible":false},

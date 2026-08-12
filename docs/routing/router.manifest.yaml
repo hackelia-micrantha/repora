@@ -3,6 +3,88 @@ kind: document-route-manifest
 owner: routing
 
 routes:
+  - id: summary-architecture
+    class: architecture
+    priority: 110
+    when:
+      any_of:
+        - architecture
+        - design
+        - planner
+        - executor
+        - reconciliation
+        - mirror semantics
+    trust_include:
+      - generated
+    include:
+      - docs/architecture/SUMMARY.md
+    exclude: []
+    budget:
+      max_files: 1
+      max_bytes: 12000
+      max_tokens_hint: 1200
+
+  - id: summary-schema
+    class: config
+    priority: 110
+    when:
+      any_of:
+        - config
+        - configuration
+        - schema
+        - spec
+        - yaml
+        - json
+    trust_include:
+      - generated
+    include:
+      - schemas/SUMMARY.md
+    exclude: []
+    budget:
+      max_files: 1
+      max_bytes: 12000
+      max_tokens_hint: 1200
+
+  - id: summary-routing
+    class: prompts
+    priority: 110
+    when:
+      any_of:
+        - routing
+        - document router
+        - context router
+        - trust tier
+        - context receipt
+        - token usage
+    trust_include:
+      - generated
+    include:
+      - docs/routing/SUMMARY.md
+    exclude: []
+    budget:
+      max_files: 1
+      max_bytes: 12000
+      max_tokens_hint: 1200
+
+  - id: summary-docs
+    class: overview
+    priority: 105
+    when:
+      any_of:
+        - documentation
+        - docs
+        - summary
+        - overview
+    trust_include:
+      - generated
+    include:
+      - docs/SUMMARY.md
+    exclude: []
+    budget:
+      max_files: 1
+      max_bytes: 12000
+      max_tokens_hint: 1200
+
   - id: prompts-and-routing
     class: prompts
     priority: 95
