@@ -16,6 +16,7 @@ Use the smallest authoritative source that answers the question.
 | How do repository assessments and evidence work? | [`assessments.md`](assessments.md) |
 | Why is there no v0.1 benchmark gate? | [`benchmarks.md`](benchmarks.md) |
 | How is the current implementation structured? | [`architecture/current-system.md`](architecture/current-system.md) |
+| What is the proposed managed-artifact/README mutation boundary? | [`architecture/managed-artifacts.md`](architecture/managed-artifacts.md) and [ADR-0017](decisions/0017-managed-artifact-domain.md) |
 | How does multi-mirror status work? | [`architecture/multi-mirror-status.md`](architecture/multi-mirror-status.md) |
 | How does the exact plan artifact work? | [`architecture/reconciliation-plan-artifact.md`](architecture/reconciliation-plan-artifact.md) |
 | How do plan-artifact consumers migrate to v2? | [`cli/plan-artifact-v2.md`](cli/plan-artifact-v2.md) |
