@@ -338,7 +338,8 @@ func DigestSHA256(data []byte) string {
 
 func rejectPlanNulls(data []byte) error {
 	var value any
-	if err := json.Unmarshal(data, &value); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if err := decoder.Decode(&value); err != nil {
 		return fmt.Errorf("decode managed artifact plan: %w", err)
 	}
 	return walkPlanNulls(value, "$")
