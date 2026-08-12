@@ -96,6 +96,7 @@ artifacts:
 Rules for the configuration slice:
 
 - `readme` is the only recognized artifact field; strict YAML decoding rejects unknown artifact types;
+- README management requires canonical provider/path identity; URL-only legacy canonical configuration is rejected for this feature;
 - `template` is required and uses a portable slash-separated relative path;
 - absolute paths, traversal segments, URLs/drive-style paths, and backslashes are rejected;
 - template symlink containment and regular-file checks occur when the template is opened by later planning code;
@@ -127,7 +128,7 @@ Defaults to `mirror`; no other mode is supported.
 
 A single-mirror entry may continue to use legacy URLs. Exactly one of `path` or `url` is required per endpoint, and credential-bearing HTTP URLs are rejected.
 
-Legacy URLs are compatibility transport input, not identity. Multi-mirror entries require provider/path so every target is unambiguous. New exact multi-mirror artifacts and execution evidence never persist transport URLs.
+Legacy URLs are compatibility transport input, not identity. Multi-mirror entries require provider/path so every target is unambiguous. New exact multi-mirror artifacts and execution evidence never persist transport URLs. README management is stricter and requires canonical provider/path identity even on otherwise-compatible single-mirror entries.
 
 ## Execution semantics
 
