@@ -1,9 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 )
 
 func runListFindings(args []string) int {
@@ -23,6 +23,11 @@ func runListFindings(args []string) int {
 	}
 
 	for _, finding := range report.Findings {
+		title, err := json.Marshal(finding.Title)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: encode finding %s title: %v\n", finding.ID, err)
+			return 1
+		}
 		fmt.Fprintf(
 			os.Stdout,
 			"%s\t%s\t%s\t%s\t%s\n",
@@ -30,7 +35,7 @@ func runListFindings(args []string) int {
 			finding.Severity,
 			finding.Status,
 			finding.Type,
-			strconv.Quote(finding.Title),
+			title,
 		)
 	}
 	return 0
