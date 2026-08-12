@@ -16,32 +16,24 @@ func TestCommittedExampleCoversAssessmentAcceptanceConcepts(t *testing.T) {
 		t.Fatalf("Parse(example) error = %v", err)
 	}
 
-	requiredTypes := map[string]bool{
-		"question":       false,
-		"finding":        false,
-		"recommendation": false,
-		"tradeoff":       false,
-		"risk":           false,
-		"gap":            false,
-	}
+	presentTypes := map[string]bool{}
 	for _, finding := range report.Findings {
-		if _, required := requiredTypes[finding.Type]; required {
-			requiredTypes[finding.Type] = true
-		}
+		presentTypes[finding.Type] = true
 	}
-	for findingType, present := range requiredTypes {
-		if !present {
+	for _, findingType := range []string{"question", "finding", "recommendation", "tradeoff", "risk", "gap"} {
+		if !presentTypes[findingType] {
 			t.Errorf("example is missing required finding type %q", findingType)
 		}
 	}
 
-	if len(report.Evidence) == 0 {
-		t.Fatal("example must demonstrate evidence strength classification")
-	}
+	strongEvidence := false
 	for _, evidence := range report.Evidence {
-		if evidence.Strength != "" {
-			return
+		if evidence.Strength == "strong" {
+			strongEvidence = true
+			break
 		}
 	}
-	t.Fatal("example evidence has no strength classification")
+	if !strongEvidence {
+		t.Fatal("example must demonstrate a classified strong evidence item")
+	}
 }
