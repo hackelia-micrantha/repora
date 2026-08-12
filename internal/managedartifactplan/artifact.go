@@ -306,7 +306,8 @@ func SHA256(data []byte) string {
 
 func rejectNullValues(data []byte) error {
 	var value any
-	if err := json.Unmarshal(data, &value); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if err := decoder.Decode(&value); err != nil {
 		return fmt.Errorf("decode managed artifact plan: %w", err)
 	}
 	return walkNulls(value, "$")
@@ -339,7 +340,8 @@ func walkNulls(value any, path string) error {
 
 func requireZeroValuedFields(data []byte) error {
 	var root map[string]json.RawMessage
-	if err := json.Unmarshal(data, &root); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if err := decoder.Decode(&root); err != nil {
 		return fmt.Errorf("decode managed artifact plan: %w", err)
 	}
 	repositoriesRaw, ok := root["repositories"]
