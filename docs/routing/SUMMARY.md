@@ -4,7 +4,7 @@ Status: Current
 
 ## Purpose
 
-This subtree defines deterministic document routing, subsystem manifest composition, trust tiers, route fixtures, context receipts, and hierarchical summary behavior.
+This subtree defines deterministic document routing, subsystem manifest composition, trust tiers, route fixtures, context receipts, hierarchical summary behavior, and Go AST-aware source refinement.
 
 ## Canonical sources
 
@@ -14,6 +14,7 @@ This subtree defines deterministic document routing, subsystem manifest composit
 - [`route-tests.md`](route-tests.md) — deterministic route regression contract.
 - [`context-receipts.md`](context-receipts.md) — routed-context evidence contract.
 - [`summaries.md`](summaries.md) — summary-first progressive retrieval contract.
+- [`ast-routing.md`](ast-routing.md) — deterministic Go package, symbol, command, and file selectors.
 - [`router.manifest.yaml`](router.manifest.yaml) — routing subsystem manifest.
 
 ## Ownership boundaries
@@ -22,8 +23,8 @@ Routing decides which repository evidence is eligible and selected. It does not 
 
 ## Expand when
 
-Load the relevant canonical routing document when changing route semantics, trust behavior, manifest composition, receipt fields, summary expansion, budgets, or security-sensitive eligibility rules. Load fixtures and validators when verifying behavior.
+Load the relevant canonical routing document when changing route semantics, trust behavior, manifest composition, receipt fields, summary expansion, source selectors, budgets, or security-sensitive eligibility rules. Load fixtures and validators when verifying behavior.
 
 ## Exclusions and stale areas
 
-Generated, experimental, archived, and external material remains excluded unless explicitly requested by the routing policy. Summaries are derived orientation artifacts and must not be treated as canonical evidence.
+Generated, experimental, archived, and external material remains excluded unless explicitly requested by the routing policy. Summaries are derived orientation artifacts and must not be treated as canonical evidence. AST routing is currently Go-only and does not provide semantic or fuzzy retrieval.

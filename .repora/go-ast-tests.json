@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "kind": "go-ast-route-tests",
+  "cases": [
+    {
+      "name": "configured plan route selects exported planner symbols",
+      "route_id": "source-plan-go",
+      "expect_paths": ["internal/plan/plan.go"],
+      "expect_reasons": {
+        "internal/plan/plan.go": [
+          "package:internal/plan",
+          "symbol:Reconcile",
+          "symbol:ReconciliationPlan"
+        ]
+      }
+    },
+    {
+      "name": "configured repoctl route selects command entrypoint",
+      "route_id": "source-repoctl-command",
+      "expect_paths": ["cmd/repoctl/main.go"],
+      "expect_reasons": {
+        "cmd/repoctl/main.go": [
+          "command:repoctl",
+          "file:cmd/repoctl/main.go"
+        ]
+      }
+    }
+  ]
+}

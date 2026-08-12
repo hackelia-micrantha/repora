@@ -24,6 +24,55 @@ routes:
       max_bytes: 12000
       max_tokens_hint: 1200
 
+  - id: source-plan-go
+    class: architecture
+    priority: 100
+    when:
+      any_of:
+        - planner
+        - reconcile
+        - reconciliation plan
+        - Reconcile
+        - ReconciliationPlan
+    source_selectors:
+      language: go
+      packages:
+        - internal/plan
+      symbols:
+        - Reconcile
+        - ReconciliationPlan
+    include:
+      - internal/plan/**
+    exclude:
+      - internal/plan/*_test.go
+    budget:
+      max_files: 4
+      max_bytes: 50000
+      max_tokens_hint: 5000
+
+  - id: source-repoctl-command
+    class: architecture
+    priority: 100
+    when:
+      any_of:
+        - repoctl command
+        - command entrypoint
+        - cli entrypoint
+    source_selectors:
+      language: go
+      commands:
+        - repoctl
+      files:
+        - cmd/repoctl/main.go
+    include:
+      - cmd/repoctl/**
+    exclude:
+      - cmd/repoctl/*_test.go
+    budget:
+      max_files: 4
+      max_bytes: 50000
+      max_tokens_hint: 5000
+
   - id: summary-schema
     class: config
     priority: 110

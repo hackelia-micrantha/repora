@@ -39,6 +39,8 @@ route-test:
 		./.repora/document-router.yaml ./.repora/route-tests.json
 	python3 ./scripts/ci/trust-policy.py \
 		./.repora/document-router.yaml ./.repora/trust-tests.json
+	go run ./scripts/ci/go-ast-routing.go \
+		. ./.repora/document-router.yaml ./.repora/go-ast-tests.json
 
 receipt-test:
 	python3 ./scripts/ci/context-receipt.py \
