@@ -17,8 +17,8 @@ func TestGenerateScorecardPrintsValidatedDimensionsInReportOrder(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("run returned %d, want 0", code)
 	}
-	want := "architecture\t4\t[\"routing-fixtures\"]\t\"The example is limited to the routing subsystem and uses direct repository evidence; it is not a whole-project architecture score.\"\n" +
-		"documentation\t4\t[\"routing-fixtures\"]\t\"Routing behavior is documented alongside the checked-in configuration and fixtures; this score is illustrative and scoped to routing.\"\n"
+	want := "architecture\t4\t[\"routing-fixtures\",\"ast-route-boundary\"]\t\"The example is limited to the routing subsystem and uses direct repository evidence; it is not a whole-project architecture score.\"\n" +
+		"documentation\t4\t[\"routing-fixtures\",\"ast-route-boundary\"]\t\"Routing behavior is documented alongside the checked-in configuration and fixtures; this score is illustrative and scoped to routing.\"\n"
 	if got := stdout.String(); got != want {
 		t.Fatalf("stdout = %q, want %q", got, want)
 	}
