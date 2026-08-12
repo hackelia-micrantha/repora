@@ -1,0 +1,96 @@
+{
+  "kind": "repora.repository-assessment",
+  "version": 1,
+  "id": "repora-routing-example",
+  "title": "Repora routing assessment example",
+  "scope": ["architecture", "quality", "documentation", "evidence"],
+  "summary": "Example assessment showing traceable findings and evidence without copying GitHub issue or pull-request state.",
+  "snapshot": {
+    "kind": "repora.repository-snapshot",
+    "version": 1,
+    "repository": {
+      "provider": "github",
+      "full_name": "hackelia-micrantha/repora",
+      "url": "https://github.com/hackelia-micrantha/repora",
+      "default_branch": "main"
+    },
+    "revision": {
+      "commit": "405f48b9f3ea319ba6e478782944cd8b8e90aba8",
+      "dirty": false
+    },
+    "captured_at": "2026-08-12T01:35:00Z"
+  },
+  "findings": [
+    {
+      "kind": "repora.finding",
+      "version": 1,
+      "id": "routing-determinism",
+      "type": "finding",
+      "severity": "informational",
+      "status": "implemented",
+      "title": "Document routing has deterministic regression fixtures",
+      "description": "Route selection is represented by checked-in fixtures and validation code rather than opaque semantic retrieval.",
+      "recommendation": "Keep new routing behavior covered by exact fixture expectations.",
+      "tradeoffs": ["Deterministic fixtures require maintenance when route priority intentionally changes."],
+      "references": [
+        {"type": "file", "value": ".repora/route-tests.json"},
+        {"type": "file", "value": "scripts/ci/route-tests.go"}
+      ],
+      "evidence_ids": ["routing-fixtures"]
+    },
+    {
+      "kind": "repora.finding",
+      "version": 1,
+      "id": "assessment-automation-deferred",
+      "type": "gap",
+      "severity": "low",
+      "status": "open",
+      "title": "Assessment automation remains outside this schema slice",
+      "description": "The assessment framework begins with portable contracts and local validation; CLI report generation and scorecard commands remain follow-up work.",
+      "recommendation": "Add CLI behavior only after the report contracts are reviewed and stable.",
+      "tradeoffs": ["Deferring automation keeps the first slice low-risk but requires reports to be authored manually."],
+      "references": [
+        {"type": "issue", "value": "https://github.com/hackelia-micrantha/repora/issues/24"}
+      ],
+      "evidence_ids": []
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "repora.evidence",
+      "version": 1,
+      "id": "routing-fixtures",
+      "category": "architecture",
+      "strength": "strong",
+      "claim": "Repora has checked-in deterministic route fixtures and a validator for route ordering and selection contracts.",
+      "rationale": "The claim is directly supported by committed fixture and validator files.",
+      "references": [
+        {"type": "file", "value": ".repora/route-tests.json"},
+        {"type": "file", "value": "scripts/ci/route-tests.go"}
+      ]
+    }
+  ],
+  "scorecard": {
+    "kind": "repora.scorecard",
+    "version": 1,
+    "dimensions": [
+      {
+        "name": "architecture",
+        "score": 4,
+        "rationale": "The example is limited to the routing subsystem and uses direct repository evidence; it is not a whole-project architecture score.",
+        "evidence_ids": ["routing-fixtures"]
+      },
+      {
+        "name": "documentation",
+        "score": 4,
+        "rationale": "Routing behavior is documented alongside the checked-in configuration and fixtures; this score is illustrative and scoped to routing.",
+        "evidence_ids": ["routing-fixtures"]
+      }
+    ]
+  },
+  "metadata": {
+    "created_by": "example",
+    "created_at": "2026-08-12T01:35:00Z",
+    "notes": "Example only. Scores are explicitly scoped and must not be generalized beyond the cited evidence."
+  }
+}

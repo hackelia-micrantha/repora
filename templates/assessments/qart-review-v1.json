@@ -1,0 +1,83 @@
+{
+  "kind": "repora.repository-assessment",
+  "version": 1,
+  "id": "replace-me-qart",
+  "title": "QART repository review",
+  "scope": ["quality", "architecture"],
+  "summary": "TODO: summarize the QART review.",
+  "snapshot": {
+    "kind": "repora.repository-snapshot",
+    "version": 1,
+    "repository": {"full_name": "owner/repository"},
+    "revision": {"commit": "0000000", "dirty": false},
+    "captured_at": "1970-01-01T00:00:00Z"
+  },
+  "findings": [
+    {
+      "kind": "repora.finding",
+      "version": 1,
+      "id": "question-1",
+      "type": "question",
+      "severity": "informational",
+      "status": "open",
+      "title": "TODO: question",
+      "description": "TODO: state the engineering question precisely.",
+      "references": [],
+      "evidence_ids": []
+    },
+    {
+      "kind": "repora.finding",
+      "version": 1,
+      "id": "answer-1",
+      "type": "finding",
+      "severity": "informational",
+      "status": "open",
+      "title": "TODO: answer or finding",
+      "description": "TODO: answer the question using repository evidence.",
+      "references": [],
+      "evidence_ids": []
+    },
+    {
+      "kind": "repora.finding",
+      "version": 1,
+      "id": "recommendation-1",
+      "type": "recommendation",
+      "severity": "informational",
+      "status": "open",
+      "title": "TODO: recommendation",
+      "description": "TODO: describe the recommended action.",
+      "references": [],
+      "evidence_ids": []
+    },
+    {
+      "kind": "repora.finding",
+      "version": 1,
+      "id": "tradeoff-1",
+      "type": "tradeoff",
+      "severity": "informational",
+      "status": "open",
+      "title": "TODO: tradeoff",
+      "description": "TODO: describe costs, constraints, and alternatives.",
+      "references": [],
+      "evidence_ids": []
+    }
+  ],
+  "evidence": [],
+  "scorecard": {
+    "kind": "repora.scorecard",
+    "version": 1,
+    "dimensions": [
+      {
+        "name": "architecture",
+        "score": 0,
+        "rationale": "TODO: replace this placeholder with evidence-backed rationale.",
+        "evidence_ids": []
+      }
+    ]
+  },
+  "metadata": {
+    "created_by": "template",
+    "created_at": "1970-01-01T00:00:00Z",
+    "notes": "Template only. Replace all TODO content and placeholder snapshot values before use."
+  }
+}
