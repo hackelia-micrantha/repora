@@ -21,7 +21,8 @@
     },
     "providerPath": {
       "type": "string",
-      "pattern": "^[^\\s\\\\:@?#]+/[^\\s\\\\:@?#]+(?:/[^\\s\\\\:@?#]+)*$"
+      "pattern": "^[^\\s\\\\:@?#]+/[^\\s\\\\:@?#]+(?:/[^\\s\\\\:@?#]+)*$",
+      "not": { "pattern": "(^|/)(?:\\.|\\.\\.)(?:/|$)" }
     },
     "branch": {
       "type": "string",
@@ -97,7 +98,7 @@
         "observed": { "$ref": "#/$defs/observedState" },
         "desired": { "$ref": "#/$defs/desiredState" },
         "template_sha256": { "$ref": "#/$defs/sha256" },
-        "diff": { "type": "string", "minLength": 1 }
+        "diff": { "type": "string", "minLength": 1, "maxLength": 4194304 }
       }
     },
     "repositoryPlan": {
