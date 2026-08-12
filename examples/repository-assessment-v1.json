@@ -4,7 +4,7 @@
   "id": "repora-routing-example",
   "title": "Repora routing assessment example",
   "scope": ["architecture", "quality", "documentation", "evidence"],
-  "summary": "Example assessment showing traceable findings and evidence without copying GitHub issue or pull-request state.",
+  "summary": "Point-in-time routing assessment demonstrating QART structure, risks, gaps, recommendations, tradeoffs, and traceable evidence without copying live GitHub state.",
   "snapshot": {
     "kind": "repora.repository-snapshot",
     "version": 1,
@@ -21,6 +21,23 @@
     "captured_at": "2026-08-12T01:35:00Z"
   },
   "findings": [
+    {
+      "kind": "repora.finding",
+      "version": 1,
+      "id": "routing-refinement-question",
+      "type": "question",
+      "severity": "informational",
+      "status": "accepted",
+      "title": "How should AST selectors compose with route-first retrieval?",
+      "description": "The routing design needs source precision without allowing AST selectors to expand beyond explicit route and trust boundaries.",
+      "recommendation": "Treat path and trust eligibility as the outer boundary and AST selectors only as a monotonic refinement.",
+      "tradeoffs": ["Keeping route-first semantics favors auditability over fuzzy source discovery."],
+      "references": [
+        {"type": "issue", "value": "https://github.com/hackelia-micrantha/repora/issues/14"},
+        {"type": "file", "value": "docs/routing/ast-routing.md"}
+      ],
+      "evidence_ids": []
+    },
     {
       "kind": "repora.finding",
       "version": 1,
@@ -41,14 +58,65 @@
     {
       "kind": "repora.finding",
       "version": 1,
-      "id": "assessment-automation-deferred",
+      "id": "routing-monotonic-refinement",
+      "type": "recommendation",
+      "severity": "medium",
+      "status": "implemented",
+      "title": "Keep AST selectors as monotonic route refinements",
+      "description": "AST-aware selection should only narrow files already admitted by route include/exclude and trust eligibility.",
+      "recommendation": "Reject selector behavior that introduces files outside the configured route candidate set.",
+      "tradeoffs": ["This containment rule makes implementation context predictable but intentionally limits broad code discovery."],
+      "references": [
+        {"type": "file", "value": "docs/routing/ast-routing.md"},
+        {"type": "pull_request", "value": "https://github.com/hackelia-micrantha/repora/pull/92"}
+      ],
+      "evidence_ids": ["routing-fixtures"]
+    },
+    {
+      "kind": "repora.finding",
+      "version": 1,
+      "id": "deterministic-routing-tradeoff",
+      "type": "tradeoff",
+      "severity": "low",
+      "status": "accepted",
+      "title": "Deterministic routing trades flexibility for auditability",
+      "description": "Exact routes, trust rules, and AST selectors are easier to reproduce and review than fuzzy or embedding-based retrieval, but they require explicit maintenance as repository structure evolves.",
+      "recommendation": "Prefer deterministic selectors for implementation context and add new selector families only when concrete use cases justify them.",
+      "tradeoffs": ["Explicit selectors reduce retrieval ambiguity while increasing fixture and routing-policy maintenance."],
+      "references": [
+        {"type": "file", "value": "docs/routing/document-routing.md"},
+        {"type": "file", "value": "docs/routing/ast-routing.md"}
+      ],
+      "evidence_ids": ["routing-fixtures"]
+    },
+    {
+      "kind": "repora.finding",
+      "version": 1,
+      "id": "route-fixture-drift-risk",
+      "type": "risk",
+      "severity": "medium",
+      "status": "open",
+      "title": "Intentional route changes can drift from fixture expectations",
+      "description": "Adding or reprioritizing routes can change selected route order and candidate context; stale fixtures would either fail validation or, if bypassed, leave the change less auditable.",
+      "recommendation": "Update deterministic fixtures in the same change as any intentional routing-priority or selection change.",
+      "tradeoffs": ["Strict regression fixtures create maintenance work but make route-selection changes explicit in review."],
+      "references": [
+        {"type": "file", "value": ".repora/route-tests.json"},
+        {"type": "file", "value": "docs/routing/route-tests.md"}
+      ],
+      "evidence_ids": ["routing-fixtures"]
+    },
+    {
+      "kind": "repora.finding",
+      "version": 1,
+      "id": "assessment-automation-deferred-at-snapshot",
       "type": "gap",
       "severity": "low",
       "status": "open",
-      "title": "Assessment automation remains outside this schema slice",
-      "description": "The assessment framework begins with portable contracts and local validation; CLI report generation and scorecard commands remain follow-up work.",
-      "recommendation": "Add CLI behavior only after the report contracts are reviewed and stable.",
-      "tradeoffs": ["Deferring automation keeps the first slice low-risk but requires reports to be authored manually."],
+      "title": "Assessment automation was deferred at this snapshot",
+      "description": "At the recorded repository revision, the assessment framework had not yet added report skeleton creation, report validation, finding listing, or scorecard projection commands.",
+      "recommendation": "Add assessment automation in bounded slices after the report contracts are reviewed and stable.",
+      "tradeoffs": ["Deferring automation kept the initial contract work low-risk but required assessment artifacts to be authored manually at this snapshot."],
       "references": [
         {"type": "issue", "value": "https://github.com/hackelia-micrantha/repora/issues/24"}
       ],
@@ -91,6 +159,6 @@
   "metadata": {
     "created_by": "example",
     "created_at": "2026-08-12T01:35:00Z",
-    "notes": "Example only. Scores are explicitly scoped and must not be generalized beyond the cited evidence."
+    "notes": "Example only. Findings describe the recorded snapshot rather than current GitHub state. Scores are explicitly scoped and must not be generalized beyond the cited evidence."
   }
 }
