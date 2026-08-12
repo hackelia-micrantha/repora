@@ -120,20 +120,36 @@ func renderReplacements(data RenderData) (map[string]string, error) {
 }
 
 func normalizeText(label, value string) (string, error) {
-	if !utf8.ValidString(value) {
-		return "", fmt.Errorf("%s must be valid UTF-8", label)
-	}
-	if strings.ContainsRune(value, '\x00') {
-		return "", fmt.Errorf("%s must not contain NUL", label)
-	}
-	for _, r := range value {
-		if unicode.IsControl(r) && r != '\n' && r != '\r' && r != '\t' {
-			return "", fmt.Errorf("%s contains unsupported control character U+%04X", label, r)
-		}
+	if err := validateManagedText(label, value, true); err != nil {
+		return "", err
 	}
 	value = strings.ReplaceAll(value, "\r\n", "\n")
 	value = strings.ReplaceAll(value, "\r", "\n")
 	return value, nil
+}
+
+func validateManagedText(label, value string, allowCR bool) error {
+	if !utf8.ValidString(value) {
+		return fmt.Errorf("%s must be valid UTF-8", label)
+	}
+	if strings.ContainsRune(value, '\x00') {
+		return fmt.Errorf("%s must not contain NUL", label)
+	}
+	for _, r := range value {
+		if r == '\r' {
+			if allowCR {
+				continue
+			}
+			return fmt.Errorf("%s must use LF line endings", label)
+		}
+		if unicode.IsControl(r) && r != '\n' && r != '\t' {
+			return fmt.Errorf("%s contains unsupported control character U+%04X", label, r)
+		}
+		if unicode.Is(unicode.Cf, r) || r == '\u2028' || r == '\u2029' {
+			return fmt.Errorf("%s contains unsafe display character U+%04X", label, r)
+		}
+	}
+	return nil
 }
 
 func writeBounded(output *bytes.Buffer, value string) error {
