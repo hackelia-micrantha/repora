@@ -4,6 +4,7 @@ package managedartifact
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode/utf8"
 )
@@ -29,25 +30,34 @@ func RenderREADME(template []byte, context RenderContext) ([]byte, error) {
 	}
 
 	input := normalizeLF(string(template))
-	values := map[string]string{
-		"repo.id":            context.RepoID,
-		"repo.uid":           context.RepoUID,
-		"canonical.provider": context.CanonicalProvider,
-		"canonical.path":     context.CanonicalPath,
-	}
-	for key, value := range values {
-		normalized, err := normalizeReplacement(key, value)
+	fixed := make(map[string]string, 4)
+	for _, entry := range []struct {
+		name  string
+		value string
+	}{
+		{name: "repo.id", value: context.RepoID},
+		{name: "repo.uid", value: context.RepoUID},
+		{name: "canonical.provider", value: context.CanonicalProvider},
+		{name: "canonical.path", value: context.CanonicalPath},
+	} {
+		normalized, err := normalizeReplacement(entry.name, entry.value)
 		if err != nil {
 			return nil, err
 		}
-		values[key] = normalized
+		fixed[entry.name] = normalized
 	}
+
 	configured := make(map[string]string, len(context.Values))
-	for key, value := range context.Values {
+	keys := make([]string, 0, len(context.Values))
+	for key := range context.Values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
 		if !valueKeyPattern.MatchString(key) {
 			return nil, fmt.Errorf("invalid README value key %q", key)
 		}
-		normalized, err := normalizeReplacement("value."+key, value)
+		normalized, err := normalizeReplacement("value."+key, context.Values[key])
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +91,7 @@ func RenderREADME(template []byte, context RenderContext) ([]byte, error) {
 		token := input[:close]
 		input = input[close+2:]
 
-		replacement, err := resolveToken(token, values, configured)
+		replacement, err := resolveToken(token, fixed, configured)
 		if err != nil {
 			return nil, err
 		}
