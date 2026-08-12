@@ -66,6 +66,23 @@ func TestRenderREADMERejectsMissingConfiguredValue(t *testing.T) {
 	}
 }
 
+func TestRenderREADMERejectsMissingBuiltin(t *testing.T) {
+	_, err := RenderREADME([]byte("{{repo.id}}"), RenderData{})
+	if err == nil || !strings.Contains(err.Error(), `"repo.id"`) {
+		t.Fatalf("RenderREADME() error = %v, want unresolved built-in token", err)
+	}
+}
+
+func TestRenderREADMEAllowsExplicitEmptyConfiguredValue(t *testing.T) {
+	got, err := RenderREADME([]byte("before{{value.empty}}after"), RenderData{Values: map[string]string{"empty": ""}})
+	if err != nil {
+		t.Fatalf("RenderREADME() error = %v", err)
+	}
+	if want := "beforeafter"; string(got) != want {
+		t.Fatalf("RenderREADME() = %q, want %q", got, want)
+	}
+}
+
 func TestRenderREADMERejectsMalformedTokens(t *testing.T) {
 	for _, template := range []string{"{{repo.id", "repo.id}}", "{{ repo.id }}", "{{repo{{id}}"} {
 		_, err := RenderREADME([]byte(template), RenderData{RepoID: "repora"})
@@ -87,10 +104,13 @@ func TestRenderREADMERejectsNULAndInvalidUTF8(t *testing.T) {
 	}
 }
 
-func TestRenderREADMERejectsInvalidValueKey(t *testing.T) {
-	_, err := RenderREADME([]byte("static"), RenderData{Values: map[string]string{"Bad Key": "value"}})
-	if err == nil || !strings.Contains(err.Error(), "value key") {
-		t.Fatalf("RenderREADME() error = %v, want invalid key rejection", err)
+func TestRenderREADMERejectsInvalidValueKeyDeterministically(t *testing.T) {
+	_, err := RenderREADME([]byte("static"), RenderData{Values: map[string]string{
+		"z bad": "value",
+		"A bad": "value",
+	}})
+	if err == nil || !strings.Contains(err.Error(), `"A bad"`) {
+		t.Fatalf("RenderREADME() error = %v, want lexicographically first invalid key", err)
 	}
 }
 
