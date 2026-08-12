@@ -19,7 +19,7 @@ const (
 	PlanVersion       = 1
 	ActionWriteREADME = "WRITE_README"
 	READMEPath        = "README.md"
-	MaxDiffBytes      = 2*MaxTextBytes + 64*1024
+	MaxDiffBytes      = 4*MaxTextBytes + 64*1024
 )
 
 var (
@@ -273,6 +273,9 @@ func validateReviewDiff(diff string) error {
 		if unicode.IsControl(r) && r != '\n' && r != '\t' {
 			return fmt.Errorf("README review diff contains unsupported control character U+%04X", r)
 		}
+		if unicode.Is(unicode.Cf, r) || r == '\u2028' || r == '\u2029' {
+			return fmt.Errorf("README review diff contains unsafe display character U+%04X", r)
+		}
 	}
 	const prefix = "--- a/README.md\n+++ b/README.md\n@@ "
 	if !strings.HasPrefix(diff, prefix) {
@@ -294,6 +297,9 @@ func validateNormalizedText(label, value string) error {
 		}
 		if unicode.IsControl(r) && r != '\n' && r != '\t' {
 			return fmt.Errorf("%s contains unsupported control character U+%04X", label, r)
+		}
+		if unicode.Is(unicode.Cf, r) || r == '\u2028' || r == '\u2029' {
+			return fmt.Errorf("%s contains unsafe display character U+%04X", label, r)
 		}
 	}
 	return nil
@@ -334,6 +340,7 @@ func walkPlanNulls(value any, path string) error {
 			if err := walkPlanNulls(current[key], path+"."+key); err != nil {
 				return err
 			}
+		}
 	case []any:
 		for i, child := range current {
 			if err := walkPlanNulls(child, fmt.Sprintf("%s[%d]", path, i)); err != nil {
