@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -124,6 +125,11 @@ func normalizeText(label, value string) (string, error) {
 	}
 	if strings.ContainsRune(value, '\x00') {
 		return "", fmt.Errorf("%s must not contain NUL", label)
+	}
+	for _, r := range value {
+		if unicode.IsControl(r) && r != '\n' && r != '\r' && r != '\t' {
+			return "", fmt.Errorf("%s contains unsupported control character U+%04X", label, r)
+		}
 	}
 	value = strings.ReplaceAll(value, "\r\n", "\n")
 	value = strings.ReplaceAll(value, "\r", "\n")
