@@ -22,7 +22,9 @@ The Git-ref reconciliation plan remains unchanged and Git-ref-only.
 
 README management is opt-in per repository. Without an `artifacts.readme` configuration block, artifact planning and apply have no effect on that repository.
 
-Once configured, Repora may propose replacement of root `README.md` only. Configuration does not grant authority over any other repository path. Existing README content is treated as observed state and is never overwritten without an explicit reviewed plan.
+Once configured, Repora may propose replacement of root `README.md` content only. Configuration does not grant authority over any other repository path. Existing README content and regular-file Git mode are treated as observed state and are never changed without an explicit reviewed plan.
+
+If `README.md` currently resolves in the Git tree as a symlink, submodule, tree, or other non-regular entry, planning fails instead of silently converting it into a regular text file. Existing regular blob modes `100644` and `100755` are preserved; a newly created README uses `100644`.
 
 Future artifact types do not inherit README authority. Each one needs separate design approval.
 
@@ -83,13 +85,13 @@ Rules:
 
 - render in one deterministic pass;
 - normalize text line endings to LF;
-- reject invalid UTF-8 or NUL bytes;
+- reject invalid UTF-8 or NUL bytes in templates, values, and observed README text;
 - reject unknown or malformed placeholders;
 - reject missing configured values referenced by the template;
 - do not process placeholder-looking text introduced by a replacement value;
 - do not execute functions, loops, conditions, includes, commands, plugins, or network requests.
 
-The implementation should use a small dedicated renderer rather than a general template engine.
+The implementation should use a small dedicated renderer rather than a general template engine. Template and rendered output sizes must have a fixed v1 upper bound appropriate for README text.
 
 ## Plan contract
 
@@ -117,9 +119,11 @@ Proposed v1 JSON shape:
           "path": "README.md",
           "observed": {
             "present": true,
+            "mode": "100644",
             "sha256": "<digest>"
           },
           "desired": {
+            "mode": "100644",
             "sha256": "<digest>",
             "content": "# Repora\n...\n"
           },
@@ -132,6 +136,8 @@ Proposed v1 JSON shape:
 }
 ```
 
+For a missing README, `observed.present` is false and observed mode/digest use the schema's explicit absent representation. Desired mode is `100644`. For an existing regular README, desired mode must equal observed mode so README management cannot change the executable bit implicitly.
+
 The exact schema belongs to #12, but the following boundaries are fixed by ADR-0017:
 
 - artifact kind/version are explicit;
@@ -139,8 +145,8 @@ The exact schema belongs to #12, but the following boundaries are fixed by ADR-0
 - target identity uses canonical provider/path/branch, not a resolved URL;
 - output path is exactly `README.md`;
 - plan includes exact `base_oid`;
-- observed README state has presence plus content digest;
-- desired state has digest plus exact UTF-8 content;
+- observed README state has presence, Git mode, and content digest;
+- desired state has reviewed Git mode, digest, and exact UTF-8 content;
 - template evidence uses a digest, never its local path;
 - review output includes deterministic text diff;
 - no timestamp or execution identity appears in deterministic planning.
@@ -158,7 +164,7 @@ V1 requirements:
 - missing README represented consistently as file creation;
 - no terminal color/control sequences in serialized diff.
 
-The plan validator should reject a desired-content digest mismatch. Apply should recompute the diff from current observed bytes and planned desired content after stale preflight and require it to match the reviewed diff.
+The text diff covers content. Git mode is separately explicit in observed/desired structured state. The plan validator must reject a desired-content digest mismatch or an unsupported desired mode. Apply recomputes the diff from current observed bytes and planned desired content after stale preflight and requires it to match the reviewed diff.
 
 ## Read-only planning flow
 
@@ -167,10 +173,11 @@ repora.yaml
   -> strict artifact config validation
   -> resolve canonical provider/path
   -> observe canonical default branch + exact OID
-  -> read README blob at that exact tree
+  -> inspect README tree entry + mode + blob at that exact tree
+  -> require absent or regular UTF-8 text blob
   -> load bounded local template
   -> deterministic render
-  -> equal? no action
+  -> equal bytes? no action
   -> different? build managed-artifact plan + review diff
 ```
 
@@ -186,10 +193,10 @@ Before any remote push:
 2. bind UID to current configuration;
 3. require current canonical provider/path/default branch to match;
 4. re-observe canonical HEAD and require exact `base_oid`;
-5. re-read root `README.md` and require observed presence/digest;
-6. validate desired content and digest;
-7. recompute and verify the reviewed diff;
-8. prepare a commit that changes only root `README.md`;
+5. re-read root `README.md` and require exact observed presence, regular-file mode, and content digest;
+6. validate desired mode, content, and digest;
+7. recompute and verify the reviewed text diff;
+8. prepare a commit that changes only root `README.md` content and preserves the reviewed mode;
 9. publish with an exact expected-head guard.
 
 Any mismatch is stale and fails before remote mutation.
@@ -231,7 +238,7 @@ Artifact apply results should identify:
 - canonical provider/path/branch;
 - reviewed base OID;
 - resulting commit OID when applied;
-- observed and desired README digests;
+- observed and desired README Git mode and content digests;
 - outcome (`APPLIED`, `STALE`, `SKIPPED`, or `FAILED`);
 - sanitized error.
 
@@ -244,6 +251,8 @@ V1 must preserve all of these:
 - no artifact config => no artifact action;
 - one managed path only: `README.md`;
 - no output-path configuration;
+- absent README becomes regular `100644`; existing regular README mode is preserved;
+- symlink/submodule/tree/binary README state fails planning rather than being replaced;
 - no executable template behavior;
 - no remote templates;
 - no implicit GitHub/GitLab API mutations;
@@ -260,11 +269,11 @@ A simple implementation order is:
 
 1. config shape + validation;
 2. bounded renderer + golden tests;
-3. domain-specific managed-artifact plan schema/parser;
+3. domain-specific managed-artifact plan schema/parser, including mode/content preconditions;
 4. read-only canonical README observation and deterministic diff planning;
 5. exact-plan dry-run/stale validation;
 6. isolated commit creation + guarded canonical push;
 7. result rendering and evidence;
-8. end-to-end tests proving unconfigured repositories are untouched and stale plans fail closed.
+8. end-to-end tests proving unconfigured repositories are untouched, non-regular README state is rejected, and stale plans fail closed.
 
 Each slice should remain reviewable independently rather than introducing a generic artifact framework first.
