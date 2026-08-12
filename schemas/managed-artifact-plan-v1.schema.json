@@ -99,7 +99,7 @@
         "observed": { "$ref": "#/$defs/observedState" },
         "desired": { "$ref": "#/$defs/desiredState" },
         "template_sha256": { "$ref": "#/$defs/sha256" },
-        "diff": { "type": "string", "minLength": 1, "maxLength": 2162688 }
+        "diff": { "type": "string", "minLength": 1, "maxLength": 4259840 }
       }
     },
     "repositoryPlan": {
