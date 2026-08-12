@@ -41,6 +41,27 @@ func TestLoadAcceptsREADMEArtifactConfig(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsREADMEWithLegacyCanonicalURL(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "repora.yaml")
+	writeFile(t, path, []byte(`repos:
+  - id: repora
+    canonical:
+      provider: gitlab
+      url: git@gitlab.com:micrantha/repora.git
+    mirrors:
+      - provider: github
+        url: git@github.com:hackelia-micrantha/repora.git
+    artifacts:
+      readme:
+        template: templates/README.md.tmpl
+`))
+
+	_, err := Load(path)
+	if err == nil || !strings.Contains(err.Error(), "requires provider/path canonical identity") {
+		t.Fatalf("Load error = %v, want provider/path canonical requirement", err)
+	}
+}
+
 func TestLoadRejectsUnknownArtifactType(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "repora.yaml")
 	writeFile(t, path, []byte(`repos:
