@@ -11,6 +11,7 @@ Usage:
   repoctl <command> [options]
   repoctl validate-report FILE
   repoctl list-findings FILE
+  repoctl generate-scorecard FILE
   repoctl --help
   repoctl --version
 
@@ -19,8 +20,9 @@ Commands:
   plan     show planned mirror updates or export an executable artifact
   apply    apply current observations or an exact plan artifact
   sync     alias for apply
-  validate-report  validate a repository assessment report without mutation
-  list-findings    list validated assessment findings without mutation
+  validate-report   validate a repository assessment report without mutation
+  list-findings     list validated assessment findings without mutation
+  generate-scorecard  render validated scorecard dimensions without recalculation
   version  show embedded version and commit metadata
   help     show this help
 
