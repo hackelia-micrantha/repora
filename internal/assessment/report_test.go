@@ -19,7 +19,7 @@ func TestParseCommittedExample(t *testing.T) {
 
 func TestParseRejectsUnknownField(t *testing.T) {
 	data := validReportJSON(t)
-	data = []byte(strings.Replace(string(data), `"summary":`, `"unexpected":true,"summary":`, 1))
+	data = []byte(strings.Replace(string(data), `"summary":`, `"unexpected": true, "summary":`, 1))
 	if _, err := Parse(data); err == nil || !strings.Contains(err.Error(), "unknown field") {
 		t.Fatalf("Parse() error = %v, want unknown-field rejection", err)
 	}
@@ -27,7 +27,7 @@ func TestParseRejectsUnknownField(t *testing.T) {
 
 func TestParseRejectsUnknownEvidenceLink(t *testing.T) {
 	data := validReportJSON(t)
-	data = []byte(strings.Replace(string(data), `"evidence_ids":[]`, `"evidence_ids":["missing"]`, 1))
+	data = []byte(strings.Replace(string(data), `"evidence_ids": []`, `"evidence_ids": ["missing"]`, 1))
 	if _, err := Parse(data); err == nil || !strings.Contains(err.Error(), "unknown evidence id") {
 		t.Fatalf("Parse() error = %v, want unknown evidence rejection", err)
 	}
@@ -35,7 +35,7 @@ func TestParseRejectsUnknownEvidenceLink(t *testing.T) {
 
 func TestParseRejectsMissingDirtyField(t *testing.T) {
 	data := validReportJSON(t)
-	data = []byte(strings.Replace(string(data), `,"dirty":false`, "", 1))
+	data = []byte(strings.Replace(string(data), `, "dirty": false`, "", 1))
 	if _, err := Parse(data); err == nil || !strings.Contains(err.Error(), "dirty field is required") {
 		t.Fatalf("Parse() error = %v, want required dirty-field rejection", err)
 	}
