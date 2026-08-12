@@ -22,17 +22,17 @@ var (
 )
 
 type Report struct {
-	Kind      string    `json:"kind"`
-	Version   int       `json:"version"`
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Scope     []string  `json:"scope"`
-	Summary   string    `json:"summary"`
-	Snapshot  Snapshot  `json:"snapshot"`
-	Findings  []Finding `json:"findings"`
+	Kind      string     `json:"kind"`
+	Version   int        `json:"version"`
+	ID        string     `json:"id"`
+	Title     string     `json:"title"`
+	Scope     []string   `json:"scope"`
+	Summary   string     `json:"summary"`
+	Snapshot  Snapshot   `json:"snapshot"`
+	Findings  []Finding  `json:"findings"`
 	Evidence  []Evidence `json:"evidence"`
-	Scorecard Scorecard `json:"scorecard"`
-	Metadata  *Metadata `json:"metadata,omitempty"`
+	Scorecard Scorecard  `json:"scorecard"`
+	Metadata  *Metadata  `json:"metadata,omitempty"`
 }
 
 type Snapshot struct {
@@ -44,10 +44,10 @@ type Snapshot struct {
 }
 
 type Repository struct {
-	Provider      string `json:"provider,omitempty"`
-	FullName      string `json:"full_name"`
-	URL           string `json:"url,omitempty"`
-	DefaultBranch string `json:"default_branch,omitempty"`
+	Provider      *string `json:"provider,omitempty"`
+	FullName      string  `json:"full_name"`
+	URL           *string `json:"url,omitempty"`
+	DefaultBranch *string `json:"default_branch,omitempty"`
 }
 
 type Revision struct {
@@ -102,20 +102,20 @@ type Dimension struct {
 }
 
 type Metadata struct {
-	CreatedBy string `json:"created_by,omitempty"`
-	CreatedAt string `json:"created_at,omitempty"`
-	Notes     string `json:"notes,omitempty"`
+	CreatedBy string  `json:"created_by,omitempty"`
+	CreatedAt *string `json:"created_at,omitempty"`
+	Notes     string  `json:"notes,omitempty"`
 }
 
 var (
-	allowedScopes = stringSet("quality", "architecture", "sdlc", "security", "operations", "documentation", "evidence")
-	findingTypes = stringSet("question", "finding", "recommendation", "tradeoff", "risk", "gap", "overlap", "drift")
-	severities = stringSet("critical", "high", "medium", "low", "informational")
-	findingStatuses = stringSet("open", "accepted", "deferred", "implemented", "rejected")
+	allowedScopes      = stringSet("quality", "architecture", "sdlc", "security", "operations", "documentation", "evidence")
+	findingTypes       = stringSet("question", "finding", "recommendation", "tradeoff", "risk", "gap", "overlap", "drift")
+	severities         = stringSet("critical", "high", "medium", "low", "informational")
+	findingStatuses    = stringSet("open", "accepted", "deferred", "implemented", "rejected")
 	evidenceCategories = stringSet("architecture", "security", "testing", "devops", "observability", "backend", "mobile", "frontend", "platform", "ai", "leadership", "mentorship")
-	evidenceStrengths = stringSet("strong", "moderate", "weak", "unsupported")
-	scoreDimensions = stringSet("architecture", "security", "testing", "delivery", "operations", "maintainability", "documentation")
-	referenceTypes = stringSet("issue", "pull_request", "commit", "file", "url")
+	evidenceStrengths  = stringSet("strong", "moderate", "weak", "unsupported")
+	scoreDimensions    = stringSet("architecture", "security", "testing", "delivery", "operations", "maintainability", "documentation")
+	referenceTypes     = stringSet("issue", "pull_request", "commit", "file", "url")
 )
 
 func Parse(data []byte) (Report, error) {
@@ -191,8 +191,8 @@ func (r Report) Validate() error {
 	if err := r.Scorecard.validate(evidenceIDs); err != nil {
 		return err
 	}
-	if r.Metadata != nil && strings.TrimSpace(r.Metadata.CreatedAt) != "" {
-		if _, err := time.Parse(time.RFC3339, r.Metadata.CreatedAt); err != nil {
+	if r.Metadata != nil && r.Metadata.CreatedAt != nil {
+		if _, err := time.Parse(time.RFC3339, *r.Metadata.CreatedAt); err != nil {
 			return fmt.Errorf("metadata created_at is not RFC3339: %w", err)
 		}
 	}
@@ -205,6 +205,15 @@ func (s Snapshot) validate() error {
 	}
 	if strings.TrimSpace(s.Repository.FullName) == "" {
 		return fmt.Errorf("repository full_name is required")
+	}
+	for name, value := range map[string]*string{
+		"provider":       s.Repository.Provider,
+		"url":            s.Repository.URL,
+		"default_branch": s.Repository.DefaultBranch,
+	} {
+		if value != nil && *value == "" {
+			return fmt.Errorf("repository %s must not be empty when present", name)
+		}
 	}
 	if !commitPattern.MatchString(s.Revision.Commit) {
 		return fmt.Errorf("snapshot commit must be a 7-64 character hex revision")
@@ -261,6 +270,11 @@ func (f Finding) validate(evidenceIDs map[string]struct{}) error {
 	}
 	if strings.TrimSpace(f.Title) == "" || strings.TrimSpace(f.Description) == "" {
 		return fmt.Errorf("finding %q title and description are required", f.ID)
+	}
+	for i, tradeoff := range f.Tradeoffs {
+		if tradeoff == "" {
+			return fmt.Errorf("finding %q tradeoffs[%d] must not be empty", f.ID, i)
+		}
 	}
 	if f.References == nil || f.EvidenceIDs == nil {
 		return fmt.Errorf("finding %q references and evidence_ids arrays are required", f.ID)
