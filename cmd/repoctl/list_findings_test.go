@@ -24,6 +24,36 @@ func TestListFindingsPrintsReportOrder(t *testing.T) {
 	}
 }
 
+func TestListFindingsJSONQuotesTitle(t *testing.T) {
+	examplePath := filepath.Join("..", "..", "examples", "repository-assessment-v1.json")
+	data, err := os.ReadFile(examplePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data = []byte(strings.Replace(
+		string(data),
+		`"title": "Document routing has deterministic regression fixtures",`,
+		`"title": "Line one\tline two\nquote \" and control \u0001",`,
+		1,
+	))
+	path := filepath.Join(t.TempDir(), "escaped-title.json")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"list-findings", path})
+	})
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	wantFirstLine := "routing-determinism\tinformational\timplemented\tfinding\t\"Line one\\tline two\\nquote \\\" and control \\u0001\"\n"
+	if !strings.HasPrefix(stdout.String(), wantFirstLine) {
+		t.Fatalf("stdout = %q, want prefix %q", stdout.String(), wantFirstLine)
+	}
+}
+
 func TestListFindingsAllowsEmptyFindings(t *testing.T) {
 	path := filepath.Join("..", "..", "templates", "assessments", "repository-assessment-v1.json")
 	var stdout bytes.Buffer
