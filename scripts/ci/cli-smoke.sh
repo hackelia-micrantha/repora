@@ -34,3 +34,6 @@ assert_subcommand_help() {
 assert_subcommand_help status
 assert_subcommand_help plan
 assert_subcommand_help apply
+
+"$binary" validate-report --help >/dev/null
+"$binary" validate-report ./examples/repository-assessment-v1.json >/dev/null
