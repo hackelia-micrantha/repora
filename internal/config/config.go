@@ -227,6 +227,7 @@ func validateEndpoint(endpoint Endpoint, role, repoID string) error {
 			if part == "" || part == "." || part == ".." {
 				return fmt.Errorf("%s path contains an invalid segment for repo %q", role, repoID)
 			}
+		}
 	}
 	return nil
 }
