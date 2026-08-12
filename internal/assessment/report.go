@@ -119,6 +119,10 @@ var (
 )
 
 func Parse(data []byte) (Report, error) {
+	if err := rejectNullValues(data); err != nil {
+		return Report{}, err
+	}
+
 	var report Report
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
@@ -132,6 +136,34 @@ func Parse(data []byte) (Report, error) {
 		return Report{}, err
 	}
 	return report, nil
+}
+
+func rejectNullValues(data []byte) error {
+	var value any
+	if err := json.Unmarshal(data, &value); err != nil {
+		return fmt.Errorf("parse assessment: %w", err)
+	}
+	return walkNulls(value, "$")
+}
+
+func walkNulls(value any, path string) error {
+	switch current := value.(type) {
+	case nil:
+		return fmt.Errorf("assessment field %s must not be null", path)
+	case map[string]any:
+		for key, child := range current {
+			if err := walkNulls(child, path+"."+key); err != nil {
+				return err
+			}
+		}
+	case []any:
+		for i, child := range current {
+			if err := walkNulls(child, fmt.Sprintf("%s[%d]", path, i)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func ensureEOF(decoder *json.Decoder) error {
