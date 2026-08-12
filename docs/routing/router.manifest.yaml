@@ -63,7 +63,7 @@ routes:
       commands:
         - repoctl
       files:
-        - cmd/repoctl/*.go
+        - cmd/repoctl/main.go
     include:
       - cmd/repoctl/**
     exclude:
