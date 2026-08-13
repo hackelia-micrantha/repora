@@ -67,6 +67,9 @@
           default = {
             type = "app";
             program = "${repora}/bin/repoctl";
+            meta = {
+              description = "Run the Repora repoctl CLI";
+            };
           };
         });
 
@@ -134,10 +137,6 @@
               pkgs.git
               pkgs.gnumake
               pkgs.python3
-              pkgs.staticcheck
-              pkgs.actionlint
-              pkgs.taplo
-              pkgs.prettier
               pkgs.nixfmt-rfc-style
             ];
           };
