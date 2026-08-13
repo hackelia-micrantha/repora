@@ -4,9 +4,9 @@ Status: Current
 
 ## Scope
 
-This document describes the implemented read-only planning layer for managed README artifacts: contained local template loading, deterministic rendering, exact canonical Git-tree observation, byte-aware review diff construction, managed-artifact plan assembly, and the user-facing `plan-readme` review command.
+This document describes the implemented read-only planning layer for managed README artifacts: contained local template loading, deterministic rendering, exact canonical Git-tree observation, byte-aware review diff construction, managed-artifact plan assembly, the user-facing `plan-readme` review command, and exact-plan dry-run stale preflight.
 
-The planner depends on a `READMEObserver` interface. `NewGitREADMEObserver` provides the production Git-backed implementation. Dry-run/apply preflight, commit creation, and remote push are **not** implemented by this layer and remain owned by issue #12.
+The planner depends on a `READMEObserver` interface. `NewGitREADMEObserver` provides the production Git-backed implementation. Commit creation and remote push are **not** implemented by this layer and remain owned by issue #12.
 
 ## Input boundary
 
@@ -132,25 +132,44 @@ The plan contains no local template path, cache path, credentials, timestamp, au
 
 `repoctl plan-readme -f repora.yaml` is a separate command from Git-ref `repoctl plan`. This preserves the domain separation required by the managed-artifact architecture and prevents README review from being silently bundled with mirror reconciliation.
 
-The default output is human review text. For each changed repository it prints:
-
-- repository ID and durable UID;
-- canonical provider/path/default branch;
-- exact reviewed base OID;
-- observed and desired README mode/digest state;
-- the deterministic byte-aware README review diff.
+The default output is human review text. For each changed repository it prints repository/durable identity, canonical provider/path/default branch, exact reviewed base OID, observed and desired README mode/digest state, and the deterministic byte-aware README review diff.
 
 If no configured README needs a change, the command prints `No managed README changes.` and exits successfully.
 
-`repoctl plan-readme --artifact` emits the exact `repora.io/managed-artifact-plan` v1 JSON instead of human review text. That serialized artifact is evidence/review input only in the current slice: there is no managed README apply command yet.
+`repoctl plan-readme --artifact` emits the exact `repora.io/managed-artifact-plan` v1 JSON instead of human review text.
 
-`plan-readme` accepts only `-f` and `--artifact`. It intentionally does not accept mirror-plan options, `--dry-run`, `--force`, or `--plan-file`; those semantics belong to later exact-plan preflight/apply slices.
+`plan-readme` accepts only `-f` and `--artifact`. It intentionally does not accept mirror-plan options, `--dry-run`, `--force`, or `--plan-file`.
+
+## Exact-plan dry-run preflight
+
+`PreflightPlan(spec, plan, observer)` validates whether a previously reviewed managed-artifact plan is still safe to execute. It is read-only with respect to remote repository state.
+
+Before observation, preflight:
+
+1. validates the strict managed-artifact plan contract;
+2. binds every planned UID to current configuration;
+3. requires managed README authority to still be explicitly enabled;
+4. re-validates current durable repository identity and canonical provider/path;
+5. requires current repository ID and canonical provider/path to match the reviewed plan.
+
+Only after all planned configuration bindings pass does preflight observe repositories. For each repository it then requires:
+
+1. current canonical default branch equals the reviewed target branch;
+2. current canonical HEAD equals exact reviewed `base_oid`;
+3. README presence equals reviewed presence;
+4. for a present README, Git mode and SHA-256 equal reviewed observed state;
+5. recomputing `ReviewDiff` from current exact bytes and reviewed desired content reproduces the serialized reviewed diff exactly.
+
+Configuration or repository-state mismatches return `ErrStale`. Transport/cache/observation failures are operational errors rather than stale-plan results.
+
+`repoctl apply-readme -f repora.yaml --plan-file FILE --dry-run` exposes this preflight. In the current slice, `--dry-run` is mandatory: invoking `apply-readme` without it fails before configuration or plan-file I/O. A stale plan exits with status 2; invalid plans or operational failures exit with status 1. A successful dry-run prints the same human review representation as `plan-readme` and performs no commit or push.
+
+No current command can perform a real managed README apply.
 
 ## Still deferred
 
 Issue #12 still requires:
 
-- exact-plan stale preflight and dry-run;
 - isolated commit creation that changes only root `README.md`;
 - guarded canonical push;
 - execution result/evidence output;

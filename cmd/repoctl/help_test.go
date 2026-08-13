@@ -56,6 +56,7 @@ func TestPrintHelp(t *testing.T) {
 		"apply",
 		"sync     alias for apply",
 		"plan-readme",
+		"apply-readme",
 		"validate-report",
 		"list-findings",
 		"generate-scorecard",
