@@ -184,7 +184,7 @@ func validateManagedArtifactEvidence(plan managedartifact.Plan, prepared []manag
 			if !push.Pushed {
 				return fmt.Errorf("successful managed artifact execution contains failed push for uid %q", push.UID)
 			}
-	}
+		}
 	}
 	return nil
 }
