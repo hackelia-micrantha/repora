@@ -24,6 +24,28 @@ func (w Writer) Write(record Record) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("validate journal record: %w", err)
 	}
+	name, err := recordFilename(record)
+	if err != nil {
+		return "", err
+	}
+	return w.writeEncoded(name, encoded)
+}
+
+// WriteManagedArtifact persists one managed-artifact execution record in the
+// same protected journal directory without reusing the Git-ref record schema.
+func (w Writer) WriteManagedArtifact(record ManagedArtifactRecord) (string, error) {
+	encoded, err := record.Marshal()
+	if err != nil {
+		return "", fmt.Errorf("validate managed artifact journal record: %w", err)
+	}
+	name, err := managedArtifactRecordFilename(record)
+	if err != nil {
+		return "", err
+	}
+	return w.writeEncoded(name, encoded)
+}
+
+func (w Writer) writeEncoded(name string, encoded []byte) (string, error) {
 	if strings.TrimSpace(w.Root) == "" {
 		return "", fmt.Errorf("journal root is required")
 	}
@@ -44,10 +66,6 @@ func (w Writer) Write(record Record) (string, error) {
 		return "", fmt.Errorf("journal directory escapes root")
 	}
 
-	name, err := recordFilename(record)
-	if err != nil {
-		return "", err
-	}
 	reference := filepath.ToSlash(filepath.Join(DirectoryName, name))
 	finalPath := filepath.Join(journalDir, name)
 	if filepath.Dir(finalPath) != journalDir {
@@ -105,6 +123,13 @@ func recordFilename(record Record) (string, error) {
 		return "", fmt.Errorf("journal record requires a valid phase")
 	}
 	return record.Repository.UID + "--" + record.ExecutionID + "--" + strings.ToLower(string(record.Phase)) + ".json", nil
+}
+
+func managedArtifactRecordFilename(record ManagedArtifactRecord) (string, error) {
+	if !validIdentifier(record.ExecutionID) || !validPhase(record.Phase) {
+		return "", fmt.Errorf("managed artifact journal record requires valid execution ID and phase")
+	}
+	return "managed-artifact--" + record.ExecutionID + "--" + strings.ToLower(string(record.Phase)) + ".json", nil
 }
 
 func resolveJournalRoot(value string) (string, error) {
