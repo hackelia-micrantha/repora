@@ -56,6 +56,21 @@ type Result struct {
 	Journal      JournalReferences  `json:"journal"`
 }
 
+// Reportable is true only after a managed-artifact RESULT has been projected.
+// Early failures such as INTENT persistence failure must not be serialized as
+// the stabilized apply-result contract because no valid RESULT exists yet.
+func (r Result) Reportable() bool {
+	if r.Version != ResultVersion || r.Kind != ResultKind || r.ExecutionID == "" || r.Journal.Intent == "" || len(r.Repositories) == 0 {
+		return false
+	}
+	switch r.Outcome {
+	case journal.OutcomeApplied, journal.OutcomeFailed, journal.OutcomeStale:
+		return true
+	default:
+		return false
+	}
+}
+
 // Execute persists INTENT before candidate-object creation, prepares verified
 // local commits, performs guarded pushes, then persists RESULT even for stale,
 // partial-success, or operational failure outcomes.
