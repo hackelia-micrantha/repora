@@ -88,7 +88,7 @@ func checkRepos(spec config.Spec, parallel int, debug bool) checkSummary {
 }
 
 func runPlan(spec config.Spec, summary checkSummary, jsonFlag bool, artifactFlag bool, force bool) int {
-	artifact, plannedResults, buildErr, buildFailures := buildPlanArtifact(spec, summary)
+	artifact, plannedResults, buildFailures, buildErr := buildPlanArtifact(spec, summary)
 	if artifactFlag && (summary.firstErr != nil || buildErr != nil) {
 		fmt.Fprintln(os.Stderr, "repoctl: exact plan artifact not emitted because planning was incomplete")
 		if buildErr != nil {
@@ -134,7 +134,7 @@ func runPlan(spec config.Spec, summary checkSummary, jsonFlag bool, artifactFlag
 	return 0
 }
 
-func buildPlanArtifact(spec config.Spec, summary checkSummary) (planartifact.Artifact, []status.Result, error, int) {
+func buildPlanArtifact(spec config.Spec, summary checkSummary) (planartifact.Artifact, []status.Result, int, error) {
 	artifact := planartifact.Artifact{
 		Version:      planartifact.Version,
 		Kind:         planartifact.Kind,
@@ -167,9 +167,9 @@ func buildPlanArtifact(spec config.Spec, summary checkSummary) (planartifact.Art
 		results = append(results, summary.results[i])
 	}
 	if err := artifact.Validate(); err != nil {
-		return planartifact.Artifact{}, nil, fmt.Errorf("validate generated artifact: %w", err), failedCount + 1
+		return planartifact.Artifact{}, nil, failedCount + 1, fmt.Errorf("validate generated artifact: %w", err)
 	}
-	return artifact, results, firstErr, failedCount
+	return artifact, results, failedCount, firstErr
 }
 
 func runApply(spec config.Spec, summary checkSummary, jsonFlag bool, force bool, dryRun bool, parallel int, artifact *planartifact.Artifact, configPath string) int {
