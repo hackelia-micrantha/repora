@@ -2,106 +2,84 @@
 
 Status: Active
 
-## Release objective
+## Current objective
 
-The next meaningful Repora release is a reviewed v0.1 tag of the completed local-first multi-mirror controller.
+Repora's v0.1 mirror-controller release and the first managed-artifact/routing/assessment slices are complete. The current objective is to keep the standalone controller easy to compose while avoiding new runtime authority without an explicit reviewed contract.
 
-## Required v0.1 capability
-
-A v0.1-quality controller must:
-
-- load durable repository topology from strict configuration;
-- resolve runtime transport without persisting credentials or URLs as identity;
-- observe one canonical and one or more mirror default branches;
-- classify state and failures independently per mirror;
-- produce one deterministic exact executable artifact;
-- reject invalid or stale plans before mutation;
-- enforce closed reference and destructive-change policy;
-- execute independent mirrors with lease protection and honest partial outcomes;
-- persist durable path-bound intent/result evidence;
-- ship through a documented repeatable binary release flow.
-
-## Current state
+## Completed foundation
 
 | Area | State | Notes |
 | --- | --- | --- |
 | Durable `uid` identity | Complete | Cache and durable artifacts use logical identity. |
-| Provider/path topology | Complete | Multiple mirrors use unambiguous stable targets. |
-| Ref policy v1 | Complete | Default branch only; destructive actions require authorization. |
-| Multi-mirror status | Complete | Ordered observations and mirror-local failures in status v2. |
-| Exact multi-mirror planning | Complete | Artifact v2 actions are identity-matched and deterministic. |
-| Runtime target rebinding | Complete | Provider/path binds to current aliases without rewriting intent. |
-| Complete preflight | Complete | Topology, policy, branches, and all expected OIDs validate before action zero. |
-| Multi-mirror mutation | Complete | Sequential independent actions continue after runtime failure without rollback. |
-| Apply output and journals | Complete | Apply v3 and execution-record v3 preserve per-target outcomes. |
-| Release packaging | Complete | Tag-only workflow builds four archives, checksums, metadata, and verification. |
-| Security and supply-chain CI | Complete in code | Vulnerability, CodeQL, secret, dependency-license, and workflow-policy validation are defined. |
-| Release checklist and changelog policy | Complete in code | Publication, independent verification, failure handling, and curated release notes are documented. |
-| Benchmark decision | Explicitly deferred | No stable workload or useful shared-CI threshold exists for v0.1; triggers are documented. |
-| First v0.1 publication | Active final gate | Merge the hardening changes, run final readiness review, publish the tag, and verify downloaded assets. |
+| Provider/path topology | Complete | Multiple mirrors use stable provider/path identity. |
+| Ref policy v1 | Complete | Default branch only; destructive actions require explicit authorization. |
+| Multi-mirror status/planning | Complete | Exact artifact v2 is provider/path-bound and deterministic. |
+| Stale-safe execution | Complete | Complete OID preflight, exact leases, partial-result evidence, and no implicit rollback. |
+| Execution evidence | Complete | Immutable INTENT/RESULT journals preserve reviewed intent and outcomes. |
+| v0.1 release | Complete | Protected tag and published assets were independently verified. |
+| Managed README lifecycle | Complete | Separate deterministic plan/apply domain with exact stale preflight, leased canonical push, and durable evidence. |
+| Document routing foundation | Complete | Deterministic route tests, trust tiers, manifests, context receipts, hierarchy/AST routing slices. |
+| Repository assessment | Complete | Evidence-backed assessment/scorecard contracts are implemented. |
+| Managed-artifact Go contract consolidation | Complete | `internal/managedartifact` is the single authoritative plan-v1 implementation. |
 
-## Immediate sequence
+## Active sequence
 
-### 1. Validate and merge v0.1 hardening
+### 1. Finish optional Anthesis policy integration design (#30)
 
 Exit condition:
 
-- required CI, security, workflow-policy, and release-package validation are green;
-- issue #10 is reconciled against implemented controls;
-- issue #11 acceptance criteria are updated to reflect the benchmark deferral and documented release process;
-- current architecture, README, release guidance, and this plan agree.
+- an accepted ADR defines the optional additive policy boundary;
+- `pre_apply` is selected as the first authorization seam;
+- deterministic facts/decision/evidence contracts and fail-closed `enforce` semantics are documented;
+- Repora standalone operation remains the default;
+- runtime Anthesis transport and policy-engine coupling remain explicitly deferred.
 
-### 2. Publish and independently verify v0.1
+### 2. Add standalone Nix flake packaging (#115)
 
-Follow `docs/release-checklist.md`.
+Repora should expose a repository-owned Nix package/application/check contract suitable for independent use and Dubnium composition without depending on private Dubnium modules or granting repository mutation authority through packaging.
 
 Exit condition:
 
-- the release tag points to the reviewed `main` commit and is not moved;
-- the tag-only workflow publishes four archives plus `checksums.txt`;
-- downloaded assets pass checksum verification;
-- the Linux binary reports the intended tag and exact commit;
-- a bounded local-repository status/plan/dry-run smoke workflow succeeds;
-- release evidence is recorded in issue #11 or #27.
+- root flake exports the canonical package/app/checks/dev-shell/formatter surface;
+- package and checks reuse existing Go dependency/build/test/static-analysis contracts;
+- repository-mutation tests remain disposable and hermetic;
+- standalone Nix usage is documented and requires no Dubnium access.
 
-### 3. Close the v0.1 milestone
+### 3. Reassess runtime policy integration
 
-- close #10 after its reconciled security scope is complete;
-- close #11 after the published release is independently verified;
-- close #27 after the first v0.1 path is validated;
-- choose one explicit post-v0.1 milestone before starting deferred product tracks.
+After #30 design and #115 packaging, do not automatically implement Anthesis runtime coupling. Resume only when there is a concrete evaluator contract/deployment path and a clear operator need.
+
+If resumed, the first runtime slice must remain transport-free and mutation-neutral: versioned policy facts/decision schemas, deterministic facts construction, evaluator interface/fakes, and local policy evidence before inserting a real gate.
 
 ## Explicit deferrals
 
 - tags, non-default branches, wildcard refspecs, and deleted-ref reconciliation;
 - concurrent mirror mutation;
 - automatic rollback or cross-repository/cross-remote transactions;
-- managed repository artifacts and README templating;
-- advanced document routing and repository assessments;
-- Anthesis policy integration;
+- Anthesis runtime transport/authentication and approval workflows;
 - provider provisioning or hosted control-plane behavior;
-- package managers, containers, signing, and full provenance;
-- repository-wide performance gates without a stable workload and threshold.
+- package-manager publication beyond the repository-owned Nix flake unless separately prioritized;
+- containers, release signing, and full provenance attestation;
+- repository-wide performance gates without a stable workload and useful threshold.
 
-Deferred tracks must reuse the current plan, policy, execution, result, and evidence substrate rather than create parallel paths. Anthesis is not part of the v0.1 or immediate post-release execution path unless a later explicit decision reprioritizes it.
+Deferred tracks must reuse the current plan, policy, execution, result, and evidence substrate rather than create parallel paths.
 
 ## Simplicity constraints
 
+- Preserve Repora as a standalone local-first controller.
 - Prefer vertical capabilities over disconnected internal models.
-- Keep GitHub Releases as the initial distribution mechanism.
-- Keep release packages limited to plain archives and checksums.
-- Preserve tag-only publication and least-privilege workflow permissions.
-- Treat compatibility serializers as views, never decision authorities.
-- Keep ref-policy v1 closed and mirrors sequential.
-- Do not imply cross-remote atomicity, rollback, signing, or native validation where only cross-compilation exists.
-- Do not add Anthesis integration as release hardening or incidental follow-up.
+- Keep Git-ref reconciliation, managed artifacts, routing, assessments, and policy integration as separate domain contracts.
+- External policy may add authorization but may never rewrite or weaken reviewed Repora intent.
+- Keep ref-policy v1 closed and mirrors sequential until a separate decision expands them.
+- Do not imply cross-remote atomicity, rollback, or approval semantics that are not implemented.
+- Packaging may expose capability; it must not silently grant mutation authority.
 
 ## Definition of done
 
 A slice is complete only when observable behavior, failure/recovery tests, versioned contracts where applicable, documentation, issue acceptance criteria, independent review, and CI/security validation are complete.
 
-A release is complete only after published assets—not merely local packages or a successful publication workflow—have been independently downloaded and verified.
+For design-only slices, source behavior must remain unchanged and the implementation boundary/deferred work must be explicit.
 
 ## Maintenance
 
-Update this plan when a release gate completes, changes order, or is explicitly deferred.
+Update this plan when a capability completes, implementation order changes, or deferred work is explicitly reprioritized.
