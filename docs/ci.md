@@ -10,7 +10,9 @@ Run all portable required checks:
 make check
 ```
 
-This runs formatting verification, module hygiene, `go vet`, fast race-enabled tests, integration tests, CLI smoke tests, and a native build.
+This runs formatting verification, module hygiene, `go vet`, fast race-enabled tests, integration tests, contract tests, CLI smoke tests, and a native build.
+
+`make check` remains portable across Repora's supported Go toolchains. The stronger current-toolchain analyzer is exposed separately through `make static-analysis` and is required by pull-request CI.
 
 ## Granular commands
 
@@ -19,9 +21,11 @@ This runs formatting verification, module hygiene, `go vet`, fast race-enabled t
 | `make format-check` | Report Go files that require `gofmt`. |
 | `make module-check` | Run `go mod tidy` and fail if `go.mod` or `go.sum` changes. |
 | `make vet` | Run `go vet ./...`. |
+| `make static-analysis` | Run `go vet` and the pinned Staticcheck release against all Go packages and tests. |
 | `make test` | Run fast tests with `-race -count=1 -short`. |
 | `make coverage` | Run the fast test suite with race detection and write coverage profile and summary files under `artifacts/coverage/`. |
-| `make integration` | Run integration tests against disposable local Git repositories. |
+| `make integration` | Run integration-bearing packages against disposable local Git repositories. |
+| `make contract-test` | Run routing, context-receipt, and repository-assessment contract validation. |
 | `make deep-repeat` | Repeat the fast race-enabled suite, reporting the failing iteration. |
 | `make deep-integration` | Run all tests, including integration tests, under the race detector. |
 | `make e2e` | Build the CLI and exercise its command boundary. |
@@ -32,6 +36,16 @@ This runs formatting verification, module hygiene, `go vet`, fast race-enabled t
 | `make workflow-check` | Run `actionlint`, workflow-policy regression tests, and Repora's workflow security policy. |
 | `make release-package` | Build normalized cross-platform release archives and checksums. |
 | `make release-verify` | Verify checksums, archive contents, metadata, and the Linux packaged binary. |
+
+## Static analysis
+
+The pull-request `Lint` job runs `make static-analysis` using the current CI Go toolchain. The target first runs `go vet` and then a pinned Staticcheck release, keeping the analyzer invocation identical between local development and CI.
+
+Staticcheck is intentionally not part of the portable `make check` target because scheduled compatibility validation runs that target on the minimum supported Go toolchain as well as the current toolchain. Analyzer releases have their own Go toolchain support window; keeping the stronger analyzer in a dedicated target prevents minimum-version compatibility from being coupled to that window.
+
+The `mise lint` task delegates Go analysis to `make static-analysis` instead of maintaining a second linter configuration. Workflow and TOML linting remain additional local checks.
+
+Security-oriented static analysis remains independently enforced by CodeQL in the `security` workflow. General static analysis and security analysis are complementary failure boundaries and neither replaces the other.
 
 ## Coverage evidence
 
@@ -58,6 +72,17 @@ These binaries are unsigned, short-lived, non-release verification artifacts. Su
 
 ## Test classification
 
+The pull-request pipeline keeps distinct validation boundaries rather than treating every test as one undifferentiated suite:
+
+| Layer | CI boundary | Local command | Scope |
+| --- | --- | --- | --- |
+| Unit / fast | `Unit tests and coverage` | `make test` or `make coverage` | All Go packages with `-short`, race detection, and coverage evidence. |
+| Integration | `Integration tests` | `make integration` | Packages whose tests exercise disposable local Git repositories and multi-component behavior. |
+| Contract | `Contract tests` | `make contract-test` | Routing, trust, context-receipt, and assessment data/CLI contracts. |
+| End-to-end | `CLI end-to-end smoke tests` | `make e2e` | Built `repoctl` process and user-visible command boundary. |
+
+The pyramid should remain bottom-heavy: most behavioral cases belong in fast Go tests; integration tests are reserved for component interactions that require real local Git behavior; end-to-end tests cover only critical CLI paths.
+
 Integration tests must call the package's integration guard before performing setup:
 
 ```go
@@ -78,13 +103,15 @@ Integration tests must use `t.TempDir()` or another disposable workspace and mus
 
 Go 1.22 is the minimum supported toolchain line declared by `go.mod`. Go 1.25.8 is the current validated toolchain. Compatibility jobs are scheduled evidence, not release artifacts.
 
-Reachable-vulnerability scanning, secret detection, license validation, and CodeQL are intentionally not duplicated. The scheduled `security` workflow owns those checks.
+Reachable-vulnerability scanning, secret detection, license validation, CodeQL, and current-toolchain Staticcheck are intentionally not duplicated in compatibility validation. Their dedicated CI jobs own those checks.
 
 The repository currently has no Go fuzz targets. Bounded fuzzing is deferred until a reviewed `Fuzz...` target exists with a stable corpus boundary. When added, failures must retain the generated corpus input or seed and print a local reproduction command.
 
 ### Local reproduction
 
 ```sh
+make static-analysis
+make contract-test
 REPEAT_COUNT=10 make deep-repeat
 make deep-integration
 make check
