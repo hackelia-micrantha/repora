@@ -1,6 +1,6 @@
 # Deterministic Anthesis policy integration
 
-Status: Proposed
+Status: Accepted design; not implemented
 
 Issue: #30
 
@@ -101,11 +101,11 @@ Repora does not call Anthesis. Existing standalone behavior is unchanged.
 
 Repora may evaluate policy and persist the evaluation, but the policy result never blocks execution. Existing Repora local controls still apply.
 
-Evaluation transport/schema failures are reported as policy-evidence failures but do not independently deny the operation. An implementation must make this non-enforcing status explicit in output/evidence.
+Evaluation transport/schema/evidence failures are surfaced and may make the overall command unhealthy/nonzero, but they do not independently deny entry to the existing Git execution boundary. An implementation must make this non-enforcing status explicit in output/evidence.
 
 ### `warn`
 
-`deny`, `require_approval`, `warn`, or policy-evaluation failures are surfaced prominently and persisted, but do not independently block execution. Existing Repora local controls still apply.
+Every non-`allow` policy decision and every policy-evaluation/evidence failure is surfaced prominently and, when possible, persisted, but does not independently block execution. Existing Repora local controls still apply.
 
 This mode is observational and must never be described as authorization enforcement.
 
@@ -225,9 +225,11 @@ Facts must not contain:
 - HTTPS/SSH remote URLs;
 - credentials, tokens, credential-helper output, headers, environment values, or command lines;
 - local cache/worktree paths;
-- runtime Git aliases as authority;
+- runtime Git aliases as policy authority;
 - arbitrary repository file content;
 - mutable timestamps inside the canonical digest body.
+
+The exact artifact digest intentionally binds the policy evaluation to the reviewed serialized artifact, including any non-authoritative context that the artifact itself preserves. Policy facts must not separately promote runtime aliases into target identity or policy fields.
 
 ### Actor
 
@@ -241,7 +243,7 @@ Actor `id` is optional unless a future integration can supply a trustworthy iden
 
 ## Determinism and canonicalization
 
-Policy facts are evidence and authorization input, so equivalent reviewed intent must produce equivalent canonical facts.
+Policy facts are evidence and authorization input. The same exact reviewed artifact plus the same explicit actor/policy inputs must produce byte-identical canonical facts.
 
 A future implementation must define canonical serialization with:
 
@@ -276,6 +278,8 @@ A future policy-evaluation record should retain enough information to explain a 
 
 Policy evidence must be persisted before an enforcing `allow` can progress to Git execution INTENT. In `enforce` mode, failure to persist policy evidence blocks execution.
 
+In `record_only` and `warn`, an evidence-write failure remains visible and may make the overall command unhealthy/nonzero, but does not independently block otherwise-valid Repora execution. This preserves the meaning of those modes as non-enforcing.
+
 Existing Git execution journals remain the authoritative evidence of attempted Git mutation. Policy evidence explains the authorization gate; it does not replace execution INTENT/RESULT.
 
 ## Replay and challenge
@@ -299,10 +303,8 @@ A previous `allow` must never be replayed to authorize a new artifact, changed f
 | Invalid/malformed response | no effect | surface + continue under Repora controls | block |
 | Unsupported contract/policy version | no effect | surface + continue under Repora controls | block |
 | Digest mismatch | no effect | surface + continue under Repora controls | block |
-| `deny` | no effect | advisory only | block |
-| `require_approval` | no effect | advisory only | block |
-| `not_applicable` | no effect | advisory only | block |
-| Policy evidence write fails | no effect | return/report evidence failure per mode contract | block |
+| Any non-`allow` decision | no effect | advisory only | block |
+| Policy evidence write fails | no effect | surface + continue; command may be unhealthy/nonzero | block |
 | Explicit valid `allow` | no effect | record/advisory | continue to existing execution boundary |
 
 In all modes, Repora's own invalid topology, missing force authorization, stale refs, or executor preflight failure still block independently.
