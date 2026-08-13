@@ -9,6 +9,7 @@ const helpText = `repoctl manages configured Git repository mirrors and validate
 
 Usage:
   repoctl <command> [options]
+  repoctl plan-readme -f repora.yaml [--artifact]
   repoctl validate-report FILE
   repoctl list-findings FILE
   repoctl generate-scorecard FILE
@@ -21,6 +22,7 @@ Commands:
   plan     show planned mirror updates or export an executable artifact
   apply    apply current observations or an exact plan artifact
   sync     alias for apply
+  plan-readme  review managed README changes or export the exact managed-artifact plan
   validate-report  validate a repository assessment report without mutation
   list-findings    list validated assessment findings without mutation
   generate-scorecard  render validated scorecard dimensions without recalculation
@@ -47,6 +49,14 @@ Options for mirror commands:
         allow destructive overwrites for ahead or diverged mirrors
   --debug
         print debug logs to stderr
+
+Options for plan-readme:
+  -f string
+        path to SCHEMA-0001 YAML config (default "repora.yaml")
+  --artifact
+        print the exact repora.io/managed-artifact-plan v1 JSON instead of human review output
+
+Global options:
   --version
         show embedded version and commit metadata
   -h, --help
