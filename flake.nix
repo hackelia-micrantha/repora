@@ -13,18 +13,22 @@
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+      pkgsFor = system:
+        import nixpkgs {
+          inherit system;
+          config.allowUnfreePredicate = pkg: nixpkgs.lib.getName pkg == "repora";
+        };
+      version = "0.1.0-dev";
+      vendorHash = nixpkgs.lib.fakeHash;
+      commit =
+        if self ? shortRev then self.shortRev
+        else if self ? dirtyShortRev then self.dirtyShortRev
+        else "unknown";
     in
     {
       packages = forAllSystems (system:
         let
-          pkgs = import nixpkgs { inherit system; };
-          lib = pkgs.lib;
-          version = "0.1.0-dev";
-          commit =
-            if self ? shortRev then self.shortRev
-            else if self ? dirtyShortRev then self.dirtyShortRev
-            else "unknown";
-          vendorHash = lib.fakeHash;
+          pkgs = pkgsFor system;
           repora = pkgs.buildGoModule {
             pname = "repora";
             inherit version;
@@ -68,10 +72,7 @@
 
       checks = forAllSystems (system:
         let
-          pkgs = import nixpkgs { inherit system; };
-          lib = pkgs.lib;
-          version = "0.1.0-dev";
-          vendorHash = lib.fakeHash;
+          pkgs = pkgsFor system;
           common = {
             pname = "repora-check";
             inherit version;
@@ -124,7 +125,7 @@
 
       devShells = forAllSystems (system:
         let
-          pkgs = import nixpkgs { inherit system; };
+          pkgs = pkgsFor system;
         in
         {
           default = pkgs.mkShell {
@@ -144,7 +145,7 @@
 
       formatter = forAllSystems (system:
         let
-          pkgs = import nixpkgs { inherit system; };
+          pkgs = pkgsFor system;
         in
         pkgs.nixfmt-rfc-style);
     };
