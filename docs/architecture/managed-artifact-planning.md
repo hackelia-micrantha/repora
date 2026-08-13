@@ -4,9 +4,9 @@ Status: Current
 
 ## Scope
 
-This document describes the implemented read-only planning layer for managed README artifacts: contained local template loading, deterministic rendering, exact canonical Git-tree observation, byte-aware review diff construction, managed-artifact plan assembly, the user-facing `plan-readme` review command, and exact-plan dry-run stale preflight.
+This document describes the implemented managed README planning and local preparation layers: contained local template loading, deterministic rendering, exact canonical Git-tree observation, byte-aware review diff construction, managed-artifact plan assembly, the user-facing `plan-readme` review command, exact-plan dry-run stale preflight, and isolated candidate commit creation in Repora's local bare cache.
 
-The planner depends on a `READMEObserver` interface. `NewGitREADMEObserver` provides the production Git-backed implementation. Commit creation and remote push are **not** implemented by this layer and remain owned by issue #12.
+`NewGitREADMEObserver` provides the production Git-backed observation implementation. Guarded remote push and post-push reconciliation are **not** implemented by this layer and remain owned by issue #12.
 
 ## Input boundary
 
@@ -24,11 +24,7 @@ The normal CLI configuration loader remains responsible for broader repository t
 
 `LoadTemplate` resolves the physical configuration file first and treats its containing directory as the template root. The configuration path itself must resolve to a regular file.
 
-A template reference must be:
-
-- relative and canonical;
-- slash-separated and portable;
-- free of absolute paths, URLs, `~`, backslashes, traversal, redundant segments, unsafe controls, and surrounding whitespace.
+A template reference must be relative and canonical, slash-separated and portable, and free of absolute paths, URLs, `~`, backslashes, traversal, redundant segments, unsafe controls, and surrounding whitespace.
 
 Symlinks may resolve within the configuration root. A template that resolves outside the root is rejected. The resolved target must be a regular file and is read through a 1 MiB bound.
 
@@ -58,119 +54,72 @@ For a missing README, mode and content must be absent/empty. Missing and present
 
 For each managed repository it:
 
-1. re-validates the durable ID and provider/path canonical identity;
-2. resolves the canonical provider/path to an HTTPS remote;
-3. derives the bounded cache path from the durable repository ID;
-4. prepares the local bare cache if necessary;
-5. configures and fetches only the `canonical` remote;
-6. resolves the canonical remote HEAD and its default branch name;
-7. resolves the exact full object ID of `canonical/HEAD`;
-8. reads only the root `README.md` tree entry from that exact tree;
-9. distinguishes a missing entry from a present zero-byte blob;
-10. rejects tree, submodule, symlink, and other non-regular README modes;
-11. checks blob size before materializing content and refuses blobs above the managed-text limit;
-12. reads the immutable blob by its tree-entry object ID, preserving exact bytes.
+1. re-validates durable ID and provider/path canonical identity;
+2. resolves the canonical provider/path to HTTPS;
+3. prepares Repora's local bare cache;
+4. configures and fetches only the `canonical` remote;
+5. resolves the canonical default branch and exact `canonical/HEAD` object ID;
+6. reads only root `README.md` from that exact tree;
+7. distinguishes missing from present-empty;
+8. rejects non-regular modes;
+9. bounds blob size before materializing content;
+10. reads exact immutable blob bytes.
 
-Observation may create or refresh **local cache state** and may perform canonical fetches. It does not create worktree files, commits, tags, branches, or pushes, and it never configures or fetches mirror remotes for README planning. Remote repository state is therefore read-only in this slice.
-
-The branch, base OID, tree entry, mode, and content are all derived after the same canonical fetch. Blob content is read by immutable object ID, so a concurrent remote update cannot change the bytes associated with the emitted base OID; a later planning run fetches and observes the newer canonical state.
+Observation may create or refresh local cache state and may perform canonical fetches. It does not create worktree files, commits, tags, branches, or pushes, and it never configures or fetches mirror remotes for README planning.
 
 ## Byte-aware review diff
 
-`ReviewDiff` is a deterministic review representation, not an applyable patch.
-
-It uses fixed envelope labels:
-
-```text
---- a/README.md
-+++ b/README.md
-@@ ...
-```
-
-Content is represented as JSON-quoted exact byte-backed strings. This keeps control bytes out of terminal output while making line terminators explicit. For example, a CRLF-to-LF-only change is visible as:
-
-```text
--"# Title\r\n"
-+"# Title\n"
-```
-
-A missing README and a present zero-byte README are also distinct. Creating a zero-byte README includes:
-
-```text
-+""
-```
-
-Changing an existing zero-byte README starts with:
-
-```text
--""
-```
-
-The diff finds exact common prefix/suffix line segments, emits at most three unchanged context lines on each side, and JSON-quotes each changed before/after block as one string. Grouping changed blocks bounds JSON-escaping amplification while keeping the existing managed-plan review ceiling sufficient for 1 MiB README inputs.
-
-Review text inherits the managed-text safety policy: invalid UTF-8, terminal controls, Unicode format/bidirectional controls, and Unicode line/paragraph separators fail closed.
+`ReviewDiff` is a deterministic review representation, not an applyable patch. It preserves exact byte-visible line endings through JSON-quoted content, distinguishes missing and present-empty README state, emits bounded context, and rejects unsafe display controls.
 
 ## Plan construction
 
-For each configured repository, the builder:
-
-1. validates durable repository and canonical target identity for every configured repository before I/O;
-2. sorts configured repositories deterministically;
-3. loads the bounded contained template;
-4. renders desired README bytes deterministically;
-5. requests exact README observation;
-6. validates observed branch/base OID/mode/content;
-7. omits the repository when a present README already equals desired bytes;
-8. otherwise computes the byte-aware review diff;
-9. preserves an existing regular-file mode or uses `100644` for creation;
-10. records observed raw-content SHA-256, desired SHA-256/content, exact template SHA-256, target identity, and base OID;
-11. validates the completed `repora.io/managed-artifact-plan` v1 before returning it.
+For each configured repository, the builder validates durable identity, loads and renders the bounded template, observes exact canonical README state, omits no-op repositories, computes the byte-aware review diff, preserves an existing regular-file mode or uses `100644` for creation, records exact observed/desired/template digests and base OID, and validates the completed `repora.io/managed-artifact-plan` v1.
 
 The plan contains no local template path, cache path, credentials, timestamp, author identity, environment value, or Git command line.
 
 ## User-facing review command
 
-`repoctl plan-readme -f repora.yaml` is a separate command from Git-ref `repoctl plan`. This preserves the domain separation required by the managed-artifact architecture and prevents README review from being silently bundled with mirror reconciliation.
+`repoctl plan-readme -f repora.yaml` is separate from Git-ref `repoctl plan`. Default output is human review text containing repository/durable identity, canonical target/default branch, exact base OID, observed/desired README mode and digest state, and the deterministic review diff.
 
-The default output is human review text. For each changed repository it prints repository/durable identity, canonical provider/path/default branch, exact reviewed base OID, observed and desired README mode/digest state, and the deterministic byte-aware README review diff.
-
-If no configured README needs a change, the command prints `No managed README changes.` and exits successfully.
-
-`repoctl plan-readme --artifact` emits the exact `repora.io/managed-artifact-plan` v1 JSON instead of human review text.
-
-`plan-readme` accepts only `-f` and `--artifact`. It intentionally does not accept mirror-plan options, `--dry-run`, `--force`, or `--plan-file`.
+`repoctl plan-readme --artifact` emits the exact `repora.io/managed-artifact-plan` v1 JSON.
 
 ## Exact-plan dry-run preflight
 
-`PreflightPlan(spec, plan, observer)` validates whether a previously reviewed managed-artifact plan is still safe to execute. It is read-only with respect to remote repository state.
+`PreflightPlan(spec, plan, observer)` validates whether a previously reviewed managed-artifact plan is still safe to execute.
 
-Before observation, preflight:
+Before observation it validates the strict plan, binds every planned UID to current configuration, requires README authority to remain enabled, re-validates durable/canonical identity, and requires current repository ID and provider/path to match the reviewed plan.
 
-1. validates the strict managed-artifact plan contract;
-2. binds every planned UID to current configuration;
-3. requires managed README authority to still be explicitly enabled;
-4. re-validates current durable repository identity and canonical provider/path;
-5. requires current repository ID and canonical provider/path to match the reviewed plan.
+After those bindings pass, it requires current default branch, exact canonical HEAD, README presence, regular-file mode, content digest, and recomputed review diff to match the reviewed plan. Configuration or repository-state mismatches return `ErrStale`; transport/cache failures remain operational errors.
 
-Only after all planned configuration bindings pass does preflight observe repositories. For each repository it then requires:
+`repoctl apply-readme -f repora.yaml --plan-file FILE --dry-run` exposes this preflight. `--dry-run` remains mandatory in the current CLI; no current command pushes a managed README change.
 
-1. current canonical default branch equals the reviewed target branch;
-2. current canonical HEAD equals exact reviewed `base_oid`;
-3. README presence equals reviewed presence;
-4. for a present README, Git mode and SHA-256 equal reviewed observed state;
-5. recomputing `ReviewDiff` from current exact bytes and reviewed desired content reproduces the serialized reviewed diff exactly.
+## Isolated local commit preparation
 
-Configuration or repository-state mismatches return `ErrStale`. Transport/cache/observation failures are operational errors rather than stale-plan results.
+`CommitPreparer.Prepare(spec, plan, observer)` adds the first local mutation boundary. It always runs exact stale preflight first. Only after preflight succeeds does it create otherwise-unreferenced objects in Repora's existing bare cache.
 
-`repoctl apply-readme -f repora.yaml --plan-file FILE --dry-run` exposes this preflight. In the current slice, `--dry-run` is mandatory: invoking `apply-readme` without it fails before configuration or plan-file I/O. A stale plan exits with status 2; invalid plans or operational failures exit with status 1. A successful dry-run prints the same human review representation as `plan-readme` and performs no commit or push.
+For each planned repository it:
 
-No current command can perform a real managed README apply.
+1. writes the reviewed desired README content as a local Git blob;
+2. reads the reviewed base commit's root tree;
+3. replaces or adds only the root `README.md` entry with the reviewed `100644` or `100755` mode;
+4. creates a new tree object without using or mutating a shared Git index;
+5. creates one child commit whose parent is exactly the reviewed `base_oid`;
+6. uses fixed local execution identity `Repora <repora@localhost.invalid>` and one current UTC instant for author/committer timestamps;
+7. verifies recursively that the candidate commit changes exactly one path, `README.md`;
+8. re-reads the candidate `README.md` and requires its mode, exact bytes, and SHA-256 to equal reviewed desired state.
+
+The commit message is the fixed Conventional Commit message `chore: update managed README`.
+
+Candidate creation writes Git objects only. It does **not** update a branch, tag, remote-tracking ref, local HEAD, worktree, or remote repository. A failed multi-repository preparation may therefore leave unreachable local objects in the cache; these objects confer no execution authority and are eligible for normal Git object cleanup.
+
+The commit preparer's Git dependency intentionally contains no ref-update or push capability. The returned `PreparedCommit` values contain only UID/ID, reviewed base OID, candidate tree OID, and candidate commit OID for a later guarded-push slice.
+
+Commit OIDs are execution evidence rather than deterministic plan fields because Git commit metadata includes execution time.
 
 ## Still deferred
 
 Issue #12 still requires:
 
-- isolated commit creation that changes only root `README.md`;
-- guarded canonical push;
+- guarded canonical push with an exact reviewed-base lease;
 - execution result/evidence output;
 - fresh mirror reconciliation after a successful canonical README change.
