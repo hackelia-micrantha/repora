@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -15,6 +14,11 @@ var managedREADMEPlanBuild = managedartifact.BuildPlan
 var managedREADMEObserver = func() managedartifact.READMEObserver { return managedartifact.NewGitREADMEObserver() }
 
 func runPlanREADME(args []string) int {
+	if len(args) == 1 && (args[0] == "-h" || args[0] == "--help") {
+		fmt.Fprintln(os.Stdout, "usage: repoctl plan-readme -f repora.yaml [--artifact]")
+		return 0
+	}
+
 	flags := flag.NewFlagSet("repoctl plan-readme", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	configPath := flags.String("f", "repora.yaml", "path to SCHEMA-0001 YAML config")
@@ -37,8 +41,18 @@ func runPlanREADME(args []string) int {
 		fmt.Fprintf(os.Stderr, "repoctl: build managed README plan: %v\n", err)
 		return 1
 	}
+	if err := plan.Validate(); err != nil {
+		fmt.Fprintf(os.Stderr, "repoctl: validate managed README plan: %v\n", err)
+		return 1
+	}
 	if *artifact {
-		if err := json.NewEncoder(os.Stdout).Encode(plan); err != nil {
+		data, err := plan.Marshal()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: serialize managed README plan: %v\n", err)
+			return 1
+		}
+		data = append(data, '\n')
+		if _, err := os.Stdout.Write(data); err != nil {
 			fmt.Fprintf(os.Stderr, "repoctl: write managed README plan: %v\n", err)
 			return 1
 		}
