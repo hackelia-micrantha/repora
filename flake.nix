@@ -19,7 +19,7 @@
           config.allowUnfreePredicate = pkg: nixpkgs.lib.getName pkg == "repora";
         };
       version = "0.1.0-dev";
-      vendorHash = nixpkgs.lib.fakeHash;
+      vendorHash = "sha256-g+yaVIx4jxpAQ/+WrGKxhVeliYx7nLQe/zsGpxV4Fn4=";
       commit =
         if self ? shortRev then self.shortRev
         else if self ? dirtyShortRev then self.dirtyShortRev
@@ -137,7 +137,7 @@
               pkgs.git
               pkgs.gnumake
               pkgs.python3
-              pkgs.nixfmt-rfc-style
+              pkgs.nixfmt
             ];
           };
         });
@@ -146,6 +146,6 @@
         let
           pkgs = pkgsFor system;
         in
-        pkgs.nixfmt-rfc-style);
+        pkgs.nixfmt);
     };
 }
