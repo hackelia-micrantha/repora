@@ -211,7 +211,7 @@ func selectRoutes(routes []route, query string) []route {
 	for _, candidate := range routes {
 		for _, term := range candidate.When.AnyOf {
 			term = strings.ToLower(strings.Join(strings.Fields(term), " "))
-			if term != "" && strings.Contains(normalized, term) {
+			if term != "" && containsTerm(normalized, term) {
 				matched = append(matched, candidate)
 				break
 			}
@@ -224,6 +224,26 @@ func selectRoutes(routes []route, query string) []route {
 		return matched[i].ID < matched[j].ID
 	})
 	return matched
+}
+
+func containsTerm(query, term string) bool {
+	for start := 0; start <= len(query)-len(term); {
+		offset := strings.Index(query[start:], term)
+		if offset < 0 {
+			return false
+		}
+		left := start + offset
+		right := left + len(term)
+		if (left == 0 || !isWordByte(query[left-1])) && (right == len(query) || !isWordByte(query[right])) {
+			return true
+		}
+		start = left + 1
+	}
+	return false
+}
+
+func isWordByte(b byte) bool {
+	return b >= 'a' && b <= 'z' || b >= '0' && b <= '9' || b == '_'
 }
 
 func readYAML(path string, target any) {
