@@ -50,7 +50,7 @@ func newGitREADMEObserver(git readmeGitClient, resolve resolveCanonicalFunc, mir
 // branch and commit currently present in Repora's canonical cache.
 func (o *GitREADMEObserver) ObserveREADME(repo config.Repo) (READMEObservation, error) {
 	if o == nil || o.git == nil || o.resolveCanonical == nil || o.mirrorPath == nil {
-		return READMEObservation{}, fmt.Errorf("Git README observer is not fully configured")
+		return READMEObservation{}, fmt.Errorf("git README observer is not fully configured")
 	}
 	if err := validatePlannerRepositories([]config.Repo{repo}); err != nil {
 		return READMEObservation{}, err
