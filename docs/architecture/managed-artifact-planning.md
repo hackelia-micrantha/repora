@@ -4,9 +4,9 @@ Status: Current
 
 ## Scope
 
-This document describes the implemented read-only planning layer for managed README artifacts: contained local template loading, deterministic rendering, exact canonical Git-tree observation, byte-aware review diff construction, managed-artifact plan assembly, the user-facing `plan-readme` review command, and exact-plan dry-run stale preflight.
+This document describes the implemented managed README planning and local preparation layers: contained local template loading, deterministic rendering, exact canonical Git-tree observation, byte-aware review diff construction, managed-artifact plan assembly, the user-facing `plan-readme` review command, exact-plan dry-run stale preflight, and isolated candidate commit creation in Repora's local bare cache.
 
-The planner depends on a `READMEObserver` interface. `NewGitREADMEObserver` provides the production Git-backed implementation. Commit creation and remote push are **not** implemented by this layer and remain owned by issue #12.
+The planner depends on a `READMEObserver` interface. `NewGitREADMEObserver` provides the production Git-backed implementation. Guarded remote push and post-push reconciliation are **not** implemented by this layer and remain owned by issue #12.
 
 ## Input boundary
 
@@ -162,15 +162,35 @@ Only after all planned configuration bindings pass does preflight observe reposi
 
 Configuration or repository-state mismatches return `ErrStale`. Transport/cache/observation failures are operational errors rather than stale-plan results.
 
-`repoctl apply-readme -f repora.yaml --plan-file FILE --dry-run` exposes this preflight. In the current slice, `--dry-run` is mandatory: invoking `apply-readme` without it fails before configuration or plan-file I/O. A stale plan exits with status 2; invalid plans or operational failures exit with status 1. A successful dry-run prints the same human review representation as `plan-readme` and performs no commit or push.
+`repoctl apply-readme -f repora.yaml --plan-file FILE --dry-run` exposes this preflight. In the current CLI, `--dry-run` is mandatory. A stale plan exits with status 2; invalid plans or operational failures exit with status 1. A successful dry-run prints the same human review representation as `plan-readme` and performs no commit or push.
 
-No current command can perform a real managed README apply.
+## Isolated local commit preparation
+
+`CommitPreparer.Prepare(spec, plan, observer)` adds the first local mutation boundary. It always runs exact stale preflight first. Only after preflight succeeds does it create otherwise-unreferenced objects in Repora's existing bare cache.
+
+For each planned repository it:
+
+1. writes the reviewed desired README content as a local Git blob;
+2. reads the reviewed base commit's root tree;
+3. replaces or adds only the root `README.md` entry with the reviewed `100644` or `100755` mode;
+4. creates a new tree object without using or mutating a shared Git index;
+5. creates one child commit whose parent is exactly the reviewed `base_oid`;
+6. uses fixed local execution identity `Repora <repora@localhost.invalid>` and one current UTC instant for author/committer timestamps;
+7. verifies recursively that the candidate commit changes exactly one path, `README.md`;
+8. re-reads the candidate `README.md` and requires its mode, exact bytes, and SHA-256 to equal reviewed desired state.
+
+The commit message is the fixed Conventional Commit message `chore: update managed README`.
+
+Candidate creation writes Git objects only. It does **not** update a branch, tag, remote-tracking ref, local HEAD, worktree, or remote repository. A failed multi-repository preparation may therefore leave unreachable local objects in the cache; these objects confer no execution authority and are eligible for normal Git object cleanup.
+
+The commit preparer's Git dependency intentionally contains no ref-update or push capability. The returned `PreparedCommit` values contain only UID/ID, reviewed base OID, candidate tree OID, and candidate commit OID for a later guarded-push slice.
+
+Commit OIDs are execution evidence rather than deterministic plan fields because Git commit metadata includes execution time.
 
 ## Still deferred
 
 Issue #12 still requires:
 
-- isolated commit creation that changes only root `README.md`;
-- guarded canonical push;
+- guarded canonical push with an exact reviewed-base lease;
 - execution result/evidence output;
 - fresh mirror reconciliation after a successful canonical README change.
