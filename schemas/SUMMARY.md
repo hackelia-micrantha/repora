@@ -4,7 +4,7 @@ Status: Current
 
 ## Purpose
 
-This subtree contains versioned machine-readable compatibility contracts for Repora CLI output, reconciliation plans, execution records, document routing, context receipts, repository assessment artifacts, and managed repository artifact plans.
+This subtree contains versioned machine-readable compatibility contracts for Repora CLI output, reconciliation plans, execution records, document routing, context receipts, repository assessment artifacts, and managed repository artifact planning/execution evidence.
 
 ## Canonical sources
 
@@ -15,6 +15,8 @@ Use the schema matching the exact artifact kind and version being produced or co
 - `cli-apply-v*.schema.json`
 - `reconciliation-plan-v*.schema.json`
 - `managed-artifact-plan-v1.schema.json`
+- `managed-artifact-execution-record-v1.schema.json`
+- `managed-artifact-apply-result-v1.schema.json`
 - `execution-record-v*.schema.json`
 - `document-router.schema.json`
 - `context-receipt-v1.schema.json`
@@ -36,4 +38,4 @@ Load the exact schema whenever validating fields, required properties, enums, co
 
 ## Exclusions and stale areas
 
-Do not assume a higher version is interchangeable with an older consumer. Historical schemas remain valid evidence for their own version but are not substitutes for the requested contract version. Assessment scorecards are scoped evidence summaries, not objective whole-project grades unless the report explicitly supports that scope. The managed artifact plan v1 schema defines a review artifact contract; it does not imply that Git observation or README apply is implemented yet.
+Do not assume a higher version is interchangeable with an older consumer. Historical schemas remain valid evidence for their own version but are not substitutes for the requested contract version. Assessment scorecards are scoped evidence summaries, not objective whole-project grades unless the report explicitly supports that scope. Managed artifact plan, execution-record, and apply-result schemas define review/evidence contracts; mutation safety is governed by the managed-artifact architecture and exact-plan preflight/lease rules.
