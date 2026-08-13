@@ -100,10 +100,10 @@ func TestApplyREADMERealApplyStalePrintsResultThenReturnsTwo(t *testing.T) {
 	configPath := writeManagedPlanConfig(t)
 	planPath := writeManagedPlanFile(t, managedPlanFixture(t))
 	result := managedartifactapply.Result{
-		Version: ResultVersion,
-		Kind:    ResultKind,
-		ExecutionID: "run-stale",
-		Outcome: journal.OutcomeStale,
+		Version:      managedartifactapply.ResultVersion,
+		Kind:         managedartifactapply.ResultKind,
+		ExecutionID:  "run-stale",
+		Outcome:      journal.OutcomeStale,
 		FailureStage: "STALE",
 		Repositories: []managedartifactapply.RepositoryResult{{
 			UID: "repo.demo", ID: "demo", Branch: "main", BaseOID: strings.Repeat("1", 40), Outcome: journal.OutcomeStale,
