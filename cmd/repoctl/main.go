@@ -53,7 +53,7 @@ var auditedApplyExecute = func(repo config.Repo, result status.Result, force, dr
 }
 
 var auditedArtifactApplyExecute = func(repo config.Repo, result status.Result, artifact planartifact.Artifact, force, dryRun bool, audit apply.Audit) (apply.Result, error) {
-	return apply.ExecuteArtifactAudited(repo, result, artifact, force, dryRun, audit)
+	return apply.ExecuteArtifactAudited(repo, result, artifact, gitwrap.Client{}, force, dryRun, audit)
 }
 
 var progressf = func(format string, args ...any) {
