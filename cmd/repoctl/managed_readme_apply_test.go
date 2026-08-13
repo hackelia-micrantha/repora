@@ -100,10 +100,15 @@ func TestApplyREADMERealApplyStalePrintsResultThenReturnsTwo(t *testing.T) {
 	configPath := writeManagedPlanConfig(t)
 	planPath := writeManagedPlanFile(t, managedPlanFixture(t))
 	result := managedartifactapply.Result{
-		Version: managedartifactapply.ResultVersion, Kind: managedartifactapply.ResultKind, ExecutionID: "run-stale",
-		Outcome: journal.OutcomeStale, FailureStage: "STALE",
-		Repositories: []managedartifactapply.RepositoryResult{{UID: "repo.demo", ID: "demo", Branch: "main", BaseOID: strings.Repeat("1", 40), Outcome: journal.OutcomeStale}},
-		Journal:      managedartifactapply.JournalReferences{Intent: "intent", Result: "result"},
+		Version: ResultVersion,
+		Kind:    ResultKind,
+		ExecutionID: "run-stale",
+		Outcome: journal.OutcomeStale,
+		FailureStage: "STALE",
+		Repositories: []managedartifactapply.RepositoryResult{{
+			UID: "repo.demo", ID: "demo", Branch: "main", BaseOID: strings.Repeat("1", 40), Outcome: journal.OutcomeStale,
+		}},
+		Journal: managedartifactapply.JournalReferences{Intent: "intent", Result: "result"},
 	}
 	stubManagedApply(t, result, fmt.Errorf("%w: head changed", managedartifact.ErrStale), nil, nil)
 
@@ -156,7 +161,9 @@ func stubManagedPreflight(t *testing.T, preflightErr error) {
 
 type noopManagedJournalWriter struct{}
 
-func (noopManagedJournalWriter) WriteManagedArtifact(journal.ManagedArtifactRecord) (string, error) { return "", nil }
+func (noopManagedJournalWriter) WriteManagedArtifact(journal.ManagedArtifactRecord) (string, error) {
+	return "", nil
+}
 
 func stubManagedApply(t *testing.T, result managedartifactapply.Result, executeErr, journalErr error, calls *int) {
 	t.Helper()
