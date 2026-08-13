@@ -1,6 +1,5 @@
 [tools]
-go = "1.22"
-golangci-lint = "latest"
+go = "1.25.8"
 prettier = "latest"
 actionlint = "latest"
 taplo = "latest"
@@ -15,16 +14,16 @@ run = "gofmt -d cmd internal"
 
 [tasks.vet]
 description = "Run Go vet"
-run = "go vet ./..."
+run = "make vet"
 
 [tasks.lint]
-description = "Run all linters"
-run = ["golangci-lint run", "actionlint", "taplo check"]
-depends = ["check-fmt", "vet"]
+description = "Run static analysis and configuration linters"
+run = ["make static-analysis", "actionlint", "taplo check"]
+depends = ["check-fmt"]
 
 [tasks.test]
-description = "Run tests"
-run = "go test ./..."
+description = "Run fast tests"
+run = "make test"
 
 [tasks.build-local]
 description = "Build the local binary for debugging"

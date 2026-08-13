@@ -13,6 +13,7 @@ import (
 )
 
 func TestPusherPushesPreparedCommitWithExactBaseLease(t *testing.T) {
+	requireIntegration(t)
 	fixture := newPushFixture(t)
 	pusher := newPusher(gitwrap.Client{}, fixture.cache)
 
@@ -32,6 +33,7 @@ func TestPusherPushesPreparedCommitWithExactBaseLease(t *testing.T) {
 }
 
 func TestPusherRejectsStaleRemoteBeforeMutation(t *testing.T) {
+	requireIntegration(t)
 	fixture := newPushFixture(t)
 	advanceCanonical(t, fixture.work, fixture.remote, "concurrent before preflight")
 	concurrentOID := gitOutput(t, fixture.remote, "rev-parse", "refs/heads/main")
@@ -49,6 +51,7 @@ func TestPusherRejectsStaleRemoteBeforeMutation(t *testing.T) {
 }
 
 func TestPusherLeaseRejectsRaceAfterFreshPreflight(t *testing.T) {
+	requireIntegration(t)
 	fixture := newPushFixture(t)
 	racing := &racingPushGit{Client: gitwrap.Client{}}
 	racing.beforePush = func() {
