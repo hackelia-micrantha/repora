@@ -94,6 +94,9 @@ func run(args []string) int {
 	if args[0] == "assess" {
 		return runAssess(args[1:])
 	}
+	if args[0] == "plan-readme" {
+		return runPlanREADME(args[1:])
+	}
 
 	command := args[0]
 	if command != "status" && command != "plan" && command != "apply" && command != "sync" {
@@ -197,6 +200,7 @@ func run(args []string) int {
 
 func printUsageError() {
 	fmt.Fprintln(os.Stderr, "usage: repoctl <status|plan|apply|sync> -f repora.yaml [--json|--artifact] [--plan-file FILE] [--parallel N] [--continue-on-error] [--dry-run] [--force] [--debug]")
+	fmt.Fprintln(os.Stderr, "       repoctl plan-readme -f repora.yaml [--artifact]")
 	fmt.Fprintln(os.Stderr, "       repoctl validate-report FILE")
 	fmt.Fprintln(os.Stderr, "       repoctl list-findings FILE")
 	fmt.Fprintln(os.Stderr, "       repoctl generate-scorecard FILE")
