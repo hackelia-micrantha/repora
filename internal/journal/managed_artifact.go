@@ -78,6 +78,9 @@ func ManagedArtifactResult(executionID string, plan managedartifact.Plan, prepar
 	if err != nil {
 		return ManagedArtifactRecord{}, err
 	}
+	if err := validateManagedArtifactEvidence(plan, prepared, pushes, executionErr); err != nil {
+		return ManagedArtifactRecord{}, err
+	}
 	record := ManagedArtifactRecord{
 		Version:      ManagedArtifactVersion,
 		Kind:         ManagedArtifactKind,
@@ -137,6 +140,53 @@ func ManagedArtifactResult(executionID string, plan managedartifact.Plan, prepar
 		return ManagedArtifactRecord{}, err
 	}
 	return record, nil
+}
+
+func validateManagedArtifactEvidence(plan managedartifact.Plan, prepared []managedartifact.PreparedCommit, pushes []managedartifact.PushResult, executionErr error) error {
+	plannedByUID := make(map[string]managedartifact.RepositoryPlan, len(plan.Repositories))
+	for _, planned := range plan.Repositories {
+		plannedByUID[planned.UID] = planned
+	}
+	preparedByUID := make(map[string]managedartifact.PreparedCommit, len(prepared))
+	for i, candidate := range prepared {
+		planned, ok := plannedByUID[candidate.UID]
+		if !ok {
+			return fmt.Errorf("prepared commit %d references unknown uid %q", i, candidate.UID)
+		}
+		if _, duplicate := preparedByUID[candidate.UID]; duplicate {
+			return fmt.Errorf("prepared commit %d duplicates uid %q", i, candidate.UID)
+		}
+		if candidate.ID != planned.ID || candidate.BaseOID != planned.BaseOID || !oidPattern.MatchString(candidate.TreeOID) || !oidPattern.MatchString(candidate.CommitOID) {
+			return fmt.Errorf("prepared commit %d does not match reviewed repository %q", i, planned.ID)
+		}
+		preparedByUID[candidate.UID] = candidate
+	}
+	pushByUID := make(map[string]managedartifact.PushResult, len(pushes))
+	for i, push := range pushes {
+		planned, ok := plannedByUID[push.UID]
+		if !ok {
+			return fmt.Errorf("push result %d references unknown uid %q", i, push.UID)
+		}
+		if _, duplicate := pushByUID[push.UID]; duplicate {
+			return fmt.Errorf("push result %d duplicates uid %q", i, push.UID)
+		}
+		candidate, wasPrepared := preparedByUID[push.UID]
+		if !wasPrepared || push.ID != planned.ID || push.Branch != planned.Target.Branch || push.BaseOID != planned.BaseOID || push.CommitOID != candidate.CommitOID {
+			return fmt.Errorf("push result %d does not match prepared reviewed repository %q", i, planned.ID)
+		}
+		pushByUID[push.UID] = push
+	}
+	if executionErr == nil {
+		if len(prepared) != len(plan.Repositories) || len(pushes) != len(plan.Repositories) {
+			return fmt.Errorf("successful managed artifact execution requires one prepared commit and push result per repository")
+		}
+		for _, push := range pushes {
+			if !push.Pushed {
+				return fmt.Errorf("successful managed artifact execution contains failed push for uid %q", push.UID)
+			}
+	}
+	}
+	return nil
 }
 
 func managedArtifactPlanRef(plan managedartifact.Plan) (ManagedArtifactPlanRef, error) {
@@ -222,6 +272,8 @@ func (r ManagedArtifactRecord) Validate() error {
 		}
 	}
 	seen := make(map[string]struct{}, len(r.Repositories))
+	appliedCount := 0
+	staleCount := 0
 	for i, repo := range r.Repositories {
 		if !validIdentifier(repo.UID) || !validIdentifier(repo.ID) || !validIdentifier(repo.Provider) {
 			return fmt.Errorf("managed artifact repository %d has invalid identity", i)
@@ -259,6 +311,23 @@ func (r ManagedArtifactRecord) Validate() error {
 		}
 		if repo.Pushed && repo.PreparedCommit == "" {
 			return fmt.Errorf("managed artifact result repository %d pushed outcome requires prepared commit", i)
+		}
+		if repo.Outcome == OutcomeApplied {
+			appliedCount++
+		}
+		if repo.Outcome == OutcomeStale {
+			staleCount++
+		}
+	}
+	if r.Phase == PhaseResult {
+		if r.Outcome == OutcomeApplied && appliedCount != len(r.Repositories) {
+			return fmt.Errorf("applied managed artifact result requires every repository to be applied")
+		}
+		if r.Outcome == OutcomeStale && staleCount != len(r.Repositories) {
+			return fmt.Errorf("stale managed artifact result requires every repository to be stale")
+		}
+		if r.Outcome == OutcomeFailed && appliedCount == len(r.Repositories) {
+			return fmt.Errorf("failed managed artifact result cannot report every repository applied")
 		}
 	}
 	return nil
