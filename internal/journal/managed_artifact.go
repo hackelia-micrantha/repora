@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -98,7 +99,7 @@ func ManagedArtifactResult(executionID string, plan managedartifact.Plan, prepar
 
 	if executionErr == nil {
 		record.Outcome = OutcomeApplied
-	} else if strings.Contains(executionErr.Error(), managedartifact.ErrStale.Error()) {
+	} else if errors.Is(executionErr, managedartifact.ErrStale) {
 		record.Outcome = OutcomeStale
 		record.FailureStage = "STALE"
 	} else if len(prepared) == 0 {
