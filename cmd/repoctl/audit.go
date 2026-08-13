@@ -13,18 +13,23 @@ import (
 var newAudit = defaultAudit
 
 func defaultAudit(configPath string) (*apply.Audit, error) {
-	executionID, err := newExecutionID()
+	executionID, writer, err := newJournalContext(configPath)
 	if err != nil {
 		return nil, err
 	}
+	return &apply.Audit{ExecutionID: executionID, Writer: writer}, nil
+}
+
+func newJournalContext(configPath string) (string, journal.Writer, error) {
+	executionID, err := newExecutionID()
+	if err != nil {
+		return "", journal.Writer{}, err
+	}
 	absoluteConfig, err := filepath.Abs(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("resolve config path for journal root: %w", err)
+		return "", journal.Writer{}, fmt.Errorf("resolve config path for journal root: %w", err)
 	}
-	return &apply.Audit{
-		ExecutionID: executionID,
-		Writer:      journal.Writer{Root: filepath.Dir(absoluteConfig)},
-	}, nil
+	return executionID, journal.Writer{Root: filepath.Dir(absoluteConfig)}, nil
 }
 
 func newExecutionID() (string, error) {
