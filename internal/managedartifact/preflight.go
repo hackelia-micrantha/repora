@@ -1,7 +1,6 @@
 package managedartifact
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 
@@ -109,10 +108,4 @@ func compareObservedState(repoID string, expected ObservedState, current READMEO
 
 func stalef(format string, args ...any) error {
 	return fmt.Errorf("%w: %s", ErrStale, fmt.Sprintf(format, args...))
-}
-
-// bytesEqual is kept package-local for tests that need to assert exact raw
-// content identity without weakening the serialized plan contract.
-func bytesEqual(left, right []byte) bool {
-	return bytes.Equal(left, right)
 }
