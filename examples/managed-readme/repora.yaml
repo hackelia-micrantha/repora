@@ -1,0 +1,15 @@
+repos:
+  - id: demo
+    uid: repo.demo
+    canonical:
+      provider: gitlab
+      path: example/demo
+    mirrors:
+      - provider: github
+        path: example/demo
+    mode: mirror
+    artifacts:
+      readme:
+        template: templates/README.md.tmpl
+        values:
+          summary: A deterministic README managed by Repora.
