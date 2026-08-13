@@ -4,9 +4,9 @@ Status: Current
 
 ## Scope
 
-This document describes the implemented read-only planning layer for managed README artifacts: contained local template loading, deterministic rendering, exact canonical Git-tree observation, byte-aware review diff construction, and managed-artifact plan assembly.
+This document describes the implemented read-only planning layer for managed README artifacts: contained local template loading, deterministic rendering, exact canonical Git-tree observation, byte-aware review diff construction, managed-artifact plan assembly, and the user-facing `plan-readme` review command.
 
-The planner depends on a `READMEObserver` interface. `NewGitREADMEObserver` now provides the production Git-backed implementation. A user-facing managed-README CLI entry point, dry-run/apply preflight, commit creation, and remote push are **not** implemented by this layer and remain owned by issue #12.
+The planner depends on a `READMEObserver` interface. `NewGitREADMEObserver` provides the production Git-backed implementation. Dry-run/apply preflight, commit creation, and remote push are **not** implemented by this layer and remain owned by issue #12.
 
 ## Input boundary
 
@@ -128,11 +128,28 @@ For each configured repository, the builder:
 
 The plan contains no local template path, cache path, credentials, timestamp, author identity, environment value, or Git command line.
 
+## User-facing review command
+
+`repoctl plan-readme -f repora.yaml` is a separate command from Git-ref `repoctl plan`. This preserves the domain separation required by the managed-artifact architecture and prevents README review from being silently bundled with mirror reconciliation.
+
+The default output is human review text. For each changed repository it prints:
+
+- repository ID and durable UID;
+- canonical provider/path/default branch;
+- exact reviewed base OID;
+- observed and desired README mode/digest state;
+- the deterministic byte-aware README review diff.
+
+If no configured README needs a change, the command prints `No managed README changes.` and exits successfully.
+
+`repoctl plan-readme --artifact` emits the exact `repora.io/managed-artifact-plan` v1 JSON instead of human review text. That serialized artifact is evidence/review input only in the current slice: there is no managed README apply command yet.
+
+`plan-readme` accepts only `-f` and `--artifact`. It intentionally does not accept mirror-plan options, `--dry-run`, `--force`, or `--plan-file`; those semantics belong to later exact-plan preflight/apply slices.
+
 ## Still deferred
 
 Issue #12 still requires:
 
-- user-facing plan/review CLI behavior;
 - exact-plan stale preflight and dry-run;
 - isolated commit creation that changes only root `README.md`;
 - guarded canonical push;
