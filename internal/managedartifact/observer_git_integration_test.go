@@ -16,6 +16,7 @@ import (
 )
 
 func TestGitREADMEObserverRefreshesCanonicalDefaultBranchExactly(t *testing.T) {
+	requireIntegration(t)
 	work, remote := newLocalCanonical(t)
 	observer := localGitREADMEObserver(t, remote)
 	repo := observerTestRepo()
@@ -63,6 +64,7 @@ func TestGitREADMEObserverRefreshesCanonicalDefaultBranchExactly(t *testing.T) {
 }
 
 func TestGitREADMEObserverRejectsOversizedBlobBeforeRead(t *testing.T) {
+	requireIntegration(t)
 	work, remote := newLocalCanonical(t)
 	content := bytes.Repeat([]byte("x"), MaxTextBytes+1)
 	if err := os.WriteFile(filepath.Join(work, READMEPath), content, 0o644); err != nil {
@@ -79,6 +81,7 @@ func TestGitREADMEObserverRejectsOversizedBlobBeforeRead(t *testing.T) {
 }
 
 func TestGitREADMEObserverRejectsSymlinkREADME(t *testing.T) {
+	requireIntegration(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink Git-mode assertion is Unix-specific")
 	}
