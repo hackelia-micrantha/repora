@@ -6,7 +6,7 @@ Status: Current
 
 This document describes the implemented managed README lifecycle through guarded canonical mutation: contained local template loading, deterministic rendering, exact canonical Git-tree observation, byte-aware review diff construction, managed-artifact plan assembly, the user-facing `plan-readme` review command, exact-plan stale preflight and dry-run, isolated candidate commit creation in Repora's local bare cache, exact-base leased canonical push, and durable execution journaling/result output.
 
-The planner depends on a `READMEObserver` interface. `NewGitREADMEObserver` provides the production Git-backed implementation. Fresh post-push mirror reconciliation remains owned by issue #12 and is not yet part of this lifecycle.
+The planner depends on a `READMEObserver` interface. `NewGitREADMEObserver` provides the production Git-backed implementation. Managed README apply intentionally ends at canonical mutation and evidence. Any mirror synchronization follows the separate reconciliation review cycle defined by the managed-artifact architecture: **fresh status → fresh mirror plan → mirror apply**. Repora does not automatically apply mirror changes as part of README mutation.
 
 ## Input boundary
 
@@ -120,7 +120,7 @@ The plan contains no local template path, cache path, credentials, timestamp, au
 
 ## User-facing review command
 
-`repoctl plan-readme -f repora.yaml` is separate from Git-ref `repoctl plan`. This preserves the domain separation required by the managed-artifact architecture and prevents README review from being silently bundled with mirror reconciliation.
+`repoctl plan-readme -f repora.yaml` is a separate command from Git-ref `repoctl plan`. This preserves the domain separation required by the managed-artifact architecture and prevents README review from being silently bundled with mirror reconciliation.
 
 The default output is human review text. For each changed repository it prints repository/durable identity, canonical provider/path/default branch, exact reviewed base OID, observed and desired README mode/digest state, and the deterministic byte-aware README review diff.
 
@@ -184,7 +184,7 @@ Multi-repository remote mutation is not atomic. `PushResult` preserves successfu
 
 ## Journaled real apply
 
-`repoctl apply-readme -f repora.yaml --plan-file FILE` now exposes real exact-plan execution. It does not accept a force override.
+`repoctl apply-readme -f repora.yaml --plan-file FILE` exposes real exact-plan execution. It does not accept a force override.
 
 The execution order is fixed:
 
@@ -203,8 +203,17 @@ Journal records bind to SHA-256 of the canonical serialized managed plan plus re
 
 The managed-artifact execution record is separate from the Git-ref `PUSH_BRANCH` execution-record schema, while both use the same protected `.repora/journal` no-overwrite/fsync persistence mechanism.
 
-## Still deferred
+## Mirror interaction after README apply
 
-Issue #12 still requires:
+A successful README apply changes canonical HEAD and immediately makes any mirror observation or reconciliation artifact created against the old canonical commit stale. The managed-artifact apply command therefore does **not** reuse or automatically execute an earlier mirror plan.
 
-- a fresh post-push mirror reconciliation step after successful canonical README mutation.
+The next mirror workflow is deliberately a separate operator-reviewed cycle:
+
+```text
+repoctl status -f repora.yaml
+repoctl plan -f repora.yaml --artifact > mirror-plan.json
+# review mirror-plan.json
+repoctl apply -f repora.yaml --plan-file mirror-plan.json
+```
+
+This ordering preserves independent mutation domains and review boundaries: managed README intent authorizes only the canonical `README.md` change; the subsequent mirror plan separately authorizes propagation of the new canonical state to configured mirrors.
