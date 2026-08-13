@@ -3,6 +3,7 @@ package managedartifact
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -117,14 +118,10 @@ func TestCommitPreparerCreatesOnlyUnreferencedREADMECommit(t *testing.T) {
 func gitBytes(t *testing.T, repoPath string, args ...string) []byte {
 	t.Helper()
 	cmdArgs := append([]string{"-C", repoPath}, args...)
-	cmd := execCommand(t, cmdArgs...)
+	cmd := exec.Command("git", cmdArgs...)
 	out, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("git %v: %v", cmdArgs, err)
 	}
 	return out
-}
-
-func execCommand(t *testing.T, args ...string) *os.ExecCmd {
-	panic("replaced by review")
 }
