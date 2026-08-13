@@ -17,7 +17,7 @@ func TestParseManagedArtifactRejectsNullUnknownAndTrailingJSON(t *testing.T) {
 	}
 
 	// Intent omits failure_stage, so inject an explicit null before repositories.
-	nullValue := strings.Replace(string(encoded), `"repositories":`, "\"failure_stage\": null,\n  \"repositories\":", 1)
+	nullValue := strings.Replace(string(encoded), "\"repositories\":", "\"failure_stage\": null,\n  \"repositories\":", 1)
 	if nullValue == string(encoded) {
 		t.Fatal("failed to inject null fixture")
 	}
@@ -25,7 +25,7 @@ func TestParseManagedArtifactRejectsNullUnknownAndTrailingJSON(t *testing.T) {
 		t.Fatalf("null parse error = %v", err)
 	}
 
-	unknown := strings.Replace(string(encoded), `"repositories":`, "\"unexpected\": true,\n  \"repositories\":", 1)
+	unknown := strings.Replace(string(encoded), "\"repositories\":", "\"unexpected\": true,\n  \"repositories\":", 1)
 	if unknown == string(encoded) {
 		t.Fatal("failed to inject unknown-field fixture")
 	}
