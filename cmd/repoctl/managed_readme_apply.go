@@ -97,13 +97,17 @@ func runApplyREADME(args []string) int {
 		managedREADMEPusher(),
 		managedartifactapply.Audit{ExecutionID: executionID, Writer: writer},
 	)
-	if *jsonFlag {
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
-			fmt.Fprintf(os.Stderr, "repoctl: write managed README apply JSON: %v\n", err)
-			return 1
+	if result.Reportable() {
+		if *jsonFlag {
+			if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+				fmt.Fprintf(os.Stderr, "repoctl: write managed README apply JSON: %v\n", err)
+				return 1
+			}
+		} else {
+			printManagedREADMEApplyResult(result)
 		}
-	} else {
-		printManagedREADMEApplyResult(result)
+	} else if executeErr == nil {
+		executeErr = errors.New("managed README apply completed without a reportable result")
 	}
 	if executeErr != nil {
 		fmt.Fprintf(os.Stderr, "repoctl: managed README apply: %v\n", executeErr)
