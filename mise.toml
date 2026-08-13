@@ -1,5 +1,5 @@
 [tools]
-go = "1.22"
+go = "1.25.8"
 prettier = "latest"
 actionlint = "latest"
 taplo = "latest"
