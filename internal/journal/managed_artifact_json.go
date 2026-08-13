@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"sort"
 )
 
 func (r *ManagedArtifactRecord) UnmarshalJSON(data []byte) error {
@@ -36,8 +37,13 @@ func rejectManagedArtifactNullValue(value any, path string) error {
 	case nil:
 		return fmt.Errorf("managed artifact execution record field %s must not be null", path)
 	case map[string]any:
-		for key, child := range typed {
-			if err := rejectManagedArtifactNullValue(child, path+"."+key); err != nil {
+		keys := make([]string, 0, len(typed))
+		for key := range typed {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			if err := rejectManagedArtifactNullValue(typed[key], path+"."+key); err != nil {
 				return err
 			}
 		}
