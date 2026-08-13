@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -30,7 +29,7 @@ func TestPlanREADMEHumanReview(t *testing.T) {
 	for _, want := range []string{
 		"demo (repo.demo) gitlab/example/demo#main\n",
 		"base: 1111111111111111111111111111111111111111\n",
-		"README.md: 100644 " + strings.Repeat("a", 64) + " -> 100644 " + strings.Repeat("b", 64) + "\n",
+		"README.md: 100644 " + strings.Repeat("a", 64) + " -> 100644 " + managedartifact.DigestSHA256([]byte("new\n")) + "\n",
 		"--- a/README.md\n+++ b/README.md\n@@ review @@\n-\"old\\n\"\n+\"new\\n\"\n",
 	} {
 		if !strings.Contains(got, want) {
@@ -118,7 +117,7 @@ func managedPlanFixture(t *testing.T) managedartifact.Plan {
 	t.Helper()
 	present := true
 	desired := "new\n"
-	plan := managedartifact.Plan{
+	return managedartifact.Plan{
 		Kind:    managedartifact.PlanKind,
 		Version: managedartifact.PlanVersion,
 		Repositories: []managedartifact.RepositoryPlan{{
@@ -148,8 +147,6 @@ func managedPlanFixture(t *testing.T) managedartifact.Plan {
 			}},
 		}},
 	}
-	plan.Repositories[0].Actions[0].Desired.SHA256 = strings.Repeat("b", 64)
-	return plan
 }
 
 func writeManagedPlanConfig(t *testing.T) string {
@@ -218,15 +215,4 @@ func captureManagedStderr(t *testing.T, dst io.Writer, fn func() int) int {
 		t.Fatal(err)
 	}
 	return code
-}
-
-func TestManagedPlanFixtureJSONIsStrict(t *testing.T) {
-	plan := managedPlanFixture(t)
-	data, err := json.Marshal(plan)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := managedartifact.ParsePlan(data); err == nil {
-		t.Fatal("fixture should fail strict digest validation until test uses real desired digest")
-	}
 }
