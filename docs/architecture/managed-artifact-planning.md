@@ -4,9 +4,9 @@ Status: Current
 
 ## Scope
 
-This document describes the implemented pure planning layer for managed README artifacts: contained local template loading, deterministic rendering, exact observed-state modeling, byte-aware review diff construction, and managed-artifact plan assembly.
+This document describes the implemented read-only planning layer for managed README artifacts: contained local template loading, deterministic rendering, exact canonical Git-tree observation, byte-aware review diff construction, and managed-artifact plan assembly.
 
-The planner depends on a `READMEObserver` interface. A production Git-backed observer, CLI entry point, dry-run/apply preflight, commit creation, and remote push are **not** implemented by this layer and remain owned by issue #12.
+The planner depends on a `READMEObserver` interface. `NewGitREADMEObserver` now provides the production Git-backed implementation. A user-facing managed-README CLI entry point, dry-run/apply preflight, commit creation, and remote push are **not** implemented by this layer and remain owned by issue #12.
 
 ## Input boundary
 
@@ -36,7 +36,7 @@ The loader returns exact template bytes. Rendering performs text validation and 
 
 ## Observation interface
 
-The pure planner consumes:
+The planner consumes:
 
 ```text
 READMEObservation {
@@ -52,7 +52,28 @@ For a present README, mode must be `100644` or `100755`, content must be bounded
 
 For a missing README, mode and content must be absent/empty. Missing and present-empty are distinct states. The observed branch must satisfy the same symbolic-ref validation as the durable plan contract, and the base OID must be an exact 40- or 64-character hexadecimal object ID.
 
-The observer is responsible for proving that the observation came from the exact canonical default-branch tree. The upcoming Git-backed observer slice will bind these fields to Repora's existing Git cache/fetch layer.
+### Production Git-backed observer
+
+`NewGitREADMEObserver` binds the observation to Repora's existing bare-cache and HTTPS transport model.
+
+For each managed repository it:
+
+1. re-validates the durable ID and provider/path canonical identity;
+2. resolves the canonical provider/path to an HTTPS remote;
+3. derives the bounded cache path from the durable repository ID;
+4. prepares the local bare cache if necessary;
+5. configures and fetches only the `canonical` remote;
+6. resolves the canonical remote HEAD and its default branch name;
+7. resolves the exact full object ID of `canonical/HEAD`;
+8. reads only the root `README.md` tree entry from that exact tree;
+9. distinguishes a missing entry from a present zero-byte blob;
+10. rejects tree, submodule, symlink, and other non-regular README modes;
+11. checks blob size before materializing content and refuses blobs above the managed-text limit;
+12. reads the immutable blob by its tree-entry object ID, preserving exact bytes.
+
+Observation may create or refresh **local cache state** and may perform canonical fetches. It does not create worktree files, commits, tags, branches, or pushes, and it never configures or fetches mirror remotes for README planning. Remote repository state is therefore read-only in this slice.
+
+The branch, base OID, tree entry, mode, and content are all derived after the same canonical fetch. Blob content is read by immutable object ID, so a concurrent remote update cannot change the bytes associated with the emitted base OID; a later planning run fetches and observes the newer canonical state.
 
 ## Byte-aware review diff
 
@@ -111,7 +132,6 @@ The plan contains no local template path, cache path, credentials, timestamp, au
 
 Issue #12 still requires:
 
-- Git-backed canonical README observation;
 - user-facing plan/review CLI behavior;
 - exact-plan stale preflight and dry-run;
 - isolated commit creation that changes only root `README.md`;
