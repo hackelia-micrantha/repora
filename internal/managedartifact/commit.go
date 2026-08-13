@@ -10,13 +10,17 @@ import (
 
 const managedREADMECommitMessage = "chore: update managed README"
 
-type localCommitGit interface {
-	WriteBlob(repoPath string, content []byte) (string, error)
-	BuildTreeWithRootBlob(repoPath, baseOID, treePath, mode, blobOID string) (string, error)
-	CreateCommitObject(repoPath, treeOID, parentOID, message string) (string, error)
+type preparedCommitReadGit interface {
 	ChangedPaths(repoPath, baseOID, commitOID string) ([]string, error)
 	ReadTreeEntry(repoPath, rev, treePath string) (gitwrap.TreeEntry, bool, error)
 	ReadBlobBounded(repoPath, oid string, maxBytes int64) ([]byte, error)
+}
+
+type localCommitGit interface {
+	preparedCommitReadGit
+	WriteBlob(repoPath string, content []byte) (string, error)
+	BuildTreeWithRootBlob(repoPath, baseOID, treePath, mode, blobOID string) (string, error)
+	CreateCommitObject(repoPath, treeOID, parentOID, message string) (string, error)
 }
 
 type localCommitMirrorPath func(string) (string, error)
@@ -89,7 +93,7 @@ func (p *CommitPreparer) Prepare(spec config.Spec, plan Plan, observer READMEObs
 	return prepared, nil
 }
 
-func verifyPreparedCommit(git localCommitGit, cachePath string, planned RepositoryPlan, commitOID string, desired []byte) error {
+func verifyPreparedCommit(git preparedCommitReadGit, cachePath string, planned RepositoryPlan, commitOID string, desired []byte) error {
 	paths, err := git.ChangedPaths(cachePath, planned.BaseOID, commitOID)
 	if err != nil {
 		return fmt.Errorf("repo %q: verify isolated commit changed paths: %w", planned.ID, err)
