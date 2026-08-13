@@ -10,7 +10,7 @@ const helpText = `repoctl manages configured Git repository mirrors and validate
 Usage:
   repoctl <command> [options]
   repoctl plan-readme -f repora.yaml [--artifact]
-  repoctl apply-readme -f repora.yaml --plan-file FILE --dry-run
+  repoctl apply-readme -f repora.yaml --plan-file FILE [--dry-run] [--json]
   repoctl validate-report FILE
   repoctl list-findings FILE
   repoctl generate-scorecard FILE
@@ -24,7 +24,7 @@ Commands:
   apply    apply current observations or an exact plan artifact
   sync     alias for apply
   plan-readme  review managed README changes or export the exact managed-artifact plan
-  apply-readme  preflight an exact managed README plan; only --dry-run is implemented
+  apply-readme  dry-run or journaled exact-plan managed README apply
   validate-report  validate a repository assessment report without mutation
   list-findings    list validated assessment findings without mutation
   generate-scorecard  render validated scorecard dimensions without recalculation
@@ -62,9 +62,13 @@ Options for apply-readme:
   -f string
         path to SCHEMA-0001 YAML config (default "repora.yaml")
   --plan-file string
-        exact repora.io/managed-artifact-plan v1 JSON to preflight
+        exact repora.io/managed-artifact-plan v1 JSON to preflight or apply
   --dry-run
         revalidate current canonical state and show the reviewed diff without mutation
+  --json
+        on real apply, print repora.io/managed-artifact-apply-result v1 JSON
+
+A real apply persists managed-artifact INTENT before candidate creation, creates verified local candidate commits, performs fresh stale preflight, pushes with an exact reviewed-base lease, and persists RESULT evidence. It does not use --force.
 
 Global options:
   --version

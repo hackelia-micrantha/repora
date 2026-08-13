@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/managed-artifact-execution-record-v1.schema.json",
+  "title": "Repora managed artifact execution record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "kind", "execution_id", "phase", "mode", "plan", "outcome", "repositories"],
+  "properties": {
+    "version": {"const": 1},
+    "kind": {"const": "repora.io/managed-artifact-execution-record"},
+    "execution_id": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+    "phase": {"enum": ["INTENT", "RESULT"]},
+    "mode": {"const": "APPLY"},
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "kind", "sha256"],
+      "properties": {
+        "version": {"const": 1},
+        "kind": {"const": "repora.io/managed-artifact-plan"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "outcome": {"enum": ["PLANNED", "APPLIED", "FAILED", "STALE"]},
+    "failure_stage": {"enum": ["PREPARE", "PUSH", "STALE"]},
+    "repositories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["uid", "id", "provider", "path", "branch", "base_oid", "desired_mode", "desired_sha256", "pushed", "outcome"],
+        "properties": {
+          "uid": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+          "id": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+          "provider": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+          "path": {"type": "string", "minLength": 3},
+          "branch": {"type": "string", "minLength": 1},
+          "base_oid": {"type": "string", "pattern": "^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$"},
+          "desired_mode": {"enum": ["100644", "100755"]},
+          "desired_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "prepared_commit": {"type": "string", "pattern": "^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$"},
+          "pushed": {"type": "boolean"},
+          "outcome": {"enum": ["PLANNED", "APPLIED", "FAILED", "SKIPPED", "STALE"]}
+        }
+      }
+    }
+  }
+}
