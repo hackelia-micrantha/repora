@@ -14,6 +14,7 @@ import (
 )
 
 func TestCommitPreparerCreatesOnlyUnreferencedREADMECommit(t *testing.T) {
+	requireIntegration(t)
 	work, remote := newLocalCanonical(t)
 	if err := os.WriteFile(filepath.Join(work, "keep.txt"), []byte("keep\n"), 0o644); err != nil {
 		t.Fatal(err)
