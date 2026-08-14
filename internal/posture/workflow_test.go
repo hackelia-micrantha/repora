@@ -1,6 +1,9 @@
 package posture
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParseWorkflowNormalizesPermissionsActionsAndRunners(t *testing.T) {
 	data := []byte(`name: ci
@@ -79,5 +82,13 @@ jobs:
 	fact := workflow.Jobs[0].SelfHosted
 	if fact.State != StateObserved || fact.Value == nil || *fact.Value {
 		t.Fatalf("hosted runner fact = %#v", fact)
+	}
+}
+
+func TestParseWorkflowRejectsOversizedInputBeforeParsing(t *testing.T) {
+	data := []byte(strings.Repeat("x", maxWorkflowBytes+1))
+	_, err := parseWorkflow("owner/repo", ".github/workflows/huge.yml", data, Evidence{Source: "github.workflow", Reference: ".github/workflows/huge.yml"})
+	if err == nil || !strings.Contains(err.Error(), "normalization limit") {
+		t.Fatalf("oversized workflow error = %v", err)
 	}
 }
