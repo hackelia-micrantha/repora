@@ -59,7 +59,7 @@ Repora records user-visible capability, compatibility, security, and release-pro
 Before publishing a version, move the applicable Unreleased entries under a version heading in the form:
 
 ```text
-## [0.2.0] - YYYY-MM-DD
+## [<version>] - YYYY-MM-DD
 ```
 
 The release manager reviews GitHub-generated notes against this changelog. The changelog is the curated compatibility and operator-impact record; generated notes provide commit and contributor detail.
