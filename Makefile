@@ -2,6 +2,7 @@ VERSION ?= dev
 COMMIT ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || printf unknown)
 BUILD_LDFLAGS ?= -X main.version=$(VERSION) -X main.commit=$(COMMIT)
 STATICCHECK_VERSION ?= 2026.1
+STATICCHECK ?= go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION)
 GITLEAKS_VERSION ?= v8.30.1
 GO_LICENSES_VERSION ?= v1.6.0
 
@@ -10,7 +11,7 @@ GO_LICENSES_VERSION ?= v1.6.0
 check: format-check module-check vet test integration contract-test e2e build
 
 format-check:
-	@files="$$(find . -name '*.go' -not -path './.git/*' -exec gofmt -l {} +)"; \
+	@files="$$(find . -name '*.go' -not -path './.git/*' -not -path './vendor/*' -exec gofmt -l {} +)"; \
 	if [ -n "$$files" ]; then printf '%s\n' "$$files"; exit 1; fi
 
 module-check:
@@ -21,7 +22,7 @@ vet:
 	go vet ./...
 
 static-analysis: vet
-	go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...
+	$(STATICCHECK) ./...
 
 test:
 	go test -race -count=1 -short ./...

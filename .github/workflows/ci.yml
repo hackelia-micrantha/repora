@@ -200,3 +200,26 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
+
+  nix:
+    name: Nix flake
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
+
+      - name: Verify lock file
+        run: |
+          nix flake lock
+          cat flake.lock
+          git diff --exit-code -- flake.lock
+
+      - name: Validate flake outputs and checks
+        run: nix flake check --print-build-logs
+
+      - name: Smoke-test Nix app
+        run: nix run . -- --help >/dev/null
