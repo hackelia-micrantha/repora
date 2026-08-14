@@ -385,7 +385,7 @@ func populateTreeFacts(inventory *Inventory, tree GitHubTree, evidence Evidence)
 	inventory.RepositoryFacts.SecurityMDPresent = treePresence(blobPaths, complete, evidence,
 		"SECURITY.md", ".github/SECURITY.md", "docs/SECURITY.md")
 	inventory.RepositoryFacts.LicensePresent = licensePresence(blobPaths, complete, evidence)
-	inventory.RepositoryFacts.IssueTemplatePresent = prefixPresence(blobPaths, complete, evidence, ".github/ISSUE_TEMPLATE/")
+	inventory.RepositoryFacts.IssueTemplatePresent = issueTemplatePresence(blobPaths, complete, evidence)
 	inventory.RepositoryFacts.PullRequestTemplatePresent = pullRequestTemplatePresence(blobPaths, complete, evidence)
 	inventory.RepositoryFacts.DependencyAutomation = dependencyAutomation(blobPaths, complete, evidence)
 
@@ -415,9 +415,21 @@ func treePresence(entries map[string]GitHubTreeEntry, complete bool, evidence Ev
 	return Unknown[bool](evidence)
 }
 
-func prefixPresence(entries map[string]GitHubTreeEntry, complete bool, evidence Evidence, prefix string) Fact[bool] {
+func issueTemplatePresence(entries map[string]GitHubTreeEntry, complete bool, evidence Evidence) Fact[bool] {
+	const prefix = ".github/ISSUE_TEMPLATE/"
 	for path, entry := range entries {
-		if strings.HasPrefix(path, prefix) {
+		if !strings.HasPrefix(path, prefix) {
+			continue
+		}
+		name := strings.TrimPrefix(path, prefix)
+		if name == "" || strings.Contains(name, "/") {
+			continue
+		}
+		lower := strings.ToLower(name)
+		if lower == "config.yml" || lower == "config.yaml" {
+			continue
+		}
+		if strings.HasSuffix(lower, ".md") || strings.HasSuffix(lower, ".yml") || strings.HasSuffix(lower, ".yaml") {
 			return Observed(true, Evidence{Source: "github.git_tree", Reference: entry.Path})
 		}
 	}
