@@ -150,6 +150,8 @@ func scalarStrings(node *yaml.Node) []string {
 				values = append(values, value)
 			}
 		}
+	case yaml.MappingNode:
+		return scalarStrings(mappingValue(node, "labels"))
 	}
 	return values
 }
