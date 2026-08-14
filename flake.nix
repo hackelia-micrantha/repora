@@ -29,7 +29,7 @@
       packages = forAllSystems (system:
         let
           pkgs = pkgsFor system;
-          repora = pkgs.buildGoModule {
+          repora = pkgs.buildGo125Module {
             pname = "repora";
             inherit version;
             src = self;
@@ -84,14 +84,19 @@
             subPackages = [ ];
             doCheck = true;
             buildPhase = "true";
-            nativeCheckInputs = [ pkgs.git ];
+            nativeCheckInputs = [
+              pkgs.git
+              pkgs.gnumake
+              pkgs.python3
+              pkgs.go-tools
+            ];
             installPhase = ''
               mkdir -p "$out"
               printf 'ok\n' > "$out/result"
             '';
           };
           mkGoCheck = name: command:
-            pkgs.buildGoModule (common // {
+            pkgs.buildGo125Module (common // {
               pname = "repora-${name}";
               checkPhase = ''
                 runHook preCheck
@@ -103,9 +108,12 @@
                 runHook postCheck
               '';
             });
-          unit = mkGoCheck "unit" "go test -race -count=1 -short ./...";
-          integration = mkGoCheck "integration" "go test -race -count=1 ./internal/apply ./internal/managedartifact";
-          staticAnalysis = mkGoCheck "static-analysis" "go vet ./...";
+          format = mkGoCheck "format" "make format-check";
+          unit = mkGoCheck "unit" "make test";
+          integration = mkGoCheck "integration" "make integration";
+          contract = mkGoCheck "contract" "make contract-test";
+          e2e = mkGoCheck "e2e" "make e2e";
+          staticAnalysis = mkGoCheck "static-analysis" "make static-analysis STATICCHECK=staticcheck";
           smoke = pkgs.runCommand "repora-smoke" {
             nativeBuildInputs = [ self.packages.${system}.repora ];
           } ''
@@ -115,12 +123,15 @@
           '';
         in
         {
-          inherit unit integration smoke;
+          inherit format unit integration contract e2e smoke;
           static-analysis = staticAnalysis;
           default = pkgs.linkFarm "repora-checks" [
             { name = "package"; path = self.packages.${system}.repora; }
+            { name = "format"; path = format; }
             { name = "unit"; path = unit; }
             { name = "integration"; path = integration; }
+            { name = "contract"; path = contract; }
+            { name = "e2e"; path = e2e; }
             { name = "static-analysis"; path = staticAnalysis; }
             { name = "smoke"; path = smoke; }
           ];
@@ -137,6 +148,7 @@
               pkgs.git
               pkgs.gnumake
               pkgs.python3
+              pkgs.go-tools
               pkgs.nixfmt
             ];
           };
