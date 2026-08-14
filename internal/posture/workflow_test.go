@@ -38,8 +38,8 @@ jobs:
 		t.Fatalf("jobs = %#v", workflow.Jobs)
 	}
 	build := workflow.Jobs[0]
-	if build.SelfHosted.State != StateObserved || build.SelfHosted.Value == nil || !*build.SelfHosted.Value {
-		t.Fatalf("build self-hosted fact = %#v", build.SelfHosted)
+	if build.SelfHostedLabel.State != StateObserved || build.SelfHostedLabel.Value == nil || !*build.SelfHostedLabel.Value {
+		t.Fatalf("build self-hosted label fact = %#v", build.SelfHostedLabel)
 	}
 	if len(build.Permissions.Scopes) != 1 || build.Permissions.Scopes[0].Scope != "contents" || build.Permissions.Scopes[0].Access != "read" {
 		t.Fatalf("build permissions = %#v", build.Permissions)
@@ -54,8 +54,8 @@ jobs:
 		t.Fatalf("third-party action = %#v", build.Actions[1])
 	}
 	dynamic := workflow.Jobs[1]
-	if dynamic.SelfHosted.State != StateUnknown || dynamic.SelfHosted.Value != nil {
-		t.Fatalf("dynamic runner fact = %#v", dynamic.SelfHosted)
+	if dynamic.SelfHostedLabel.State != StateUnknown || dynamic.SelfHostedLabel.Value != nil {
+		t.Fatalf("dynamic self-hosted label fact = %#v", dynamic.SelfHostedLabel)
 	}
 	if len(dynamic.Actions) != 1 || dynamic.Actions[0].ThirdParty || dynamic.Actions[0].Pinning != "mutable-ref" {
 		t.Fatalf("reusable workflow action = %#v", dynamic.Actions)
@@ -79,9 +79,9 @@ jobs:
 	if len(workflow.Jobs) != 1 {
 		t.Fatalf("jobs = %d", len(workflow.Jobs))
 	}
-	fact := workflow.Jobs[0].SelfHosted
+	fact := workflow.Jobs[0].SelfHostedLabel
 	if fact.State != StateObserved || fact.Value == nil || *fact.Value {
-		t.Fatalf("hosted runner fact = %#v", fact)
+		t.Fatalf("literal self-hosted label fact = %#v", fact)
 	}
 }
 
