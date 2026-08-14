@@ -1,14 +1,14 @@
 # Managed artifact architecture
 
-Status: Proposed
+Status: Current
 
-Issue #7 defines the managed-artifact boundary; issue #12 is the README implementation slice. Nothing in this document is current runtime behavior until the corresponding source and tests are merged.
+ADR-0017 defines the managed-artifact boundary and issue #12 delivered root `README.md` as the first concrete artifact type. This document describes the current implemented authority model; detailed planner/executor behavior is in [`managed-artifact-planning.md`](managed-artifact-planning.md).
 
 ## Purpose
 
 Managed artifacts let Repora propose and apply narrowly scoped repository-content changes without becoming a general-purpose file generator.
 
-V1 is intentionally one artifact:
+V1 intentionally supports one artifact:
 
 - type: README;
 - managed path: repository-root `README.md`;
@@ -20,15 +20,15 @@ The Git-ref reconciliation plan remains unchanged and Git-ref-only.
 
 ## Ownership model
 
-README management is opt-in per repository. Without an `artifacts.readme` configuration block, artifact planning and apply have no effect on that repository.
+README management is opt-in per repository. Without an `artifacts.readme` block, managed-artifact planning and apply have no effect on that repository.
 
-Once configured, Repora may propose replacement of root `README.md` content only. Configuration does not grant authority over any other repository path. Existing README content and regular-file Git mode are treated as observed state and are never changed without an explicit reviewed plan.
+Once configured, Repora may propose replacement of root `README.md` content only. Configuration grants no authority over any other repository path. Existing README bytes and regular-file Git mode are observed state and cannot change without an exact reviewed managed-artifact plan.
 
-If `README.md` currently resolves in the Git tree as a symlink, submodule, tree, or other non-regular entry, planning fails instead of silently converting it into a regular text file. Existing regular blob modes `100644` and `100755` are preserved; a newly created README uses `100644`.
+If `README.md` resolves as a symlink, submodule, tree, or another non-regular entry, planning fails closed. Existing regular blob modes `100644` and `100755` are preserved; a newly created README uses `100644`.
 
-Future artifact types do not inherit README authority. Each one needs separate design approval.
+Future artifact types do not inherit README authority. Each requires its own reviewed contract and implementation boundary.
 
-## Proposed configuration
+## Configuration
 
 ```yaml
 repos:
@@ -45,33 +45,20 @@ repos:
         template: templates/README.md.tmpl
         values:
           title: Repora
-          summary: Deterministic repository mirror management
+          summary: Deterministic repository control
 ```
+
+A runnable shape is maintained under [`../../examples/managed-readme/`](../../examples/managed-readme/).
 
 ### Template path rules
 
-`template` is resolved relative to the directory containing `repora.yaml`.
+`template` is resolved relative to the physical directory containing `repora.yaml`. Planning rejects absolute or non-canonical paths, traversal, escapes through symlinks, remote URLs, non-regular files, unsafe display/control characters, and templates above the v1 size limit.
 
-Planning must reject:
+The resolved local path is runtime input and never appears in the durable plan. The plan records the exact template-content digest instead.
 
-- absolute paths;
-- `..` traversal outside the configuration root;
-- paths that resolve outside the configuration root through symlinks;
-- non-regular template files;
-- remote URLs;
-- templates above the v1 size limit.
+### Values and renderer
 
-The resolved local path is runtime input and must not appear in a durable plan artifact. The plan records the template content digest instead.
-
-### Values
-
-`values` is an optional string-to-string map. Keys are symbolic identifiers suitable for `{{value.<key>}}` placeholders. Values are inert data; inserted values are never recursively interpreted as template syntax.
-
-No environment-variable or secret interpolation is supported.
-
-## Renderer v1
-
-Supported exact tokens are:
+`values` is an optional string-to-string map. Supported exact tokens are:
 
 ```text
 {{repo.id}}
@@ -81,143 +68,88 @@ Supported exact tokens are:
 {{value.<key>}}
 ```
 
-Rules:
+Rendering is one deterministic pass. Values are inert and are not recursively interpreted as template syntax. The renderer normalizes line endings to LF and rejects malformed/unknown tokens, invalid UTF-8, NUL, unsafe display/control characters, oversized templates/output, and unresolved referenced values.
 
-- render in one deterministic pass;
-- normalize text line endings to LF;
-- reject invalid UTF-8 or NUL bytes in templates, values, and observed README text;
-- reject unknown or malformed placeholders;
-- reject missing configured values referenced by the template;
-- do not process placeholder-looking text introduced by a replacement value;
-- do not execute functions, loops, conditions, includes, commands, plugins, or network requests.
-
-The implementation should use a small dedicated renderer rather than a general template engine. Template and rendered output sizes must have a fixed v1 upper bound appropriate for README text.
+There are no functions, loops, conditions, includes, shell commands, plugins, environment/secret interpolation, remote templates, or network requests.
 
 ## Plan contract
 
-Managed artifact plans are separate from reconciliation artifacts.
+Managed-artifact plans are separate from mirror-reconciliation artifacts. The implemented contract is `repora.io/managed-artifact-plan` v1.
 
-Proposed v1 JSON shape:
+Each planned repository binds:
 
-```json
-{
-  "kind": "repora.io/managed-artifact-plan",
-  "version": 1,
-  "repositories": [
-    {
-      "uid": "repo.repora",
-      "id": "repora",
-      "target": {
-        "provider": "gitlab",
-        "path": "micrantha/repora",
-        "branch": "main"
-      },
-      "base_oid": "<canonical-head>",
-      "actions": [
-        {
-          "type": "WRITE_README",
-          "path": "README.md",
-          "observed": {
-            "present": true,
-            "mode": "100644",
-            "sha256": "<digest>"
-          },
-          "desired": {
-            "mode": "100644",
-            "sha256": "<digest>",
-            "content": "# Repora\n...\n"
-          },
-          "template_sha256": "<digest>",
-          "diff": "--- a/README.md\n+++ b/README.md\n..."
-        }
-      ]
-    }
-  ]
-}
-```
+- durable repository `uid` and human `id`;
+- canonical provider/path/default branch;
+- exact canonical `base_oid`;
+- action type `WRITE_README` and fixed path `README.md`;
+- observed README presence, regular-file mode, and content SHA-256;
+- desired regular-file mode, exact UTF-8 content, and SHA-256;
+- exact template SHA-256;
+- deterministic byte-aware review diff.
 
-For a missing README, `observed.present` is false and observed mode/digest use the schema's explicit absent representation. Desired mode is `100644`. For an existing regular README, desired mode must equal observed mode so README management cannot change the executable bit implicitly.
+The plan excludes timestamps, execution identity, credentials, resolved remote URLs, local template/cache paths, environment values, and Git command lines.
 
-The exact schema belongs to #12, but the following boundaries are fixed by ADR-0017:
+The versioned schema under `schemas/` is authoritative for serialized shape.
 
-- artifact kind/version are explicit;
-- repository `uid` remains durable identity;
-- target identity uses canonical provider/path/branch, not a resolved URL;
-- output path is exactly `README.md`;
-- plan includes exact `base_oid`;
-- observed README state has presence, Git mode, and content digest;
-- desired state has reviewed Git mode, digest, and exact UTF-8 content;
-- template evidence uses a digest, never its local path;
-- review output includes deterministic text diff;
-- no timestamp or execution identity appears in deterministic planning.
-
-## Deterministic diff
-
-The human diff must be reproducible from the same observed and desired bytes.
-
-V1 requirements:
-
-- fixed path labels (`a/README.md`, `b/README.md`);
-- no timestamps or temporary paths;
-- LF line endings;
-- stable hunk ordering;
-- missing README represented consistently as file creation;
-- no terminal color/control sequences in serialized diff.
-
-The text diff covers content. Git mode is separately explicit in observed/desired structured state. The plan validator must reject a desired-content digest mismatch or an unsupported desired mode. Apply recomputes the diff from current observed bytes and planned desired content after stale preflight and requires it to match the reviewed diff.
-
-## Read-only planning flow
+## Planning flow
 
 ```text
 repora.yaml
-  -> strict artifact config validation
-  -> resolve canonical provider/path
-  -> observe canonical default branch + exact OID
-  -> inspect README tree entry + mode + blob at that exact tree
-  -> require absent or regular UTF-8 text blob
-  -> load bounded local template
+  -> strict artifact config/identity validation
+  -> load contained local template
   -> deterministic render
-  -> equal bytes? no action
-  -> different? build managed-artifact plan + review diff
+  -> fresh canonical default-branch observation
+  -> inspect exact README tree entry/mode/blob
+  -> equal bytes? omit action
+  -> different? exact managed-artifact plan + review diff
 ```
 
-Planning must not create commits, modify caches in a way that changes remote intent, write a user checkout, or push.
+`repoctl plan-readme -f repora.yaml` renders human review output. `--artifact` emits the exact v1 plan.
 
-## Apply flow
+Planning may refresh Repora's local canonical cache, but does not create commits, update refs, write a user checkout, or push.
 
-A real artifact apply consumes an exact reviewed managed-artifact plan.
+## Dry-run and stale preflight
 
-Before any remote push:
+`repoctl apply-readme -f repora.yaml --plan-file FILE --dry-run` consumes the same exact reviewed plan as real apply.
 
-1. validate plan kind/version and strict fields;
-2. bind UID to current configuration;
-3. require current canonical provider/path/default branch to match;
-4. re-observe canonical HEAD and require exact `base_oid`;
-5. re-read root `README.md` and require exact observed presence, regular-file mode, and content digest;
-6. validate desired mode, content, and digest;
-7. recompute and verify the reviewed text diff;
-8. prepare a commit that changes only root `README.md` content and preserves the reviewed mode;
-9. publish with an exact expected-head guard.
+Before execution authority is accepted, Repora rebinds the durable repository to current configuration and re-observes canonical provider/path/branch, exact base OID, README presence/mode/content digest, and the deterministic review diff. Any mismatch is stale and fails before mutation.
 
-Any mismatch is stale and fails before remote mutation.
+The reviewed desired bytes in the plan are execution authority; apply does not silently re-render a changed template.
 
-### Git workspace boundary
+## Real apply flow
 
-Apply must not edit an arbitrary local checkout. Implementation should use isolated Git plumbing or an isolated temporary workspace tied to Repora's runtime cache. Temporary paths remain runtime details and are excluded from durable plan identity.
+A real apply uses the fixed sequence:
 
-The resulting commit is a direct child of the reviewed `base_oid`. Commit author/committer metadata and timestamp are execution details; deterministic planning does not predict the resulting commit OID.
+```text
+strict plan validation
+  -> protected managed-artifact INTENT persistence
+  -> exact stale preflight
+  -> isolated candidate commit creation
+  -> candidate parent/tree/path/mode/content verification
+  -> fresh full preflight
+  -> exact reviewed-base leased canonical push
+  -> managed-artifact RESULT persistence
+```
 
-## Dry-run
+The candidate commit is a direct child of the reviewed base and changes exactly root `README.md`. Candidate creation uses Repora's local bare cache and does not mutate an arbitrary developer checkout or local ref.
 
-Dry-run consumes the same exact plan and performs the same validation/stale preflight through the point immediately before commit creation/push. It reports the same reviewed content diff and performs no remote mutation.
+Each remote mutation is guarded by the reviewed branch and exact base lease. Managed README apply has no `--force` option.
+
+The public apply-result and execution-evidence contracts are `repora.io/managed-artifact-apply-result` v1 and `repora.io/managed-artifact-execution-record` v1.
+
+## Multi-repository results and recovery
+
+Managed README mutation across repositories is not transactional. An earlier canonical push may succeed before a later repository fails. Results and journal evidence preserve that state rather than representing false atomicity.
+
+INTENT persistence failure prevents candidate creation and mutation. If RESULT persistence fails after a successful remote push, the command still fails but emits the projected apply outcome so mutation is not hidden.
+
+Recovery requires observing current canonical state and creating a fresh plan. Repora never replays a previous managed-artifact plan as authorization and never performs automatic rollback.
 
 ## Mirror interaction
 
-Content mutation and mirror reconciliation are separate domains and separate review cycles.
+Managed artifact mutation and mirror reconciliation are separate domains and separate review cycles.
 
-After artifact apply succeeds, canonical HEAD changes. Any earlier mirror reconciliation artifact is stale and must not be reused.
-
-Required order:
+After a managed README apply changes canonical HEAD, all mirror observations/plans made against the previous canonical state are stale. Propagation therefore uses a fresh operator cycle:
 
 ```text
 managed artifact plan
@@ -228,52 +160,22 @@ managed artifact plan
   -> mirror apply
 ```
 
-Repora must not silently bundle the README commit with a previously observed mirror plan.
-
-## Result and recovery
-
-Artifact apply results should identify:
-
-- repository UID/ID;
-- canonical provider/path/branch;
-- reviewed base OID;
-- resulting commit OID when applied;
-- observed and desired README Git mode and content digests;
-- outcome (`APPLIED`, `STALE`, `SKIPPED`, or `FAILED`);
-- sanitized error.
-
-There is no automatic rollback. A failed or stale operation is recovered by inspecting current canonical state and creating a new plan. A successful unwanted README commit can be reverted through normal Git history; Repora does not rewrite history automatically.
+This fresh mirror cycle is not a missing managed-artifact implementation step. Repora deliberately does **not** auto-apply mirrors or reuse a pre-README mirror plan.
 
 ## Safety invariants
 
-V1 must preserve all of these:
+V1 preserves these boundaries:
 
 - no artifact config => no artifact action;
-- one managed path only: `README.md`;
-- no output-path configuration;
-- absent README becomes regular `100644`; existing regular README mode is preserved;
-- symlink/submodule/tree/binary README state fails planning rather than being replaced;
-- no executable template behavior;
-- no remote templates;
-- no implicit GitHub/GitLab API mutations;
-- no template/cache paths serialized in plans;
-- no credentials or environment values serialized in plans;
-- no apply without exact current-state validation;
-- no mutation of a user checkout;
+- one managed output path only: `README.md`;
+- no configurable output path or generic file writer;
+- existing regular mode preserved; missing README becomes `100644`;
+- symlink/submodule/tree/non-text/oversized unsafe state fails closed;
+- no executable or remote template behavior;
+- no template/cache paths, credentials, or environment values in durable plans;
+- no real apply without exact current-state validation;
+- no user-checkout mutation;
+- no force override;
 - no automatic mirror apply after README mutation;
-- no future artifact type without a separate issue or ADR.
-
-## Implementation slices for #12
-
-A simple implementation order is:
-
-1. config shape + validation;
-2. bounded renderer + golden tests;
-3. domain-specific managed-artifact plan schema/parser, including mode/content preconditions;
-4. read-only canonical README observation and deterministic diff planning;
-5. exact-plan dry-run/stale validation;
-6. isolated commit creation + guarded canonical push;
-7. result rendering and evidence;
-8. end-to-end tests proving unconfigured repositories are untouched, non-regular README state is rejected, and stale plans fail closed.
-
-Each slice should remain reviewable independently rather than introducing a generic artifact framework first.
+- no cross-repository atomicity or automatic rollback;
+- no future artifact type without a separately reviewed authority boundary.
