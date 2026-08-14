@@ -10,9 +10,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const maxWorkflowBytes = 1 << 20
+
 var actionSHA = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
 
 func parseWorkflow(fullName, path string, data []byte, evidence Evidence) (Workflow, error) {
+	if len(data) > maxWorkflowBytes {
+		return Workflow{}, fmt.Errorf("workflow exceeds %d-byte normalization limit", maxWorkflowBytes)
+	}
 	var document yaml.Node
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	if err := decoder.Decode(&document); err != nil {
