@@ -138,7 +138,7 @@ jobs:
 		t.Fatalf("workflows = state %q %#v", inventory.WorkflowsState, inventory.Workflows)
 	}
 	workflow := inventory.Workflows[0]
-	if !workflow.UsesPullRequestTarget || len(workflow.Jobs) != 1 || !boolValue(t, workflow.Jobs[0].SelfHosted) {
+	if !workflow.UsesPullRequestTarget || len(workflow.Jobs) != 1 || !boolValue(t, workflow.Jobs[0].SelfHostedLabel) {
 		t.Fatalf("workflow facts = %#v", workflow)
 	}
 	if len(workflow.Jobs[0].Actions) != 1 || !workflow.Jobs[0].Actions[0].ThirdParty || workflow.Jobs[0].Actions[0].Pinning != "immutable-sha" {
