@@ -4,7 +4,7 @@ Status: Active
 
 ## Current objective
 
-Repora's released mirror controller and first post-v0.1 managed-artifact, routing, assessment, policy-design, and standalone packaging foundations are complete. The current objective is to build a read-only, evidence-backed repository/CI posture layer without creating a parallel identity, evidence, validation, or provider-mutation control plane.
+Repora's released mirror controller and first post-v0.1 managed-artifact, routing, assessment, policy-design, standalone packaging, and read-only GitHub posture-inventory foundations are complete. The current objective is to extend the normalized posture fact model across documentation, mirror, local-workflow, and commit/process domains before adding policy evaluation or reporting.
 
 ## Completed foundation
 
@@ -25,35 +25,44 @@ Repora's released mirror controller and first post-v0.1 managed-artifact, routin
 | Optional Anthesis integration design | Complete | ADR-0018 selects additive `pre_apply`; runtime evaluator/transport remains deferred. |
 | Standalone Nix packaging | Complete | Repository-owned package/app/check/dev-shell/formatter outputs reuse canonical validation and require no Dubnium access. |
 | Test pyramid/static analysis | Complete | Fast/unit, integration, contract, CLI E2E, race/deep validation, Go vet, and Staticcheck are explicit repository/CI boundaries. |
+| GitHub posture inventory v1 | Complete | GET-only normalized repository/CI facts preserve observed, unknown, and unavailable evidence; no mutation-capable provider boundary is exposed. |
 
 ## Active sequence
 
-### 1. Implement read-only GitHub repository and CI/CD posture facts (#118)
+### 1. Add documentation and README hygiene facts (#119)
 
-Establish one normalized fact/evidence contract for later posture domains.
+Extend the shared posture fact/evidence model with profile-driven documentation state rather than prose scoring.
 
 Exit condition:
 
-- a read-only inventory path collects the initial GitHub repository/CI facts;
-- facts preserve `true`, `false`, `unknown`, and `unavailable` instead of converting missing permissions into false findings;
-- file-backed facts do not require admin APIs;
-- provider evidence is retained for later explanation;
-- workflow facts include permissions, `pull_request_target`, action pinning, and runner labels;
-- no mutation-capable code path is reachable from inventory;
-- unit/contract/failure-path tests cover present, missing, unknown, and unavailable states.
+- required/optional document presence is represented through the shared fact-state model;
+- README section checks distinguish present, missing, unknown, and unavailable evidence;
+- routing/canonical-document metadata is consumed when available;
+- generated/archived documents are not silently treated as canonical;
+- no LLM judgment or automatic prose rewrite is introduced;
+- tests cover profile-specific present/missing/optional cases.
 
-### 2. Add bounded posture fact domains (#119, #120, #123, #122)
+### 2. Add mirror-management drift facts (#120)
 
-Once #118's normalized fact/evidence contract is stable, add independent read-only fact slices for:
+Reuse existing provider/path topology and mirror semantics rather than creating a separate mirror scanner.
 
-- documentation/README hygiene (#119);
-- mirror-management drift (#120);
-- hooks/local workflow signals (#123);
-- bounded commit/process-risk analysis (#122).
+Exit condition:
 
-These slices may proceed independently where their dependencies permit. They must consume shared facts/evidence rather than introduce separate reporting or policy engines.
+- canonical/mirror identities and default branches are normalized into posture evidence;
+- drift, visibility/writeability, and release/tag evidence preserve unavailable provider state explicitly;
+- no synchronization or provider mutation occurs;
+- tests cover in-sync, drift, missing, and unavailable evidence.
 
-### 3. Converge facts into explainable policy/reporting (#121)
+### 3. Add local workflow/hook and commit/process fact domains (#123, #122)
+
+Add independent bounded sources after the shared model is proven:
+
+- hooks/local workflow facts (#123) without installing or executing hook code;
+- bounded commit/process-risk facts (#122) without productivity scoring, identity profiling, or intent inference.
+
+These slices may proceed independently where their dependencies permit and must not bypass the shared evidence representation.
+
+### 4. Converge facts into explainable policy/reporting (#121)
 
 Only after the source fact contracts are proven should Repora evaluate them into deterministic posture findings and Markdown reports.
 
@@ -66,7 +75,7 @@ Exit condition:
 - policy/reporting consumes normalized facts and does not rescan providers itself;
 - no provider mutation is introduced.
 
-### 4. Reassess runtime policy integration only on concrete demand
+### 5. Reassess runtime policy integration only on concrete demand
 
 ADR-0018 defines the optional Anthesis `pre_apply` seam, but design completion does not imply runtime implementation priority.
 
@@ -93,7 +102,7 @@ Deferred tracks must reuse current identity, plan, policy, execution, result, ev
 - Preserve Repora as a standalone local-first controller.
 - Prefer vertical capabilities over disconnected internal models.
 - Keep Git-ref reconciliation, managed artifacts, routing, assessments, posture, and optional external policy as separate bounded domain contracts.
-- Reuse durable `uid`, `provider:path`, and existing assessment/evidence concepts across posture work.
+- Reuse durable `uid`, `provider:path`, and shared posture/assessment evidence concepts across posture work.
 - External policy may add authorization but may never rewrite or weaken reviewed Repora intent.
 - Keep ref-policy v1 closed and mirrors sequential until a separate decision expands them.
 - Do not imply cross-remote atomicity, rollback, provider remediation, or approval semantics that are not implemented.
