@@ -1,17 +1,20 @@
-# v0.1 release checklist
+# Release checklist
 
 Status: Current
 
-Use this checklist for the first v0.1 release and subsequent patch releases until the release model changes. It is intentionally bounded to GitHub Releases, plain archives, and SHA-256 checksums.
+Use this checklist for Repora GitHub Releases until the distribution model changes. `v0.1.0` established the released mirror-controller baseline; later releases must explicitly identify which post-v0.1 capabilities are included. The current publication mechanism remains GitHub Releases with plain archives and SHA-256 checksums.
 
 ## 1. Scope and authority
 
 - [ ] The release commit is on `main`.
 - [ ] The intended tag is a new immutable semantic version matching `v*`.
+- [ ] The release scope is stated explicitly, including which Unreleased capabilities become supported release surface.
 - [ ] No unresolved P0 issue exists.
 - [ ] Any unresolved P1 issue is explicitly accepted as non-blocking with rationale in the release issue.
-- [ ] Deferred work does not expand ref policy, target identity, mutation semantics, or the distribution model.
-- [ ] Anthesis integration, managed artifacts, routing, assessments, signing, package managers, and hosted services remain out of scope unless a later release decision explicitly changes that boundary.
+- [ ] Current docs do not claim deferred capabilities are released or production-ready.
+- [ ] Expanded ref scope, provider mutation, Anthesis runtime coupling, signing/provenance, hosted services, or other new authority require their own accepted implementation/release decision before inclusion.
+
+A capability being merged on `main` is not by itself a release decision. The release issue/changelog define what the tagged version promises.
 
 ## 2. Validation and security
 
@@ -21,8 +24,11 @@ Use this checklist for the first v0.1 release and subsequent patch releases unti
 - [ ] CodeQL has no unresolved release-blocking high-confidence finding.
 - [ ] Gitleaks reports no unreviewed secret finding.
 - [ ] Dependency-license validation passes and the retained license inventory has been reviewed.
-- [ ] Workflow policy confirms immutable action pins, explicit permissions, timeouts, and no `pull_request_target` use.
+- [ ] Static analysis (`go vet` + pinned Staticcheck contract) passes.
+- [ ] Applicable unit, integration, contract, and CLI E2E boundaries pass.
+- [ ] Workflow policy confirms immutable action pins, explicit permissions, timeouts, and no unsafe `pull_request_target` execution.
 - [ ] Release publication retains job-scoped `contents: write`; pull-request validation remains read-only.
+- [ ] If Nix packaging changed, `nix flake check` and the packaged app smoke boundary pass on the reviewed revision.
 
 Security suppressions require a repository-visible explanation identifying the tool, finding, evidence, scope, owner, and review trigger. Do not suppress a finding only to make CI green.
 
@@ -35,13 +41,14 @@ Security suppressions require a repository-visible explanation identifying the t
 - [ ] Installation, checksum verification, local reproduction, and rollback guidance remain accurate.
 - [ ] Known limitations clearly state that checksums provide integrity, not publisher authentication.
 - [ ] Cross-compiled targets are not described as natively tested.
+- [ ] Managed-artifact, assessment, routing, Nix, or policy-design documentation is included/reconciled when that surface is part of the release scope.
 
 ## 4. Package reproduction
 
 From a clean checkout of the release commit:
 
 ```bash
-export VERSION=v0.1.0
+export VERSION=vX.Y.Z
 export COMMIT="$(git rev-parse HEAD)"
 export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
 make release-package
@@ -62,7 +69,7 @@ make release-verify
 - [ ] Confirm the tag-triggered release workflow starts.
 - [ ] Confirm the workflow rejects tags not reachable from `main`.
 - [ ] Confirm all package verification completes before publication.
-- [ ] Confirm the GitHub Release contains four archives and `checksums.txt`.
+- [ ] Confirm the GitHub Release contains four archives and `checksums.txt` unless a reviewed distribution decision changes the target set.
 - [ ] Do not move or reuse a published version tag.
 
 ## 6. Independent post-publication verification
@@ -72,7 +79,8 @@ Download the published assets rather than using local `dist/` files.
 - [ ] Verify every downloaded asset against `checksums.txt`.
 - [ ] Extract and execute the Linux amd64 binary.
 - [ ] Confirm `repoctl --version` reports the published tag and exact commit.
-- [ ] Run a bounded local-repository status/plan/dry-run smoke workflow.
+- [ ] Run a bounded local status/plan/dry-run smoke workflow for the mirror-controller baseline.
+- [ ] Exercise any newly released CLI surface with its safest representative read/dry-run path.
 - [ ] Record the release URL, workflow run, tag, commit, and verification result in the release issue.
 
 ## 7. Failure handling
@@ -83,9 +91,9 @@ If publication is wrong or verification fails:
 - stop recommending the affected release;
 - mark the release as a prerelease or document the defect prominently when appropriate;
 - fix through a new reviewed commit and patch version;
-- preserve the failed workflow and verification evidence;
-- never replay an old Repora plan as part of release recovery.
+- preserve failed workflow and verification evidence;
+- never replay an old Repora reconciliation or managed-artifact plan as part of release recovery.
 
 ## Exit condition
 
-The release is complete only after the published assets—not merely the workflow or local packages—have passed checksum, metadata, extraction, and Linux smoke verification.
+A release is complete only after the published assets—not merely the workflow or local packages—have passed checksum, metadata, extraction, version, and Linux smoke verification, plus any explicitly declared verification needed for newly released capability.

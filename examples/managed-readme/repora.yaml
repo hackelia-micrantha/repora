@@ -1,0 +1,21 @@
+repos:
+  - id: anthesis
+    uid: repo.anthesis
+    canonical:
+      provider: gitlab
+      path: micrantha/anthesis
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/anthesis
+    mode: mirror
+    policy:
+      refs:
+        version: 1
+        scope: default-branch-only
+        destructive: require-force
+    artifacts:
+      readme:
+        template: templates/README.md.tmpl
+        values:
+          title: Anthesis
+          summary: Governed automation with explicit evidence and policy boundaries.
