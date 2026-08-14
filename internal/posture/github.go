@@ -376,16 +376,16 @@ func populateTreeFacts(inventory *Inventory, tree GitHubTree, evidence Evidence)
 	blobPaths := make(map[string]GitHubTreeEntry)
 	for _, entry := range tree.Entries {
 		if entry.Type == "blob" {
-			blobPaths[strings.ToLower(entry.Path)] = entry
+			blobPaths[entry.Path] = entry
 		}
 	}
 	complete := !tree.Truncated
 	inventory.RepositoryFacts.CODEOWNERSPresent = treePresence(blobPaths, complete, evidence,
-		"codeowners", ".github/codeowners", "docs/codeowners")
+		"CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS")
 	inventory.RepositoryFacts.SecurityMDPresent = treePresence(blobPaths, complete, evidence,
-		"security.md", ".github/security.md", "docs/security.md")
+		"SECURITY.md", ".github/SECURITY.md", "docs/SECURITY.md")
 	inventory.RepositoryFacts.LicensePresent = licensePresence(blobPaths, complete, evidence)
-	inventory.RepositoryFacts.IssueTemplatePresent = prefixPresence(blobPaths, complete, evidence, ".github/issue_template/")
+	inventory.RepositoryFacts.IssueTemplatePresent = prefixPresence(blobPaths, complete, evidence, ".github/ISSUE_TEMPLATE/")
 	inventory.RepositoryFacts.PullRequestTemplatePresent = pullRequestTemplatePresence(blobPaths, complete, evidence)
 	inventory.RepositoryFacts.DependencyAutomation = dependencyAutomation(blobPaths, complete, evidence)
 
@@ -405,7 +405,7 @@ func populateTreeFacts(inventory *Inventory, tree GitHubTree, evidence Evidence)
 
 func treePresence(entries map[string]GitHubTreeEntry, complete bool, evidence Evidence, candidates ...string) Fact[bool] {
 	for _, candidate := range candidates {
-		if entry, ok := entries[strings.ToLower(candidate)]; ok {
+		if entry, ok := entries[candidate]; ok {
 			return Observed(true, Evidence{Source: "github.git_tree", Reference: entry.Path})
 		}
 	}
@@ -416,7 +416,6 @@ func treePresence(entries map[string]GitHubTreeEntry, complete bool, evidence Ev
 }
 
 func prefixPresence(entries map[string]GitHubTreeEntry, complete bool, evidence Evidence, prefix string) Fact[bool] {
-	prefix = strings.ToLower(prefix)
 	for path, entry := range entries {
 		if strings.HasPrefix(path, prefix) {
 			return Observed(true, Evidence{Source: "github.git_tree", Reference: entry.Path})
@@ -446,8 +445,11 @@ func licensePresence(entries map[string]GitHubTreeEntry, complete bool, evidence
 
 func pullRequestTemplatePresence(entries map[string]GitHubTreeEntry, complete bool, evidence Evidence) Fact[bool] {
 	for path, entry := range entries {
-		lower := strings.ToLower(path)
-		if lower == "pull_request_template.md" || lower == ".github/pull_request_template.md" || lower == "docs/pull_request_template.md" || strings.HasPrefix(lower, ".github/pull_request_template/") {
+		directory, base := splitRepositoryPath(path)
+		if (directory == "" || directory == "docs" || directory == ".github") && isPullRequestTemplateName(base) {
+			return Observed(true, Evidence{Source: "github.git_tree", Reference: entry.Path})
+		}
+		if strings.HasPrefix(path, "PULL_REQUEST_TEMPLATE/") || strings.HasPrefix(path, "docs/PULL_REQUEST_TEMPLATE/") || strings.HasPrefix(path, ".github/PULL_REQUEST_TEMPLATE/") {
 			return Observed(true, Evidence{Source: "github.git_tree", Reference: entry.Path})
 		}
 	}
@@ -457,10 +459,21 @@ func pullRequestTemplatePresence(entries map[string]GitHubTreeEntry, complete bo
 	return Unknown[bool](evidence)
 }
 
+func splitRepositoryPath(path string) (string, string) {
+	if idx := strings.LastIndex(path, "/"); idx >= 0 {
+		return path[:idx], path[idx+1:]
+	}
+	return "", path
+}
+
+func isPullRequestTemplateName(name string) bool {
+	return strings.EqualFold(name, "pull_request_template.md") || strings.EqualFold(name, "pull_request_template.txt")
+}
+
 func dependencyAutomation(entries map[string]GitHubTreeEntry, complete bool, evidence Evidence) Fact[[]string] {
 	found := []string{}
 	for path := range entries {
-		switch strings.ToLower(path) {
+		switch path {
 		case ".github/dependabot.yml", ".github/dependabot.yaml":
 			found = append(found, "dependabot")
 		case "renovate.json", ".github/renovate.json", ".renovaterc", ".renovaterc.json":
@@ -477,8 +490,7 @@ func dependencyAutomation(entries map[string]GitHubTreeEntry, complete bool, evi
 func workflowEntries(entries []GitHubTreeEntry) []GitHubTreeEntry {
 	out := []GitHubTreeEntry{}
 	for _, entry := range entries {
-		lower := strings.ToLower(entry.Path)
-		if entry.Type == "blob" && strings.HasPrefix(lower, ".github/workflows/") && (strings.HasSuffix(lower, ".yml") || strings.HasSuffix(lower, ".yaml")) {
+		if entry.Type == "blob" && strings.HasPrefix(entry.Path, ".github/workflows/") && (strings.HasSuffix(entry.Path, ".yml") || strings.HasSuffix(entry.Path, ".yaml")) {
 			out = append(out, entry)
 		}
 	}
