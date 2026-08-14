@@ -65,13 +65,13 @@ func parseWorkflow(fullName, path string, data []byte, evidence Evidence) (Workf
 
 func parseWorkflowJob(fullName, name string, node *yaml.Node, evidence Evidence) WorkflowJob {
 	runsOn := scalarStrings(mappingValue(node, "runs-on"))
-	selfHosted := classifySelfHosted(runsOn, evidence)
+	selfHostedLabel := classifySelfHostedLabel(runsOn, evidence)
 	job := WorkflowJob{
-		Name:        name,
-		Permissions: parsePermissions(mappingValue(node, "permissions")),
-		RunsOn:      runsOn,
-		SelfHosted:  selfHosted,
-		Actions:     []ActionReference{},
+		Name:            name,
+		Permissions:     parsePermissions(mappingValue(node, "permissions")),
+		RunsOn:          runsOn,
+		SelfHostedLabel: selfHostedLabel,
+		Actions:         []ActionReference{},
 	}
 
 	if uses := scalarValue(mappingValue(node, "uses")); uses != "" {
@@ -156,7 +156,7 @@ func scalarStrings(node *yaml.Node) []string {
 	return values
 }
 
-func classifySelfHosted(runsOn []string, evidence Evidence) Fact[bool] {
+func classifySelfHostedLabel(runsOn []string, evidence Evidence) Fact[bool] {
 	if len(runsOn) == 0 {
 		return Unknown[bool](evidence)
 	}
