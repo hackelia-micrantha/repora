@@ -185,12 +185,12 @@
     "job": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "permissions", "runs_on", "self_hosted", "actions"],
+      "required": ["name", "permissions", "runs_on", "self_hosted_label", "actions"],
       "properties": {
         "name": { "type": "string", "minLength": 1 },
         "permissions": { "$ref": "#/$defs/permissions" },
         "runs_on": { "type": "array", "items": { "type": "string" } },
-        "self_hosted": { "$ref": "#/$defs/boolFact" },
+        "self_hosted_label": { "$ref": "#/$defs/boolFact" },
         "actions": { "type": "array", "items": { "$ref": "#/$defs/actionReference" } }
       }
     },
