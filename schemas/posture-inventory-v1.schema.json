@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.io/schemas/posture-inventory-v1.schema.json",
+  "title": "Repora posture inventory v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "repository", "repository_facts", "workflows_state", "workflows", "evidence"],
+  "properties": {
+    "kind": { "const": "repora.posture-inventory" },
+    "version": { "const": 1 },
+    "repository": { "$ref": "#/$defs/repository" },
+    "repository_facts": { "$ref": "#/$defs/repositoryFacts" },
+    "workflows_state": { "$ref": "#/$defs/state" },
+    "workflows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/workflow" }
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidence" }
+    }
+  },
+  "$defs": {
+    "state": {
+      "type": "string",
+      "enum": ["observed", "unknown", "unavailable"]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "reference"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "reference": { "type": "string", "minLength": 1 },
+        "detail": { "type": "string" }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "full_name"],
+      "properties": {
+        "provider": { "const": "github" },
+        "full_name": { "type": "string", "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$" }
+      }
+    },
+    "boolFact": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "value", "evidence"],
+          "properties": {
+            "state": { "const": "observed" },
+            "value": { "type": "boolean" },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
+          }
+        },
+        { "$ref": "#/$defs/nonObservedFact" }
+      ]
+    },
+    "stringFact": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "value", "evidence"],
+          "properties": {
+            "state": { "const": "observed" },
+            "value": { "type": "string" },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
+          }
+        },
+        { "$ref": "#/$defs/nonObservedFact" }
+      ]
+    },
+    "intFact": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "value", "evidence"],
+          "properties": {
+            "state": { "const": "observed" },
+            "value": { "type": "integer", "minimum": 0 },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
+          }
+        },
+        { "$ref": "#/$defs/nonObservedFact" }
+      ]
+    },
+    "stringArrayFact": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "value", "evidence"],
+          "properties": {
+            "state": { "const": "observed" },
+            "value": {
+              "type": "array",
+              "items": { "type": "string" },
+              "uniqueItems": true
+            },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
+          }
+        },
+        { "$ref": "#/$defs/nonObservedFact" }
+      ]
+    },
+    "nonObservedFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "evidence"],
+      "properties": {
+        "state": { "enum": ["unknown", "unavailable"] },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
+      }
+    },
+    "repositoryFacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "default_branch",
+        "default_branch_protected",
+        "required_status_checks",
+        "required_reviews",
+        "force_push_protected",
+        "deletion_protected",
+        "codeowners_present",
+        "security_md_present",
+        "license_present",
+        "issue_template_present",
+        "pull_request_template_present",
+        "dependency_update_automation",
+        "workflow_paths"
+      ],
+      "properties": {
+        "default_branch": { "$ref": "#/$defs/stringFact" },
+        "default_branch_protected": { "$ref": "#/$defs/boolFact" },
+        "required_status_checks": { "$ref": "#/$defs/stringArrayFact" },
+        "required_reviews": { "$ref": "#/$defs/intFact" },
+        "force_push_protected": { "$ref": "#/$defs/boolFact" },
+        "deletion_protected": { "$ref": "#/$defs/boolFact" },
+        "codeowners_present": { "$ref": "#/$defs/boolFact" },
+        "security_md_present": { "$ref": "#/$defs/boolFact" },
+        "license_present": { "$ref": "#/$defs/boolFact" },
+        "issue_template_present": { "$ref": "#/$defs/boolFact" },
+        "pull_request_template_present": { "$ref": "#/$defs/boolFact" },
+        "dependency_update_automation": { "$ref": "#/$defs/stringArrayFact" },
+        "workflow_paths": { "$ref": "#/$defs/stringArrayFact" }
+      }
+    },
+    "permissionScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "access"],
+      "properties": {
+        "scope": { "type": "string", "minLength": 1 },
+        "access": { "type": "string" }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["declared", "scopes"],
+      "properties": {
+        "declared": { "type": "boolean" },
+        "default": { "type": "string" },
+        "scopes": { "type": "array", "items": { "$ref": "#/$defs/permissionScope" } }
+      }
+    },
+    "actionReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uses", "third_party", "pinning"],
+      "properties": {
+        "uses": { "type": "string", "minLength": 1 },
+        "third_party": { "type": "boolean" },
+        "pinning": {
+          "enum": ["local", "immutable-sha", "immutable-digest", "mutable-ref", "unversioned"]
+        }
+      }
+    },
+    "job": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "permissions", "runs_on", "self_hosted", "actions"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "permissions": { "$ref": "#/$defs/permissions" },
+        "runs_on": { "type": "array", "items": { "type": "string" } },
+        "self_hosted": { "$ref": "#/$defs/boolFact" },
+        "actions": { "type": "array", "items": { "$ref": "#/$defs/actionReference" } }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "state", "permissions", "uses_pull_request_target", "jobs", "evidence"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "state": { "$ref": "#/$defs/state" },
+        "permissions": { "$ref": "#/$defs/permissions" },
+        "uses_pull_request_target": { "type": "boolean" },
+        "jobs": { "type": "array", "items": { "$ref": "#/$defs/job" } },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
+      }
+    }
+  }
+}
