@@ -91,7 +91,7 @@ type ActionReference struct {
 }
 
 type WorkflowJob struct {
-	Name       string            `json:"name"`
+	Name        string            `json:"name"`
 	Permissions Permissions       `json:"permissions"`
 	RunsOn      []string          `json:"runs_on"`
 	SelfHosted  Fact[bool]        `json:"self_hosted"`
@@ -99,12 +99,12 @@ type WorkflowJob struct {
 }
 
 type Workflow struct {
-	Path                  string            `json:"path"`
-	State                 FactState         `json:"state"`
-	Permissions           Permissions       `json:"permissions"`
-	UsesPullRequestTarget bool              `json:"uses_pull_request_target"`
-	Jobs                  []WorkflowJob     `json:"jobs"`
-	Evidence              []Evidence        `json:"evidence"`
+	Path                  string        `json:"path"`
+	State                 FactState     `json:"state"`
+	Permissions           Permissions   `json:"permissions"`
+	UsesPullRequestTarget bool          `json:"uses_pull_request_target"`
+	Jobs                  []WorkflowJob `json:"jobs"`
+	Evidence              []Evidence    `json:"evidence"`
 }
 
 type Inventory struct {
