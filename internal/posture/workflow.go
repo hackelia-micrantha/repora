@@ -53,12 +53,12 @@ func parseWorkflow(fullName, path string, data []byte, evidence Evidence) (Workf
 	sort.Slice(ordered, func(i, j int) bool { return ordered[i].name < ordered[j].name })
 
 	for _, item := range ordered {
-		workflow.Jobs = append(workflow.Jobs, parseWorkflowJob(fullName, path, item.name, item.node, evidence))
+		workflow.Jobs = append(workflow.Jobs, parseWorkflowJob(fullName, item.name, item.node, evidence))
 	}
 	return workflow, nil
 }
 
-func parseWorkflowJob(fullName, path, name string, node *yaml.Node, evidence Evidence) WorkflowJob {
+func parseWorkflowJob(fullName, name string, node *yaml.Node, evidence Evidence) WorkflowJob {
 	runsOn := scalarStrings(mappingValue(node, "runs-on"))
 	selfHosted := classifySelfHosted(runsOn, evidence)
 	job := WorkflowJob{
@@ -81,6 +81,7 @@ func parseWorkflowJob(fullName, path, name string, node *yaml.Node, evidence Evi
 			if uses := scalarValue(mappingValue(step, "uses")); uses != "" {
 				job.Actions = append(job.Actions, classifyAction(fullName, uses))
 			}
+		}
 	}
 	return job
 }
