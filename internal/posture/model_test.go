@@ -2,9 +2,9 @@ package posture
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
-	"os"
 )
 
 func TestBooleanFactDistinguishesFalseUnknownAndUnavailable(t *testing.T) {
