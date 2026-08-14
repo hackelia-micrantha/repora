@@ -4,6 +4,29 @@ Repora records user-visible capability, compatibility, security, and release-pro
 
 ## [Unreleased]
 
+### Added
+
+- Managed root-README configuration and deterministic non-executable template rendering with contained local template paths.
+- Exact `repora.io/managed-artifact-plan` v1 review artifacts, byte-aware diffs, stale-safe dry-run, journaled real apply, isolated candidate commits, and exact reviewed-base leased canonical pushes.
+- Managed-artifact apply-result and execution-record v1 contracts with explicit partial-success evidence and no automatic mirror propagation.
+- Repository-assessment v1 schemas and local CLI commands for strict report validation, finding projection, scorecard projection, and bounded skeleton creation.
+- Deterministic document-routing foundations including trust tiers, context receipts, hierarchical summary-first routing, and bounded Go AST source selectors.
+- ADR-0018 and the optional additive Anthesis `pre_apply` policy-integration design; runtime evaluator/transport coupling remains deferred.
+- Standalone Nix package, app, checks, development shell, and formatter outputs for supported Linux/macOS systems.
+
+### Changed
+
+- CI now exposes explicit fast/unit, integration, contract, CLI end-to-end, and deep/race validation boundaries plus a canonical Staticcheck + `go vet` static-analysis target.
+- Nix validation reuses the same repository build/test/static-analysis targets rather than defining a second quality policy.
+- The formatting gate excludes generated vendored dependency source while continuing to check first-party Go files.
+- Current documentation now treats managed README, assessment, routing, the published `v0.1.0` baseline, and standalone Nix packaging as implemented behavior rather than future work.
+
+### Security
+
+- Managed README mutation uses fixed-path authority, exact current-state preflight, fail-closed INTENT persistence, verified candidate commits, exact base leases, bounded diagnostics, and no force override.
+- Routing and assessment commands remain read-only with respect to Git/provider state unless a separately reviewed mutation boundary explicitly applies.
+- CI preserves immutable action pins, least-privilege workflow permissions, reachable-vulnerability scanning, CodeQL, full-history secret detection, and dependency-license validation.
+
 ## [0.1.0] - 2026-08-03
 
 ### Added
@@ -36,7 +59,7 @@ Repora records user-visible capability, compatibility, security, and release-pro
 Before publishing a version, move the applicable Unreleased entries under a version heading in the form:
 
 ```text
-## [0.1.0] - YYYY-MM-DD
+## [0.2.0] - YYYY-MM-DD
 ```
 
 The release manager reviews GitHub-generated notes against this changelog. The changelog is the curated compatibility and operator-impact record; generated notes provide commit and contributor detail.
