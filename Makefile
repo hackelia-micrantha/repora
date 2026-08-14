@@ -11,7 +11,7 @@ GO_LICENSES_VERSION ?= v1.6.0
 check: format-check module-check vet test integration contract-test e2e build
 
 format-check:
-	@files="$$(find . -name '*.go' -not -path './.git/*' -exec gofmt -l {} +)"; \
+	@files="$$(find . -name '*.go' -not -path './.git/*' -not -path './vendor/*' -exec gofmt -l {} +)"; \
 	if [ -n "$$files" ]; then printf '%s\n' "$$files"; exit 1; fi
 
 module-check:
