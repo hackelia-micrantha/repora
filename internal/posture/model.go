@@ -91,11 +91,11 @@ type ActionReference struct {
 }
 
 type WorkflowJob struct {
-	Name        string            `json:"name"`
-	Permissions Permissions       `json:"permissions"`
-	RunsOn      []string          `json:"runs_on"`
-	SelfHosted  Fact[bool]        `json:"self_hosted"`
-	Actions     []ActionReference `json:"actions"`
+	Name            string            `json:"name"`
+	Permissions     Permissions       `json:"permissions"`
+	RunsOn          []string          `json:"runs_on"`
+	SelfHostedLabel Fact[bool]        `json:"self_hosted_label"`
+	Actions         []ActionReference `json:"actions"`
 }
 
 type Workflow struct {
@@ -208,7 +208,7 @@ func (w Workflow) validate() error {
 		if job.RunsOn == nil || job.Actions == nil || job.Permissions.Scopes == nil {
 			return fmt.Errorf("workflow %q job %q arrays are required", w.Path, job.Name)
 		}
-		if err := validateFact("workflow job self_hosted", job.SelfHosted); err != nil {
+		if err := validateFact("workflow job self_hosted_label", job.SelfHostedLabel); err != nil {
 			return err
 		}
 	}
