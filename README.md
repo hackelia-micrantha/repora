@@ -10,9 +10,9 @@
 
 **Repora** manages repository state through explicit topology, observation, policy, exact planning, stale-safe execution, honest partial results, and durable evidence.
 
-**repoctl** is the current Go CLI. Its primary runtime is a local-first Git mirror controller: each repository has one GitLab canonical and one or more GitHub/GitLab mirrors. Repora also has a separate bounded managed-README plan/apply domain and local repository-assessment commands. Deterministic document-routing contracts support evidence/context workflows without granting repository mutation authority.
+**repoctl** is the current Go CLI. Its primary runtime is a local-first Git mirror controller: each repository has one GitLab canonical and one or more GitHub/GitLab mirrors. Repora also has a separate bounded managed-README plan/apply domain, local repository-assessment commands, deterministic document-routing contracts, and a GET-only GitHub posture inventory for normalized repository/CI evidence.
 
-Repora remains pre-alpha. The broader repository-control-plane model is product direction, not a claim that provider provisioning, hosted orchestration, or arbitrary repository mutation exists today.
+Repora remains pre-alpha. The broader repository-control-plane model is product direction, not a claim that provider provisioning, hosted orchestration, automatic posture remediation, or arbitrary repository mutation exists today.
 
 ## Name
 
@@ -73,6 +73,19 @@ See [`examples/managed-readme/`](examples/managed-readme/) for a complete config
 - evidence-backed assessment contracts and templates;
 - deterministic document-routing manifests, trust tiers, context receipts, hierarchical summaries, and bounded Go AST source selectors.
 
+### Read-only GitHub posture inventory
+
+- versioned `repora.posture-inventory` v1 normalized fact contract;
+- explicit observed, unknown, and unavailable evidence states so observed `false` is not confused with missing permission or incomplete evidence;
+- default-branch and branch-protection observation including status checks, required reviews, force-push protection, and deletion protection where accessible;
+- Git-tree-backed `CODEOWNERS`, `SECURITY.md`, license, issue/PR template, dependency-automation, and workflow-path facts;
+- GitHub Actions normalization for workflow/job permissions, `pull_request_target`, runner labels, self-hosted usage, action references, and pinning style;
+- GET-only provider capability boundary with optional `GITHUB_TOKEN` / `GH_TOKEN` read from the environment;
+- permission-hidden provider data retained as unavailable evidence rather than false negatives;
+- no policy evaluation, findings, scanner execution, or provider mutation in inventory.
+
+See [GitHub posture inventory v1](docs/posture-inventory.md).
+
 ### Build, release, and assurance
 
 - published `v0.1.0` release with Linux amd64, macOS amd64/arm64, and Windows amd64 archives plus SHA-256 checksums;
@@ -91,6 +104,7 @@ See [`examples/managed-readme/`](examples/managed-readme/) for a complete config
 - no cross-remote transaction or automatic rollback;
 - no runtime Anthesis policy evaluator, transport, authentication, or approval workflow;
 - managed artifacts support root `README.md` only;
+- posture inventory is GitHub-first and read-only; GitLab/Bitbucket adapters, policy evaluation, reports, and remediation are not implemented;
 - routing and assessments do not automatically mutate repositories or provider settings;
 - no release signing or full provenance attestation.
 
@@ -156,7 +170,7 @@ repos:
           title: Anthesis
 ```
 
-Credentials must not be embedded in configuration. Authentication is delegated to system Git and credential helpers. Managed README templates are local configuration-root-relative files and cannot execute code or fetch remote content.
+Credentials must not be embedded in configuration. Authentication is delegated to system Git and credential helpers. Managed README templates are local configuration-root-relative files and cannot execute code or fetch remote content. Posture inventory provider tokens are optional environment inputs and are never stored in `repora.yaml`.
 
 See [`docs/configuration/provider-path-topology-v1.md`](docs/configuration/provider-path-topology-v1.md) and [`examples/managed-readme/`](examples/managed-readme/).
 
@@ -199,6 +213,14 @@ repoctl apply-readme -f repora.yaml --plan-file readme-plan.json --json
 
 Managed README apply does not accept `--force`. Stale exact plans exit `2`; invalid plans and operational failures exit `1`.
 
+### Posture inventory
+
+```bash
+repoctl posture inventory OWNER/REPO > posture.json
+```
+
+Public GitHub repositories need no token. Private or protected provider evidence may use `GITHUB_TOKEN` or `GH_TOKEN`. The command is GET-only and emits facts, not findings.
+
 ### Assessments
 
 ```bash
@@ -215,6 +237,8 @@ These commands operate on local assessment artifacts and do not perform Git or p
 - [Current architecture](docs/architecture/current-system.md)
 - [Managed artifact architecture](docs/architecture/managed-artifacts.md)
 - [Managed README planning/apply lifecycle](docs/architecture/managed-artifact-planning.md)
+- [GitHub posture inventory v1](docs/posture-inventory.md)
+- [Repository/CI posture model](docs/posture.md)
 - [Failure and recovery semantics](docs/architecture/failure-semantics.md)
 - [Exact reconciliation artifact](docs/architecture/reconciliation-plan-artifact.md)
 - [Execution journal](docs/architecture/execution-journal.md)
@@ -254,6 +278,7 @@ Current controls include:
 - fail-closed intent persistence;
 - path-bound per-target result evidence;
 - managed README fixed-path authority, contained local templates, exact-plan preflight, and exact-base leased pushes;
+- posture inventory uses a read-only provider interface and GET-only HTTP adapter, with environment-only optional tokens and explicit unavailable evidence;
 - sanitized diagnostics and safe relative journal references;
 - no implicit target selection, replay, rollback, cross-remote atomicity, provider mutation, or approval claim;
 - tag-only release publication with least-privilege workflow permissions;
@@ -263,9 +288,9 @@ ADR-0018 defines an optional future Anthesis `pre_apply` authorization seam. Run
 
 ## Roadmap
 
-The `v0.1.0` mirror-controller release is published and independently verified. The first post-release managed-README, routing, assessment, and standalone Nix packaging foundations are implemented.
+The `v0.1.0` mirror-controller release is published and independently verified. The first post-release managed-README, routing, assessment, standalone Nix packaging, and GitHub posture-inventory foundations are implemented.
 
-The next implementation track is read-only repository/CI posture inventory under issue #118, feeding the broader posture epic #124. Provider mutation, Anthesis runtime coupling, expanded ref scope, concurrent mirror mutation, signing, full provenance, and hosted control-plane behavior remain explicitly deferred.
+The next posture slices extend the shared fact/evidence model with documentation hygiene (#119), mirror drift (#120), hooks/local workflow signals (#123), and bounded commit/process evidence (#122) before policy evaluation/reporting (#121). Provider mutation, Anthesis runtime coupling, expanded ref scope, concurrent mirror mutation, signing, full provenance, and hosted control-plane behavior remain explicitly deferred.
 
 The authoritative order is maintained in [`docs/plans/current.md`](docs/plans/current.md) and GitHub issues.
 
