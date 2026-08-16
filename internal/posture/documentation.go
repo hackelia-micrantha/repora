@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -19,9 +20,11 @@ const (
 
 	documentationProfilePath = ".repora/posture-documentation.yaml"
 	documentRouterPath       = ".repora/document-router.yaml"
-	maxDocumentationBytes    = 2 << 20
-	maxDocumentationTargets  = 256
+	maxDocumentationBytes   = 2 << 20
+	maxDocumentationTargets = 256
 )
+
+var sha256Hex = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 type DocumentationProfile struct {
 	Kind           string                       `json:"kind" yaml:"kind"`
@@ -68,22 +71,22 @@ type DocumentationMarkerFact struct {
 }
 
 type DocumentationInventory struct {
-	Kind                   string                      `json:"kind"`
-	Version                int                         `json:"version"`
-	Repository             RepositoryIdentity          `json:"repository"`
-	DefaultBranch          Fact[string]                `json:"default_branch"`
-	DefaultCommit          Fact[string]                `json:"default_commit"`
-	ProfileDeclared        Fact[bool]                  `json:"profile_declared"`
-	ProfileName            Fact[string]                `json:"profile_name"`
-	READMEPath             string                      `json:"readme_path"`
-	READMEPresent          Fact[bool]                  `json:"readme_present"`
-	Documents              []DocumentationDocumentFact `json:"documents"`
-	READMESections         []DocumentationSectionFact  `json:"readme_sections"`
-	READMELinks            []DocumentationLinkFact     `json:"readme_links"`
-	ContentMarkers         []DocumentationMarkerFact   `json:"content_markers"`
-	RoutingMetadataPresent Fact[bool]                  `json:"routing_metadata_present"`
-	RoutingMetadataValid   Fact[bool]                  `json:"routing_metadata_valid"`
-	Evidence               []Evidence                  `json:"evidence"`
+	Kind                       string                      `json:"kind"`
+	Version                    int                         `json:"version"`
+	Repository                 RepositoryIdentity          `json:"repository"`
+	DefaultBranch              Fact[string]                `json:"default_branch"`
+	DefaultCommit              Fact[string]                `json:"default_commit"`
+	ProfileDeclared            Fact[bool]                  `json:"profile_declared"`
+	ProfileName                Fact[string]                `json:"profile_name"`
+	READMEPath                 string                      `json:"readme_path"`
+	READMEPresent              Fact[bool]                  `json:"readme_present"`
+	Documents                  []DocumentationDocumentFact `json:"documents"`
+	READMESections             []DocumentationSectionFact  `json:"readme_sections"`
+	READMELinks                []DocumentationLinkFact     `json:"readme_links"`
+	ContentMarkers             []DocumentationMarkerFact   `json:"content_markers"`
+	RoutingMetadataPresent     Fact[bool]                  `json:"routing_metadata_present"`
+	RoutingTrustMetadataUsable Fact[bool]                  `json:"routing_trust_metadata_usable"`
+	Evidence                   []Evidence                  `json:"evidence"`
 }
 
 func DefaultDocumentationProfile() DocumentationProfile {
@@ -246,7 +249,7 @@ func (i DocumentationInventory) Validate() error {
 		{"profile_name", validateFact("profile_name", i.ProfileName)},
 		{"readme_present", validateFact("readme_present", i.READMEPresent)},
 		{"routing_metadata_present", validateFact("routing_metadata_present", i.RoutingMetadataPresent)},
-		{"routing_metadata_valid", validateFact("routing_metadata_valid", i.RoutingMetadataValid)},
+		{"routing_trust_metadata_usable", validateFact("routing_trust_metadata_usable", i.RoutingTrustMetadataUsable)},
 	}
 	for _, check := range checks {
 		if check.err != nil {
@@ -289,8 +292,8 @@ func (i DocumentationInventory) Validate() error {
 		}
 	}
 	for idx, marker := range i.ContentMarkers {
-		if strings.TrimSpace(marker.ID) == "" || len(marker.ExpectedSHA256) != 64 {
-			return fmt.Errorf("content_markers[%d] id and SHA-256 digest are required", idx)
+		if strings.TrimSpace(marker.ID) == "" || !sha256Hex.MatchString(marker.ExpectedSHA256) {
+			return fmt.Errorf("content_markers[%d] id and lowercase SHA-256 digest are required", idx)
 		}
 		if err := validateDocumentationPath(marker.Path); err != nil {
 			return fmt.Errorf("content_markers[%d] path: %w", idx, err)
