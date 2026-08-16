@@ -103,8 +103,8 @@ Current documentation facts include:
 - configured README ATX-heading presence;
 - configured repository-relative README-link presence;
 - exact configured content-marker presence with only the expected marker SHA-256 retained in the output artifact;
-- document-router presence/validity;
-- canonical/implementation/generated/experimental/archived/external/unclassified trust-tier evidence for configured documents when routing metadata is usable.
+- document-router presence and whether its trust subset is usable by documentation posture;
+- canonical/implementation/generated/experimental/archived/external/unclassified trust-tier evidence for configured documents when routing trust metadata is usable.
 
 Important boundaries:
 
@@ -112,6 +112,8 @@ Important boundaries:
 - a built-in baseline observes only root `README.md` when a repository profile is known absent from a complete tree;
 - a truncated tree never proves that the profile or configured documents are missing;
 - malformed or inaccessible profile/router/content evidence becomes unknown or unavailable rather than a passing fact;
+- documentation posture does not claim to validate the complete router; full router validity remains owned by the routing contract/validators;
+- malformed repository-controlled profile/router evidence uses generic diagnostics rather than reflecting parser input into posture artifacts;
 - profile targets are bounded and inspected Markdown/profile data is never executed;
 - routing specificity preserves the existing canonical/generated/archived authority model and does not promote generated or archived documents to canonical;
 - exact content markers provide deterministic stale-metadata evidence without semantic or LLM judgment;
