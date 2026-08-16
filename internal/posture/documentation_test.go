@@ -112,8 +112,8 @@ trust:
 	if tiers["README.md"] != "canonical" || tiers["docs/SUMMARY.md"] != "generated" {
 		t.Fatalf("document trust tiers = %#v", tiers)
 	}
-	if !boolValue(t, inventory.RoutingMetadataPresent) || !boolValue(t, inventory.RoutingMetadataValid) {
-		t.Fatalf("router facts = %#v %#v", inventory.RoutingMetadataPresent, inventory.RoutingMetadataValid)
+	if !boolValue(t, inventory.RoutingMetadataPresent) || !boolValue(t, inventory.RoutingTrustMetadataUsable) {
+		t.Fatalf("router facts = %#v %#v", inventory.RoutingMetadataPresent, inventory.RoutingTrustMetadataUsable)
 	}
 
 	data, err := inventory.Marshal()
@@ -172,7 +172,8 @@ func TestCollectGitHubDocumentationDoesNotAssumeBaselineFromTruncatedTree(t *tes
 	}
 }
 
-func TestCollectGitHubDocumentationKeepsMalformedDeclaredProfileUnknown(t *testing.T) {
+func TestCollectGitHubDocumentationKeepsMalformedDeclaredProfileUnknownWithoutEchoingContent(t *testing.T) {
+	const sensitive = "internal-secret-marker"
 	reader := fakeGitHubReader{
 		repository:    GitHubRepository{DefaultBranch: "main"},
 		repositoryObs: available("github.repository", "repos/acme/project"),
@@ -183,7 +184,7 @@ func TestCollectGitHubDocumentationKeepsMalformedDeclaredProfileUnknown(t *testi
 		}},
 		treeObs: available("github.git_tree", "acme/project:tree123"),
 		blobs: map[string][]byte{
-			"profile": []byte("kind: repora.posture-documentation-profile\nversion: 99\nname: future\nreadme:\n  path: README.md\n"),
+			"profile": []byte("kind: repora.posture-documentation-profile\nversion: 99\nname: " + sensitive + "\nreadme:\n  path: README.md\n"),
 		},
 	}
 	inventory, err := CollectGitHubDocumentation(context.Background(), reader, "acme/project")
@@ -192,6 +193,34 @@ func TestCollectGitHubDocumentationKeepsMalformedDeclaredProfileUnknown(t *testi
 	}
 	if !boolValue(t, inventory.ProfileDeclared) || inventory.ProfileName.State != StateUnknown {
 		t.Fatalf("malformed profile facts = %#v %#v", inventory.ProfileDeclared, inventory.ProfileName)
+	}
+	data, err := inventory.Marshal()
+	if err != nil {
+		t.Fatalf("marshal malformed profile inventory: %v", err)
+	}
+	if strings.Contains(string(data), sensitive) {
+		t.Fatal("malformed profile content leaked into evidence")
+	}
+}
+
+func TestDocumentationInventoryRejectsMalformedMarkerDigest(t *testing.T) {
+	inventory := newDocumentationInventory("acme/project")
+	inventory.DefaultBranch = Observed("main")
+	inventory.DefaultCommit = Observed("abc1234")
+	inventory.ProfileDeclared = Observed(true)
+	inventory.ProfileName = Observed("service")
+	inventory.READMEPath = "README.md"
+	inventory.READMEPresent = Observed(true)
+	inventory.RoutingMetadataPresent = Observed(false)
+	inventory.RoutingTrustMetadataUsable = Unknown[bool]()
+	inventory.ContentMarkers = append(inventory.ContentMarkers, DocumentationMarkerFact{
+		ID:             "marker",
+		Path:           "README.md",
+		ExpectedSHA256: strings.Repeat("z", 64),
+		Present:        Observed(true),
+	})
+	if err := inventory.Validate(); err == nil {
+		t.Fatal("malformed marker digest was accepted")
 	}
 }
 
