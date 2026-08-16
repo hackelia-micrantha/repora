@@ -19,7 +19,7 @@ Repora records user-visible capability, compatibility, security, and release-pro
 ### Changed
 
 - CI now exposes explicit fast/unit, integration, contract, CLI end-to-end, and deep/race validation boundaries plus a canonical Staticcheck + `go vet` static-analysis target.
-- The current Go 1.25 validation/release toolchain is patched to Go 1.25.12 across local tooling and GitHub workflows.
+- The current Go 1.25 validation/release toolchain is patched to Go 1.25.13 across local tooling and GitHub workflows.
 - Nix validation reuses the same repository build/test/static-analysis targets rather than defining a second quality policy.
 - The formatting gate excludes generated vendored dependency source while continuing to check first-party Go files.
 - Current documentation now treats managed README, assessment, routing, the published `v0.1.0` baseline, standalone Nix packaging, GitHub posture inventory, and documentation posture as implemented behavior rather than future work.
