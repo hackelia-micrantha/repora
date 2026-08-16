@@ -77,12 +77,12 @@ func CollectGitHubDocumentation(ctx context.Context, reader GitHubReader, fullNa
 		inventory.ProfileName = factForState[string](profileState, profileEvidence)
 	}
 
-	router, routerState, routerEvidence, routerPresent, routerValid, err := loadTrustRouter(ctx, reader, fullName, tree, entries, treeObs.Evidence)
+	router, routerState, routerEvidence, routerPresent, routerUsable, err := loadTrustRouter(ctx, reader, fullName, tree, entries, treeObs.Evidence)
 	if err != nil {
 		return DocumentationInventory{}, err
 	}
 	inventory.RoutingMetadataPresent = routerPresent
-	inventory.RoutingMetadataValid = routerValid
+	inventory.RoutingTrustMetadataUsable = routerUsable
 	if routerEvidence.Source != "" {
 		inventory.Evidence = append(inventory.Evidence, routerEvidence)
 	}
@@ -182,7 +182,7 @@ func loadDocumentationProfile(ctx context.Context, reader GitHubReader, fullName
 	}
 	profile, err := ParseDocumentationProfile(data)
 	if err != nil {
-		evidence := evidenceWithDetail(obs.Evidence, sanitizeDocumentationError(err))
+		evidence := evidenceWithDetail(obs.Evidence, "declared documentation posture profile is malformed or unsupported")
 		return DocumentationProfile{}, evidence, StateUnknown, Observed(true, treeEvidence), nil
 	}
 	return profile, obs.Evidence, StateObserved, Observed(true, treeEvidence), nil
@@ -192,7 +192,7 @@ func loadTrustRouter(ctx context.Context, reader GitHubReader, fullName string, 
 	entry, exists := entries[documentRouterPath]
 	if !exists {
 		if tree.Truncated {
-			evidence := evidenceWithDetail(treeEvidence, "Git tree is truncated; document router presence is unknown")
+			evidence := evidenceWithDetail(treeEvidence, "Git tree is truncated; document routing trust metadata presence is unknown")
 			return trustRouter{}, StateUnknown, evidence, Unknown[bool](evidence), Unknown[bool](evidence), nil
 		}
 		evidence := evidenceWithDetail(treeEvidence, "document router is not present")
@@ -210,12 +210,12 @@ func loadTrustRouter(ctx context.Context, reader GitHubReader, fullName string, 
 		return trustRouter{}, StateUnavailable, obs.Evidence, Observed(true, treeEvidence), Unavailable[bool](obs.Evidence), nil
 	}
 	if len(data) > maxDocumentationBytes {
-		evidence := evidenceWithDetail(obs.Evidence, fmt.Sprintf("document router exceeds %d-byte normalization limit", maxDocumentationBytes))
+		evidence := evidenceWithDetail(obs.Evidence, fmt.Sprintf("document routing trust metadata exceeds %d-byte normalization limit", maxDocumentationBytes))
 		return trustRouter{}, StateUnknown, evidence, Observed(true, treeEvidence), Observed(false, evidence), nil
 	}
 	router, err := parseTrustRouter(data)
 	if err != nil {
-		evidence := evidenceWithDetail(obs.Evidence, sanitizeDocumentationError(err))
+		evidence := evidenceWithDetail(obs.Evidence, "document routing trust metadata is malformed or unsupported")
 		return trustRouter{}, StateUnknown, evidence, Observed(true, treeEvidence), Observed(false, evidence), nil
 	}
 	return router, StateObserved, obs.Evidence, Observed(true, treeEvidence), Observed(true, obs.Evidence), nil
