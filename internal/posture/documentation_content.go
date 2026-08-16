@@ -67,17 +67,12 @@ func markdownHeadings(data []byte) map[string]struct{} {
 	inFence := false
 	fence := ""
 	for _, line := range strings.Split(string(data), "\n") {
-		indent := 0
-		for indent < len(line) && line[indent] == ' ' {
-			indent++
-		}
-		if indent > 3 || (indent < len(line) && line[indent] == '\t') {
+		candidate, ignored := markdownContentLine(line)
+		if ignored {
 			continue
 		}
-		candidate := line[indent:]
 		trimmed := strings.TrimSpace(candidate)
-		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
-			marker := trimmed[:3]
+		if marker, isFence := markdownFenceMarker(trimmed); isFence {
 			if !inFence {
 				inFence = true
 				fence = marker
@@ -124,31 +119,74 @@ func normalizeHeading(value string) string {
 
 func markdownRepositoryLinks(readmePath string, data []byte) map[string]struct{} {
 	result := map[string]struct{}{}
-	for _, match := range inlineMarkdownLink.FindAllStringSubmatch(string(data), -1) {
-		if len(match) != 2 {
+	inFence := false
+	fence := ""
+	for _, line := range strings.Split(string(data), "\n") {
+		candidate, ignored := markdownContentLine(line)
+		if ignored {
 			continue
 		}
-		target := strings.TrimSpace(match[1])
-		lower := strings.ToLower(target)
-		if target == "" || strings.HasPrefix(target, "#") || strings.Contains(target, "://") || strings.HasPrefix(lower, "mailto:") {
+		trimmed := strings.TrimSpace(candidate)
+		if marker, isFence := markdownFenceMarker(trimmed); isFence {
+			if !inFence {
+				inFence = true
+				fence = marker
+			} else if marker == fence {
+				inFence = false
+				fence = ""
+			}
 			continue
 		}
-		if colon := strings.IndexByte(target, ':'); colon >= 0 {
+		if inFence {
 			continue
 		}
-		if index := strings.IndexAny(target, "?#"); index >= 0 {
-			target = target[:index]
+		for _, match := range inlineMarkdownLink.FindAllStringSubmatch(candidate, -1) {
+			if len(match) != 2 {
+				continue
+			}
+			target := strings.TrimSpace(match[1])
+			lower := strings.ToLower(target)
+			if target == "" || strings.HasPrefix(target, "#") || strings.Contains(target, "://") || strings.HasPrefix(lower, "mailto:") {
+				continue
+			}
+			if colon := strings.IndexByte(target, ':'); colon >= 0 {
+				continue
+			}
+			if index := strings.IndexAny(target, "?#"); index >= 0 {
+				target = target[:index]
+			}
+			if target == "" || strings.HasPrefix(target, "/") {
+				continue
+			}
+			resolved := path.Clean(path.Join(path.Dir(readmePath), target))
+			if resolved == "." || resolved == ".." || strings.HasPrefix(resolved, "../") {
+				continue
+			}
+			result[resolved] = struct{}{}
 		}
-		if target == "" || strings.HasPrefix(target, "/") {
-			continue
-		}
-		resolved := path.Clean(path.Join(path.Dir(readmePath), target))
-		if resolved == "." || resolved == ".." || strings.HasPrefix(resolved, "../") {
-			continue
-		}
-		result[resolved] = struct{}{}
 	}
 	return result
+}
+
+func markdownContentLine(line string) (string, bool) {
+	indent := 0
+	for indent < len(line) && line[indent] == ' ' {
+		indent++
+	}
+	if indent > 3 || (indent < len(line) && line[indent] == '\t') {
+		return "", true
+	}
+	return line[indent:], false
+}
+
+func markdownFenceMarker(trimmed string) (string, bool) {
+	if strings.HasPrefix(trimmed, "```") {
+		return "```", true
+	}
+	if strings.HasPrefix(trimmed, "~~~") {
+		return "~~~", true
+	}
+	return "", false
 }
 
 func factForState[T any](state FactState, evidence Evidence) Fact[T] {
