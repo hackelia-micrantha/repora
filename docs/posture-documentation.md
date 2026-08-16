@@ -50,7 +50,7 @@ readme:
 content_markers:
   - id: current-toolchain
     path: docs/ci.md
-    contains: Go 1.25.12
+    contains: Go 1.25.13
 ```
 
 The profile says **what to observe**, not how to score it. A missing configured document/section/link/marker is an observed `false` fact when the repository evidence is complete. A later policy may decide that one repository profile requires a fact while another only recommends it.
