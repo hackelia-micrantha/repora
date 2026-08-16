@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.io/schemas/posture-documentation-profile-v1.schema.json",
+  "title": "Repora documentation posture observation profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "name", "readme"],
+  "properties": {
+    "kind": { "const": "repora.posture-documentation-profile" },
+    "version": { "const": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "documents": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/repositoryPath" }
+    },
+    "readme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "$ref": "#/$defs/repositoryPath" },
+        "sections": {
+          "type": "array",
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "links": {
+          "type": "array",
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/repositoryPath" }
+        }
+      }
+    },
+    "content_markers": {
+      "type": "array",
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/contentMarker" }
+    }
+  },
+  "$defs": {
+    "repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "contentMarker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "contains"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "path": { "$ref": "#/$defs/repositoryPath" },
+        "contains": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      }
+    }
+  }
+}

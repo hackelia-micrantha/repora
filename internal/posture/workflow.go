@@ -12,7 +12,10 @@ import (
 
 const maxWorkflowBytes = 1 << 20
 
-var actionSHA = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
+var (
+	actionSHA    = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
+	dockerSHA256 = regexp.MustCompile(`^docker://.+@sha256:[0-9a-fA-F]{64}$`)
+)
 
 func parseWorkflow(fullName, path string, data []byte, evidence Evidence) (Workflow, error) {
 	if len(data) > maxWorkflowBytes {
@@ -184,7 +187,7 @@ func classifyAction(fullName, uses string) ActionReference {
 	}
 	if strings.HasPrefix(uses, "docker://") {
 		ref.ThirdParty = true
-		if strings.Contains(uses, "@sha256:") {
+		if dockerSHA256.MatchString(uses) {
 			ref.Pinning = "immutable-digest"
 		} else {
 			ref.Pinning = "mutable-ref"

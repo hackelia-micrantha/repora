@@ -99,9 +99,9 @@ Integration tests must use `t.TempDir()` or another disposable workspace and mus
 
 - **Repeated fast tests** runs the race-enabled short suite ten times. The log records the exact command, package pattern, iteration count, and failing iteration.
 - **Full integration race tests** runs every Go test without `-short` under the race detector. Fixtures remain disposable and do not contact provider-hosted remotes.
-- **Go compatibility** runs the portable validation contract on Go 1.22.x and the repository's current CI toolchain, Go 1.25.8.
+- **Go compatibility** runs the portable validation contract on Go 1.22.x and the repository's current CI toolchain, Go 1.25.13.
 
-Go 1.22 is the minimum supported toolchain line declared by `go.mod`. Go 1.25.8 is the current validated toolchain. Compatibility jobs are scheduled evidence, not release artifacts.
+Go 1.22 is the minimum supported toolchain line declared by `go.mod`. Go 1.25.13 is the current validated toolchain. Compatibility jobs are scheduled evidence, not release artifacts.
 
 Reachable-vulnerability scanning, secret detection, license validation, CodeQL, and current-toolchain Staticcheck are intentionally not duplicated in compatibility validation. Their dedicated CI jobs own those checks.
 

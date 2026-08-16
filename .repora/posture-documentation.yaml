@@ -1,0 +1,39 @@
+kind: repora.posture-documentation-profile
+version: 1
+name: repora
+
+documents:
+  - README.md
+  - SECURITY.md
+  - LICENSE
+  - docs/architecture/current-system.md
+  - docs/ci.md
+  - docs/posture.md
+
+readme:
+  path: README.md
+  sections:
+    - Overview
+    - Implemented today
+    - Current limitations
+    - Installation
+    - Configuration
+    - CLI
+    - Contracts and architecture
+    - Development
+    - Security model
+    - Roadmap
+    - License
+    - Project status
+  links:
+    - LICENSE
+    - SECURITY.md
+    - docs/architecture/current-system.md
+    - docs/plans/current.md
+    - docs/posture.md
+    - docs/security-ci.md
+
+content_markers:
+  - id: current-go-toolchain
+    path: docs/ci.md
+    contains: Go 1.25.13

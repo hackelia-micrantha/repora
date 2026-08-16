@@ -36,6 +36,7 @@ assert_subcommand_help plan
 assert_subcommand_help apply
 
 "$binary" posture inventory --help >/dev/null
+"$binary" posture docs --help >/dev/null
 "$binary" plan-readme --help >/dev/null
 "$binary" apply-readme --help >/dev/null
 "$binary" validate-report --help >/dev/null

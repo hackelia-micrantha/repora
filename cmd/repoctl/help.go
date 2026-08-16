@@ -10,6 +10,7 @@ const helpText = `repoctl manages configured Git repository state and read-only 
 Usage:
   repoctl <command> [options]
   repoctl posture inventory OWNER/REPO
+  repoctl posture docs OWNER/REPO
   repoctl plan-readme -f repora.yaml [--artifact]
   repoctl apply-readme -f repora.yaml --plan-file FILE [--dry-run] [--json]
   repoctl validate-report FILE
@@ -24,7 +25,7 @@ Commands:
   plan     show planned mirror updates or export an executable artifact
   apply    apply current observations or an exact plan artifact
   sync     alias for apply
-  posture  collect read-only repository/CI posture facts; inventory is the current subcommand
+  posture  collect read-only repository/CI and documentation posture facts
   plan-readme  review managed README changes or export the exact managed-artifact plan
   apply-readme  dry-run or journaled exact-plan managed README apply
   validate-report  validate a repository assessment report without mutation
@@ -54,11 +55,13 @@ Options for mirror commands:
   --debug
         print debug logs to stderr
 
-Options for posture inventory:
+Options for posture commands:
   OWNER/REPO
         GitHub repository to inspect. Public repositories need no token; private/provider-protected evidence may use GITHUB_TOKEN or GH_TOKEN from the environment.
 
 Posture inventory is GET-only. Provider fields unavailable under current access are emitted as unavailable facts rather than false negatives. It does not evaluate policy, create findings, run scanners, or mutate repository/provider state.
+
+Posture docs is also GET-only. It observes document presence, configured README sections and links, exact content markers, and document-routing trust metadata. A target repository may declare observation targets in .repora/posture-documentation.yaml. The profile selects facts to observe; it does not assign severity or authorize remediation.
 
 Options for plan-readme:
   -f string
