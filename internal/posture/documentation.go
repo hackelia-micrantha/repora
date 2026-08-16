@@ -20,8 +20,8 @@ const (
 
 	documentationProfilePath = ".repora/posture-documentation.yaml"
 	documentRouterPath       = ".repora/document-router.yaml"
-	maxDocumentationBytes   = 2 << 20
-	maxDocumentationTargets = 256
+	maxDocumentationBytes    = 2 << 20
+	maxDocumentationTargets  = 256
 )
 
 var sha256Hex = regexp.MustCompile(`^[0-9a-f]{64}$`)
