@@ -67,7 +67,15 @@ func markdownHeadings(data []byte) map[string]struct{} {
 	inFence := false
 	fence := ""
 	for _, line := range strings.Split(string(data), "\n") {
-		trimmed := strings.TrimSpace(line)
+		indent := 0
+		for indent < len(line) && line[indent] == ' ' {
+			indent++
+		}
+		if indent > 3 || (indent < len(line) && line[indent] == '\t') {
+			continue
+		}
+		candidate := line[indent:]
+		trimmed := strings.TrimSpace(candidate)
 		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
 			marker := trimmed[:3]
 			if !inFence {
@@ -83,22 +91,11 @@ func markdownHeadings(data []byte) map[string]struct{} {
 			continue
 		}
 
-		indent := 0
-		for indent < len(line) && line[indent] == ' ' {
-			indent++
-		}
-		if indent > 3 || (indent < len(line) && line[indent] == '\t') {
-			continue
-		}
-		candidate := line[indent:]
 		count := 0
 		for count < len(candidate) && candidate[count] == '#' {
 			count++
 		}
-		if count == 0 || count > 6 {
-			continue
-		}
-		if count == len(candidate) {
+		if count == 0 || count > 6 || count == len(candidate) {
 			continue
 		}
 		if candidate[count] != ' ' && candidate[count] != '\t' {
