@@ -145,18 +145,6 @@ func evidenceWithDetail(evidence Evidence, detail string) Evidence {
 	return evidence
 }
 
-func sanitizeDocumentationError(err error) string {
-	if err == nil {
-		return ""
-	}
-	message := strings.ReplaceAll(err.Error(), "\n", " ")
-	message = strings.Join(strings.Fields(message), " ")
-	if len(message) > 512 {
-		message = message[:512] + "…"
-	}
-	return message
-}
-
 func setDocumentationUnavailable(inventory *DocumentationInventory, evidence Evidence) {
 	inventory.DefaultBranch = Unavailable[string](evidence)
 	setDocumentationAfterBranchUnavailable(inventory, evidence)
@@ -172,5 +160,5 @@ func setDocumentationAfterTreeUnavailable(inventory *DocumentationInventory, evi
 	inventory.ProfileName = Unavailable[string](evidence)
 	inventory.READMEPresent = Unavailable[bool](evidence)
 	inventory.RoutingMetadataPresent = Unavailable[bool](evidence)
-	inventory.RoutingMetadataValid = Unavailable[bool](evidence)
+	inventory.RoutingTrustMetadataUsable = Unavailable[bool](evidence)
 }
