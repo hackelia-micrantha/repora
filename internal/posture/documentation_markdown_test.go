@@ -3,8 +3,8 @@ package posture
 import "testing"
 
 func TestMarkdownHeadingsPreserveHashesAndIgnoreIndentedCode(t *testing.T) {
-	headings := markdownHeadings([]byte("## C#\n\n   ### Allowed\n\n    ## Indented code\n\n## Security ##\n\n```markdown\n## Fenced example\n```\n"))
-	for _, want := range []string{"c#", "allowed", "security"} {
+	headings := markdownHeadings([]byte("## C#\n\n   ### Allowed\n\n    ## Indented code\n\n    ```\n## After indented code fence\n    ```\n\n## Security ##\n\n```markdown\n## Fenced example\n```\n"))
+	for _, want := range []string{"c#", "allowed", "after indented code fence", "security"} {
 		if _, ok := headings[want]; !ok {
 			t.Fatalf("heading %q missing from %#v", want, headings)
 		}
