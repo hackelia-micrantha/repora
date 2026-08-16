@@ -44,12 +44,12 @@ func validDocumentationInventory(fullName string) posture.DocumentationInventory
 		Documents: []posture.DocumentationDocumentFact{
 			{Path: "README.md", Present: posture.Observed(true), TrustTier: posture.Unknown[string]()},
 		},
-		READMESections:         []posture.DocumentationSectionFact{},
-		READMELinks:            []posture.DocumentationLinkFact{},
-		ContentMarkers:         []posture.DocumentationMarkerFact{},
-		RoutingMetadataPresent: posture.Observed(false),
-		RoutingMetadataValid:   posture.Unknown[bool](),
-		Evidence:               []posture.Evidence{},
+		READMESections:             []posture.DocumentationSectionFact{},
+		READMELinks:                []posture.DocumentationLinkFact{},
+		ContentMarkers:             []posture.DocumentationMarkerFact{},
+		RoutingMetadataPresent:     posture.Observed(false),
+		RoutingTrustMetadataUsable: posture.Unknown[bool](),
+		Evidence:                   []posture.Evidence{},
 	}
 }
 
