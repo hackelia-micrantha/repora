@@ -159,12 +159,12 @@ The implemented documentation posture v1 can observe:
 - README presence and configured ATX heading sections;
 - configured repository-relative README links;
 - deterministic exact content markers for bounded stale-metadata signals;
-- document-router metadata presence and validity;
+- document-router metadata presence and whether its trust subset is usable by documentation posture;
 - canonical, implementation, generated, experimental, archived, external, or unclassified trust tiers for selected documents.
 
 A repository may select these facts through `.repora/posture-documentation.yaml`. That repository-owned profile does not assign severity or make policy decisions. Missing facts are observed `false` only when evidence is complete; truncated or inaccessible evidence stays unknown/unavailable.
 
-The collector preserves routing authority rather than treating all Markdown equally. Generated or archived documents are not silently promoted to canonical. This is particularly important for AI-assisted workflows that need deterministic source authority.
+The collector preserves routing authority rather than treating all Markdown equally. Generated or archived documents are not silently promoted to canonical. It does not claim to validate the complete document router; full routing validity remains owned by the routing contract and validators. This is particularly important for AI-assisted workflows that need deterministic source authority.
 
 Important risk patterns for a future policy layer include:
 
