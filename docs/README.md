@@ -16,6 +16,7 @@ Use the smallest authoritative source that answers the question.
 | What security checks run and how are findings handled? | [`security-ci.md`](security-ci.md) |
 | How do repository assessments and evidence work? | [`assessments.md`](assessments.md) |
 | How does the GitHub repository/CI posture inventory work? | [`posture-inventory.md`](posture-inventory.md) |
+| How does deterministic documentation/README posture work? | [`posture-documentation.md`](posture-documentation.md) |
 | What is the broader repository/CI posture model? | [`posture.md`](posture.md) |
 | Why is there no repository-wide benchmark gate? | [`benchmarks.md`](benchmarks.md) |
 | How is the current implementation structured? | [`architecture/current-system.md`](architecture/current-system.md) |
@@ -64,7 +65,7 @@ The RFC-0001 documentation set and `plans/implementation-plan-v0.1.md` predate s
 - **ADRs** own durable decisions and consequences; they do not act as project plans.
 - **Architecture documents** explain current implementation, authority boundaries, and package ownership.
 - **Schemas** define machine-readable compatibility contracts.
-- **Posture inventories** capture normalized observed/unknown/unavailable repository evidence; they do not define policy or replace live provider state.
+- **Posture inventories** capture normalized observed/unknown/unavailable repository evidence; repository-owned observation profiles select deterministic facts but do not define severity, findings, or remediation policy.
 - **Assessment reports** capture point-in-time analysis and evidence; they reference GitHub/repository state rather than replacing it.
 - **README files** provide orientation and current capability summaries, not detailed requirements.
 - **The changelog** records curated user-visible and compatibility changes; generated release notes provide commit and contributor detail.
@@ -78,7 +79,7 @@ Update documentation in the same change when any of these change:
 - public CLI behavior or exit codes;
 - JSON contract shape or version;
 - mutation, stale-plan, partial-failure, or recovery semantics;
-- posture fact/evidence semantics or provider observation boundaries;
+- posture fact/evidence semantics, provider observation boundaries, or repository-owned observation profile contracts;
 - supported topology, providers, transports, refs, mirrors, or managed artifact types;
 - supported release targets, packaging, installation, or verification behavior;
 - security checks, suppression rules, or release-blocking policy;
