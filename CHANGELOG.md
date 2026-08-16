@@ -12,20 +12,23 @@ Repora records user-visible capability, compatibility, security, and release-pro
 - Repository-assessment v1 schemas and local CLI commands for strict report validation, finding projection, scorecard projection, and bounded skeleton creation.
 - Deterministic document-routing foundations including trust tiers, context receipts, hierarchical summary-first routing, and bounded Go AST source selectors.
 - Read-only GitHub repository/CI posture inventory with versioned observed/unknown/unavailable facts for branch protection, repository hygiene files, workflow permissions/events/runners, and action pinning evidence.
+- Deterministic documentation posture with a versioned observation profile, README section/link and exact content-marker facts, routing trust-tier preservation, and no prose scoring or remediation authority.
 - ADR-0018 and the optional additive Anthesis `pre_apply` policy-integration design; runtime evaluator/transport coupling remains deferred.
 - Standalone Nix package, app, checks, development shell, and formatter outputs for supported Linux/macOS systems.
 
 ### Changed
 
 - CI now exposes explicit fast/unit, integration, contract, CLI end-to-end, and deep/race validation boundaries plus a canonical Staticcheck + `go vet` static-analysis target.
+- The current Go 1.25 validation/release toolchain is patched to Go 1.25.12 across local tooling and GitHub workflows.
 - Nix validation reuses the same repository build/test/static-analysis targets rather than defining a second quality policy.
 - The formatting gate excludes generated vendored dependency source while continuing to check first-party Go files.
-- Current documentation now treats managed README, assessment, routing, the published `v0.1.0` baseline, standalone Nix packaging, and GitHub posture inventory as implemented behavior rather than future work.
+- Current documentation now treats managed README, assessment, routing, the published `v0.1.0` baseline, standalone Nix packaging, GitHub posture inventory, and documentation posture as implemented behavior rather than future work.
 
 ### Security
 
 - Managed README mutation uses fixed-path authority, exact current-state preflight, fail-closed INTENT persistence, verified candidate commits, exact base leases, bounded diagnostics, and no force override.
 - GitHub posture inventory uses a GET-only provider interface, environment-only optional authentication, explicit unavailable evidence for hidden provider data, bounded workflow normalization, and no mutation-capable provider method.
+- Documentation posture reuses the GET-only provider boundary, treats profile/Markdown/router inputs as bounded data, preserves unavailable/unknown evidence, and does not grant policy or mutation authority to repository-owned observation profiles.
 - Routing and assessment commands remain read-only with respect to Git/provider state unless a separately reviewed mutation boundary explicitly applies.
 - CI preserves immutable action pins, least-privilege workflow permissions, reachable-vulnerability scanning, CodeQL, full-history secret detection, and dependency-license validation.
 
