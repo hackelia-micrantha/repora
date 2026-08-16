@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.io/schemas/posture-documentation-v1.schema.json",
+  "title": "Repora documentation posture inventory v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "version",
+    "repository",
+    "default_branch",
+    "default_commit",
+    "profile_declared",
+    "profile_name",
+    "readme_path",
+    "readme_present",
+    "documents",
+    "readme_sections",
+    "readme_links",
+    "content_markers",
+    "routing_metadata_present",
+    "routing_metadata_valid",
+    "evidence"
+  ],
+  "properties": {
+    "kind": { "const": "repora.posture-documentation" },
+    "version": { "const": 1 },
+    "repository": { "$ref": "#/$defs/repository" },
+    "default_branch": { "$ref": "#/$defs/stringFact" },
+    "default_commit": { "$ref": "#/$defs/stringFact" },
+    "profile_declared": { "$ref": "#/$defs/boolFact" },
+    "profile_name": { "$ref": "#/$defs/stringFact" },
+    "readme_path": { "type": "string" },
+    "readme_present": { "$ref": "#/$defs/boolFact" },
+    "documents": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/document" }
+    },
+    "readme_sections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/section" }
+    },
+    "readme_links": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/link" }
+    },
+    "content_markers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/marker" }
+    },
+    "routing_metadata_present": { "$ref": "#/$defs/boolFact" },
+    "routing_metadata_valid": { "$ref": "#/$defs/boolFact" },
+    "evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidence" }
+    }
+  },
+  "$defs": {
+    "state": {
+      "type": "string",
+      "enum": ["observed", "unknown", "unavailable"]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "reference"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "reference": { "type": "string", "minLength": 1 },
+        "detail": { "type": "string" }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "full_name"],
+      "properties": {
+        "provider": { "const": "github" },
+        "full_name": { "type": "string", "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$" }
+      }
+    },
+    "nonObservedFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "evidence"],
+      "properties": {
+        "state": { "enum": ["unknown", "unavailable"] },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
+      }
+    },
+    "boolFact": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "value", "evidence"],
+          "properties": {
+            "state": { "const": "observed" },
+            "value": { "type": "boolean" },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
+          }
+        },
+        { "$ref": "#/$defs/nonObservedFact" }
+      ]
+    },
+    "stringFact": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "value", "evidence"],
+          "properties": {
+            "state": { "const": "observed" },
+            "value": { "type": "string" },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } }
+          }
+        },
+        { "$ref": "#/$defs/nonObservedFact" }
+      ]
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "present", "trust_tier"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "present": { "$ref": "#/$defs/boolFact" },
+        "trust_tier": { "$ref": "#/$defs/stringFact" }
+      }
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["section", "present"],
+      "properties": {
+        "section": { "type": "string", "minLength": 1 },
+        "present": { "$ref": "#/$defs/boolFact" }
+      }
+    },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "present"],
+      "properties": {
+        "target": { "type": "string", "minLength": 1 },
+        "present": { "$ref": "#/$defs/boolFact" }
+      }
+    },
+    "marker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "expected_sha256", "present"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "expected_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "present": { "$ref": "#/$defs/boolFact" }
+      }
+    }
+  }
+}
