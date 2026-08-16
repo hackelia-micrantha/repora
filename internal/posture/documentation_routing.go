@@ -47,10 +47,10 @@ func parseTrustRouter(data []byte) (trustRouter, error) {
 				return trustRouter{}, fmt.Errorf("document router contains an empty trust pattern")
 			}
 			if strings.ContainsAny(pattern, "[]") {
-				return trustRouter{}, fmt.Errorf("document router trust pattern %q uses unsupported character-class syntax", pattern)
+				return trustRouter{}, fmt.Errorf("document router trust pattern uses unsupported character-class syntax")
 			}
 			if _, exists := seenPatterns[pattern]; exists {
-				return trustRouter{}, fmt.Errorf("document router contains duplicate trust pattern %q", pattern)
+				return trustRouter{}, fmt.Errorf("document router contains duplicate trust pattern")
 			}
 			seenPatterns[pattern] = struct{}{}
 		}
@@ -69,7 +69,7 @@ func classifyTrustFact(documentPath string, router trustRouter, routerState Fact
 	case StateObserved:
 		tier, err := router.classify(documentPath)
 		if err != nil {
-			return Unknown[string](evidenceWithDetail(evidence, sanitizeDocumentationError(err)))
+			return Unknown[string](evidenceWithDetail(evidence, "document routing trust metadata could not classify this path"))
 		}
 		return Observed(tier, evidence)
 	default:
@@ -120,7 +120,7 @@ func fnmatchCase(pattern, candidate string) (bool, error) {
 		case '?':
 			expression.WriteString(".")
 		case '[', ']':
-			return false, fmt.Errorf("trust pattern %q uses unsupported character-class syntax", pattern)
+			return false, fmt.Errorf("trust pattern uses unsupported character-class syntax")
 		default:
 			expression.WriteString(regexp.QuoteMeta(string(r)))
 		}
@@ -128,7 +128,7 @@ func fnmatchCase(pattern, candidate string) (bool, error) {
 	expression.WriteString("$")
 	compiled, err := regexp.Compile(expression.String())
 	if err != nil {
-		return false, fmt.Errorf("compile trust pattern %q: %w", pattern, err)
+		return false, fmt.Errorf("compile trust pattern: %w", err)
 	}
 	return compiled.MatchString(candidate), nil
 }
