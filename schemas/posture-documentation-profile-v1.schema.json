@@ -4,7 +4,7 @@
   "title": "Repora documentation posture observation profile v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["kind", "version", "name", "documents", "readme", "content_markers"],
+  "required": ["kind", "version", "name", "readme"],
   "properties": {
     "kind": { "const": "repora.posture-documentation-profile" },
     "version": { "const": 1 },
@@ -18,7 +18,7 @@
     "readme": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "sections", "links"],
+      "required": ["path"],
       "properties": {
         "path": { "$ref": "#/$defs/repositoryPath" },
         "sections": {
