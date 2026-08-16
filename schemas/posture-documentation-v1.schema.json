@@ -19,7 +19,7 @@
     "readme_links",
     "content_markers",
     "routing_metadata_present",
-    "routing_metadata_valid",
+    "routing_trust_metadata_usable",
     "evidence"
   ],
   "properties": {
@@ -49,7 +49,7 @@
       "items": { "$ref": "#/$defs/marker" }
     },
     "routing_metadata_present": { "$ref": "#/$defs/boolFact" },
-    "routing_metadata_valid": { "$ref": "#/$defs/boolFact" },
+    "routing_trust_metadata_usable": { "$ref": "#/$defs/boolFact" },
     "evidence": {
       "type": "array",
       "items": { "$ref": "#/$defs/evidence" }
