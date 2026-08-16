@@ -82,15 +82,29 @@ func markdownHeadings(data []byte) map[string]struct{} {
 		if inFence {
 			continue
 		}
-		candidate := strings.TrimLeft(line, " \t")
+
+		indent := 0
+		for indent < len(line) && line[indent] == ' ' {
+			indent++
+		}
+		if indent > 3 || (indent < len(line) && line[indent] == '\t') {
+			continue
+		}
+		candidate := line[indent:]
 		count := 0
 		for count < len(candidate) && candidate[count] == '#' {
 			count++
 		}
-		if count == 0 || count > 6 || count >= len(candidate) || candidate[count] != ' ' {
+		if count == 0 || count > 6 {
 			continue
 		}
-		heading := normalizeHeading(strings.TrimSpace(candidate[count+1:]))
+		if count == len(candidate) {
+			continue
+		}
+		if candidate[count] != ' ' && candidate[count] != '\t' {
+			continue
+		}
+		heading := normalizeHeading(candidate[count+1:])
 		if heading != "" {
 			result[heading] = struct{}{}
 		}
@@ -100,7 +114,14 @@ func markdownHeadings(data []byte) map[string]struct{} {
 
 func normalizeHeading(value string) string {
 	value = strings.TrimSpace(value)
-	value = strings.TrimSpace(strings.TrimRight(value, "#"))
+	end := len(value)
+	startHashes := end
+	for startHashes > 0 && value[startHashes-1] == '#' {
+		startHashes--
+	}
+	if startHashes < end && startHashes > 0 && (value[startHashes-1] == ' ' || value[startHashes-1] == '\t') {
+		value = strings.TrimSpace(value[:startHashes-1])
+	}
 	return strings.ToLower(strings.Join(strings.Fields(value), " "))
 }
 
