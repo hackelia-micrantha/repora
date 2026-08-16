@@ -27,3 +27,17 @@ func TestNormalizeHeadingOnlyStripsWhitespaceSeparatedClosingHashes(t *testing.T
 		}
 	}
 }
+
+func TestMarkdownRepositoryLinksIgnoreCodeExamples(t *testing.T) {
+	links := markdownRepositoryLinks("README.md", []byte("See [architecture](docs/architecture.md).\n\n```markdown\n[security](SECURITY.md)\n```\n\n    [license](LICENSE)\n\n   [plan](docs/plans/current.md)\n"))
+	for _, want := range []string{"docs/architecture.md", "docs/plans/current.md"} {
+		if _, ok := links[want]; !ok {
+			t.Fatalf("link %q missing from %#v", want, links)
+		}
+	}
+	for _, unwanted := range []string{"SECURITY.md", "LICENSE"} {
+		if _, ok := links[unwanted]; ok {
+			t.Fatalf("code example link %q unexpectedly observed in %#v", unwanted, links)
+		}
+	}
+}
