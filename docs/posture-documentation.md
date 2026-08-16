@@ -70,9 +70,12 @@ The v1 output records:
 - configured README section presence;
 - configured README repository-link presence;
 - configured exact content-marker presence;
-- document-router metadata presence/validity;
-- trust tier for observed documentation targets when routing metadata is usable;
+- document-router metadata presence;
+- whether the router's **trust metadata** is usable by this bounded collector;
+- trust tier for observed documentation targets when routing trust metadata is usable;
 - source/reference evidence for each fact.
+
+`routing_trust_metadata_usable` is deliberately narrower than “the complete document router is valid.” Documentation posture parses only the trust subset it needs for authority classification. Full document-router validity remains owned by the routing contract/validators.
 
 README section matching is deterministic and case-insensitive over ATX Markdown headings (`#` through `######`). Fenced code blocks are ignored so example headings do not satisfy section observations.
 
@@ -82,13 +85,13 @@ README link matching considers inline repository-relative Markdown links and res
 
 `content_markers` provide a narrow deterministic mechanism for metadata that should stay synchronized across files, such as a documented toolchain version or canonical command name.
 
-The collector performs an exact substring observation. It does not interpret semantics or decide whether a mismatch is acceptable. The output stores only the SHA-256 digest of the configured expected marker plus the boolean/unknown/unavailable fact; the configured marker text is not copied into the output artifact.
+The collector performs an exact substring observation. It does not interpret semantics or decide whether a mismatch is acceptable. The output stores only the lowercase SHA-256 digest of the configured expected marker plus the boolean/unknown/unavailable fact; the configured marker text is not copied into the output artifact.
 
 This keeps stale-metadata observation explicit and profile-driven while avoiding an LLM or prose-quality boundary.
 
 ## Routing and canonical documents
 
-If `.repora/document-router.yaml` exists, documentation posture reuses its explicit trust rules to classify configured document paths. The collector preserves the existing routing model:
+If `.repora/document-router.yaml` exists, documentation posture reads the router's explicit trust rules to classify configured document paths. The collector preserves the existing routing trust model:
 
 - `canonical`
 - `implementation`
@@ -102,7 +105,7 @@ When patterns overlap, the greatest literal specificity wins, then pattern lengt
 
 Explicit inclusion never changes a document's authority label. A generated or archived document remains generated/archived and is never silently promoted to canonical by documentation posture.
 
-The v1 posture reader supports the wildcard forms used by Repora's current router (`*`, `**`, and `?`). A router using unsupported character-class pattern syntax is reported as invalid for posture classification rather than being interpreted optimistically.
+The v1 posture reader supports the wildcard forms used by Repora's current trust rules (`*`, `**`, and `?`). A trust rule using unsupported character-class pattern syntax is reported as unusable for posture classification rather than being interpreted optimistically. This does not assert that the complete document-router file is invalid for every other consumer.
 
 ## Evidence and failure semantics
 
@@ -114,14 +117,16 @@ Evidence states remain conservative:
 - truncated tree + missing path -> `unknown`;
 - provider-hidden blob/tree -> `unavailable`;
 - malformed/unsupported declared profile -> profile name and dependent facts `unknown`;
-- malformed/unsupported router -> router validity observed `false`, document trust tiers `unknown`;
+- malformed/unsupported routing trust subset -> `routing_trust_metadata_usable` observed `false`, document trust tiers `unknown`;
 - document larger than the 2 MiB normalization bound -> dependent content facts `unknown`.
 
 Unexpected transport failures and malformed provider responses remain operational errors and cause a nonzero command exit.
 
 ## Security and trust boundary
 
-The profile and inspected Markdown are data only. Repora does not execute code, commands, templates, hooks, or embedded Markdown/HTML while collecting documentation posture.
+The profile, router, and inspected Markdown are untrusted repository data. Repora does not execute code, commands, templates, hooks, or embedded Markdown/HTML while collecting documentation posture.
+
+Configured exact marker text is not serialized in the output. Malformed profile/router evidence uses generic diagnostics rather than embedding raw parser errors or repository content, preventing a malformed repository-controlled file from reflecting sensitive configured values into posture artifacts.
 
 The repository-declared profile is intentionally not a security policy. A repository can influence which documentation signals it asks Repora to observe, but it cannot use the profile to assign severity, suppress external policy, grant mutation authority, or mark generated/archived content canonical outside the explicit routing trust rules.
 
