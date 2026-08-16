@@ -36,4 +36,4 @@ readme:
 content_markers:
   - id: current-go-toolchain
     path: docs/ci.md
-    contains: Go 1.25.12
+    contains: Go 1.25.13
