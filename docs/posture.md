@@ -10,10 +10,11 @@ The posture architecture is intentionally layered. Current implementation covers
 
 - `repoctl posture inventory OWNER/REPO` emits `repora.posture-inventory` v1 for GitHub repository/CI facts;
 - `repoctl posture docs OWNER/REPO` emits `repora.posture-documentation` v1 for deterministic documentation/README facts;
-- both collectors preserve observed/unknown/unavailable evidence and use a structurally GET-only GitHub provider boundary;
+- `repoctl posture mirrors -f repora.yaml` emits `repora.posture-mirrors` v1 from declared Repora topology and existing mirror reconciliation evidence;
+- collectors preserve observed/unknown/unavailable evidence and do not perform provider mutation;
 - documentation observation targets may be declared in `.repora/posture-documentation.yaml`, but that profile is fact-selection configuration rather than severity/remediation policy.
 
-Mirror, hook/local-workflow, and commit/process fact domains remain next. Policy evaluation, findings, Markdown reports, issue/PR remediation, provider mutation, and non-GitHub provider adapters are not implemented yet.
+Hook/local-workflow and commit/process fact domains remain next. Policy evaluation, findings, Markdown reports, issue/PR remediation, provider mutation, and broad non-GitHub provider-admin adapters are not implemented yet.
 
 ## Goals
 
@@ -126,28 +127,33 @@ Important risk patterns for a future policy layer include:
 
 ## Mirror management posture
 
-Mirror management should be part of posture because mirrors can silently become security, availability, and provenance risks.
+Mirror management is implemented as a separate versioned posture fact domain because mirrors can silently become security, availability, and provenance risks.
 
-Initial mirror facts should include:
+`repora.posture-mirrors` v1 records:
 
-- canonical repository identity
-- declared mirror repositories
-- configured remotes
-- default branches across canonical and mirror repositories
-- synchronization direction and mode
-- drift between canonical and mirrors
-- provider visibility and access settings
-- release and tag propagation expectations
+- canonical repository identity from declared `provider:path` topology;
+- declared mirror identities;
+- Repora local cache remote names;
+- default branches across canonical and mirror repositories where observable;
+- synchronization direction and configured mode;
+- default-branch-name drift;
+- existing `EQUAL`, `BEHIND`, `AHEAD`, and `DIVERGED` reconciliation evidence with ahead/behind counts;
+- provider visibility and authenticated/current-actor push-permission fields where a provider adapter can establish them;
+- tag and release drift as explicit `unknown` facts under the current default-branch-only scope.
 
-Important risk patterns:
+The collector reuses `status.CheckAll` rather than inventing a second divergence algorithm. This refreshes Repora's local bare mirror cache and cache remotes, but does not push to canonical/mirror repositories or mutate provider settings.
 
-- mirror accepts writes when it should be read-only
-- mirror default branch diverges from canonical
-- tags or releases exist in one provider but not another
-- stale mirror presents outdated security fixes as current
-- mirror metadata implies a different source of truth than `repora.yaml`
+Missing provider metadata never becomes a healthy or drifted conclusion. GitHub's current shared read adapter supplies default-branch metadata but not provider-admin visibility/permission details, so those fields remain `unknown` in the production v1 GitHub path. Provider-admin metadata for GitLab is currently `unavailable` rather than inferred.
 
-This domain is planned under issue #120 and must reuse Repora's existing `provider:path` topology and mirror semantics rather than inventing a second scanner.
+Important risk patterns for a future policy layer include:
+
+- authenticated actor can push to a mirror that policy expects to be protected;
+- mirror default branch diverges from canonical;
+- mirror commit history is stale, ahead, or divergent;
+- tags or releases differ once those ref/provider adapters are explicitly implemented;
+- mirror metadata implies a different source of truth than `repora.yaml`.
+
+See [`posture-mirrors.md`](posture-mirrors.md).
 
 ## Documentation and README hygiene
 
@@ -328,6 +334,7 @@ Current posture commands are:
 ```bash
 repoctl posture inventory OWNER/REPO
 repoctl posture docs OWNER/REPO
+repoctl posture mirrors -f repora.yaml
 ```
 
 Candidate future commands include:
@@ -343,7 +350,6 @@ repoctl posture issue create --repo repo.example
 Focused helpers may be useful later:
 
 ```bash
-repoctl mirrors check
 repoctl commits analyze
 repoctl hooks check
 ```
@@ -356,12 +362,12 @@ Provider support should be incremental.
 
 | Provider | Current/planned support |
 | --- | --- |
-| GitHub | Current repository/CI and documentation fact collection; broader provider-admin facts planned |
-| GitLab | Planned protected branches, CI configuration, approval rules, repository metadata |
+| GitHub | Current repository/CI and documentation fact collection; mirror posture default-branch metadata; broader provider-admin facts planned |
+| GitLab | Current Git transport/reconciliation evidence in mirror posture; provider-admin posture metadata planned |
 | Bitbucket | Planned branch restrictions, pipelines configuration, repository metadata |
-| Local repositories | Planned file/config/lockfile/hook and scanner-output facts where appropriate |
+| Local repositories | Current Repora mirror-cache observation; broader file/config/lockfile/hook and scanner-output facts planned where appropriate |
 
-GitHub is the first implementation target because it exposes enough API surface to validate the model end-to-end.
+GitHub remains the first provider API implementation target because it exposes enough API surface to validate the model end-to-end. Mirror drift itself remains grounded in Repora's provider-neutral Git topology/reconciliation semantics.
 
 ## Security model
 
@@ -369,7 +375,8 @@ Posture management is security-sensitive because later layers may propose change
 
 Current and future implementation must preserve these boundaries:
 
-- read-only fact collection by default;
+- read-only provider fact collection by default;
+- local mirror-cache refresh may occur for observation, but no posture command pushes to repositories;
 - no implicit provider mutations;
 - explicit plans before writes;
 - least-privilege provider tokens;
@@ -386,12 +393,12 @@ Current ordered path:
 
 1. **Complete** — read-only GitHub repository/CI inventory and normalized fact/evidence contract (#118).
 2. **Complete** — deterministic documentation/README hygiene facts and observation profile (#119).
-3. **Next** — mirror-management drift facts reusing existing topology/status semantics (#120).
-4. **Planned** — hooks/local-workflow facts without executing hook code (#123).
+3. **Complete** — mirror-management drift facts reusing existing topology/status semantics (#120).
+4. **Next** — hooks/local-workflow facts without executing hook code (#123).
 5. **Planned** — bounded commit/process-risk facts without productivity scoring or intent inference (#122).
 6. **Convergence** — explicit policy evaluation and deterministic Markdown reporting over normalized facts (#121).
 7. **Later** — issue/PR-backed remediation after reporting is proven.
 8. **Later/separate decision** — guarded provider API mutation.
-9. **Later** — GitLab and Bitbucket adapters.
+9. **Later** — broader GitLab and Bitbucket provider-admin adapters.
 
 The active implementation order is maintained in [`plans/current.md`](plans/current.md) and GitHub issue #124.
