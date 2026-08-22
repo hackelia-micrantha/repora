@@ -86,10 +86,11 @@ type MirrorProviderReader interface {
 	Repository(context.Context, config.Endpoint) (MirrorProviderRepository, ReadObservation, error)
 }
 
-// DefaultMirrorProviderReader reuses the structurally read-only GitHub reader.
-// GitLab provider metadata remains unavailable until a posture adapter exists.
+// DefaultMirrorProviderReader uses only the existing GET-only GitHub HTTP
+// transport. GitLab provider metadata remains unavailable until a posture
+// adapter exists; local Git reconciliation evidence remains independent.
 type DefaultMirrorProviderReader struct {
-	GitHub GitHubReader
+	GitHub *HTTPGitHubReader
 }
 
 func (r DefaultMirrorProviderReader) Repository(ctx context.Context, endpoint config.Endpoint) (MirrorProviderRepository, ReadObservation, error) {
@@ -110,11 +111,31 @@ func (r DefaultMirrorProviderReader) Repository(ctx context.Context, endpoint co
 	if r.GitHub == nil {
 		return MirrorProviderRepository{}, ReadObservation{}, fmt.Errorf("GitHub mirror provider reader is required")
 	}
-	repository, observation, err := r.GitHub.Repository(ctx, identity.Path)
+	owner, repo, err := splitGitHubFullName(identity.Path)
+	if err != nil {
+		return MirrorProviderRepository{}, ReadObservation{}, err
+	}
+	requestPath := fmt.Sprintf("/repos/%s/%s", url.PathEscape(owner), url.PathEscape(repo))
+	var response struct {
+		DefaultBranch string `json:"default_branch"`
+		Visibility    string `json:"visibility"`
+		Permissions   *struct {
+			Push bool `json:"push"`
+		} `json:"permissions"`
+	}
+	observation, err := r.GitHub.getJSON(ctx, requestPath, "github.repository", requestPath, &response)
 	if err != nil || !observation.Available {
 		return MirrorProviderRepository{}, observation, err
 	}
-	return MirrorProviderRepository{DefaultBranch: repository.DefaultBranch}, observation, nil
+	result := MirrorProviderRepository{
+		DefaultBranch: response.DefaultBranch,
+		Visibility:    response.Visibility,
+	}
+	if response.Permissions != nil {
+		push := response.Permissions.Push
+		result.PushPermission = &push
+	}
+	return result, observation, nil
 }
 
 func mirrorEndpointIdentity(endpoint config.Endpoint) (MirrorEndpointIdentity, error) {
