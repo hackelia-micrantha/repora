@@ -18,20 +18,31 @@ func validMirrorInventory() posture.MirrorInventory {
 		Version: posture.MirrorInventoryVersion,
 		Repos: []posture.MirrorRepositoryFacts{
 			{
-				ID: "example", UID: "repo.example",
+				ID:        "example",
+				UID:       "repo.example",
 				Mode:      posture.Observed("mirror"),
 				Direction: posture.Observed("canonical_to_mirror"),
 				Canonical: posture.MirrorCanonicalFacts{
-					Identity:      posture.MirrorEndpointIdentity{Provider: "gitlab", Path: "acme/example"},
-					DefaultBranch: posture.Observed("main"), Commit: posture.Observed("abc1234"),
-					Visibility: posture.Unavailable[string](), CurrentActorPushPermission: posture.Unavailable[bool](),
+					Identity:                   posture.MirrorEndpointIdentity{Provider: "gitlab", Path: "acme/example"},
+					DefaultBranch:              posture.Observed("main"),
+					Commit:                     posture.Observed("abc1234"),
+					Visibility:                 posture.Unavailable[string](),
+					CurrentActorPushPermission: posture.Unavailable[bool](),
 				},
 				Mirrors: []posture.MirrorTargetFacts{
 					{
-						Identity:    posture.MirrorEndpointIdentity{Provider: "github", Path: "acme/example"},
-						CacheRemote: posture.Observed("mirror-0"), DefaultBranch: posture.Observed("main"), DefaultBranchDrift: posture.Observed(false),
-						Commit: posture.Observed("abc1234"), Divergence: posture.Observed("EQUAL"), Ahead: posture.Observed(0), Behind: posture.Observed(0),
-						Visibility: posture.Unknown[string](), CurrentActorPushPermission: posture.Unknown[bool](), TagDrift: posture.Unknown[bool](), ReleaseDrift: posture.Unknown[bool](),
+						Identity:                   posture.MirrorEndpointIdentity{Provider: "github", Path: "acme/example"},
+						CacheRemote:                posture.Observed("mirror-0"),
+						DefaultBranch:              posture.Observed("main"),
+						DefaultBranchDrift:         posture.Observed(false),
+						Commit:                     posture.Observed("abc1234"),
+						Divergence:                 posture.Observed("EQUAL"),
+						Ahead:                      posture.Observed(0),
+						Behind:                     posture.Observed(0),
+						Visibility:                 posture.Unknown[string](),
+						CurrentActorPushPermission: posture.Unknown[bool](),
+						TagDrift:                   posture.Unknown[bool](),
+						ReleaseDrift:               posture.Unknown[bool](),
 					},
 				},
 				Evidence: []posture.Evidence{},
@@ -84,7 +95,8 @@ func TestPostureMirrorsHelp(t *testing.T) {
 	code := withStdout(t, &stdout, func() int {
 		return run([]string{"posture", "mirrors", "--help"})
 	})
-	if code != 0 || stdout.String() == "" {
-		t.Fatalf("help code=%d output=%q", code, stdout.String())
+	want := "usage: repoctl posture mirrors -f repora.yaml\n"
+	if code != 0 || stdout.String() != want {
+		t.Fatalf("help code=%d output=%q want=%q", code, stdout.String(), want)
 	}
 }
