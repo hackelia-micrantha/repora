@@ -19,16 +19,16 @@ func validMirrorInventory() posture.MirrorInventory {
 		Repos: []posture.MirrorRepositoryFacts{
 			{
 				ID: "example", UID: "repo.example",
-				Mode: posture.Observed("mirror"),
+				Mode:      posture.Observed("mirror"),
 				Direction: posture.Observed("canonical_to_mirror"),
 				Canonical: posture.MirrorCanonicalFacts{
-					Identity: posture.MirrorEndpointIdentity{Provider: "gitlab", Path: "acme/example"},
+					Identity:      posture.MirrorEndpointIdentity{Provider: "gitlab", Path: "acme/example"},
 					DefaultBranch: posture.Observed("main"), Commit: posture.Observed("abc1234"),
 					Visibility: posture.Unavailable[string](), CurrentActorPushPermission: posture.Unavailable[bool](),
 				},
 				Mirrors: []posture.MirrorTargetFacts{
 					{
-						Identity: posture.MirrorEndpointIdentity{Provider: "github", Path: "acme/example"},
+						Identity:    posture.MirrorEndpointIdentity{Provider: "github", Path: "acme/example"},
 						CacheRemote: posture.Observed("mirror-0"), DefaultBranch: posture.Observed("main"), DefaultBranchDrift: posture.Observed(false),
 						Commit: posture.Observed("abc1234"), Divergence: posture.Observed("EQUAL"), Ahead: posture.Observed(0), Behind: posture.Observed(0),
 						Visibility: posture.Unknown[string](), CurrentActorPushPermission: posture.Unknown[bool](), TagDrift: posture.Unknown[bool](), ReleaseDrift: posture.Unknown[bool](),
