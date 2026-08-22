@@ -24,13 +24,13 @@ func TestMirrorPostureMarshalPreservesUnknownScopeFacts(t *testing.T) {
 		Mode:      Observed("mirror"),
 		Direction: Observed("canonical_to_mirror"),
 		Canonical: MirrorCanonicalFacts{
-			Identity: MirrorEndpointIdentity{Provider: "gitlab", Path: "acme/example"},
+			Identity:      MirrorEndpointIdentity{Provider: "gitlab", Path: "acme/example"},
 			DefaultBranch: Observed("main"), Commit: Observed("abc1234"),
 			Visibility: Unavailable[string](), CurrentActorPushPermission: Unavailable[bool](),
 		},
 		Mirrors: []MirrorTargetFacts{
 			{
-				Identity: MirrorEndpointIdentity{Provider: "github", Path: "acme/example"},
+				Identity:    MirrorEndpointIdentity{Provider: "github", Path: "acme/example"},
 				CacheRemote: Observed("mirror-0"), DefaultBranch: Observed("main"), DefaultBranchDrift: Observed(false),
 				Commit: Observed("abc1234"), Divergence: Observed("EQUAL"), Ahead: Observed(0), Behind: Observed(0),
 				Visibility: Unknown[string](), CurrentActorPushPermission: Unknown[bool](), TagDrift: Unknown[bool](), ReleaseDrift: Unknown[bool](),
