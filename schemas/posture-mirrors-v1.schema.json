@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/posture-mirrors-v1.schema.json",
+  "title": "Repora mirror posture inventory v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "repos", "evidence"],
+  "properties": {
+    "kind": {"const": "repora.posture-mirrors"},
+    "version": {"const": 1},
+    "repos": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/repository"}
+    },
+    "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "reference"],
+      "properties": {
+        "source": {"type": "string", "minLength": 1},
+        "reference": {"type": "string", "minLength": 1},
+        "detail": {"type": "string"}
+      }
+    },
+    "state": {"enum": ["observed", "unknown", "unavailable"]},
+    "factString": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["state", "value", "evidence"],
+          "properties": {"state": {"const": "observed"}, "value": {"type": "string"}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["state", "evidence"],
+          "properties": {"state": {"enum": ["unknown", "unavailable"]}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}
+        }
+      ]
+    },
+    "factBool": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["state", "value", "evidence"],
+          "properties": {"state": {"const": "observed"}, "value": {"type": "boolean"}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["state", "evidence"],
+          "properties": {"state": {"enum": ["unknown", "unavailable"]}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}
+        }
+      ]
+    },
+    "factInt": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["state", "value", "evidence"],
+          "properties": {"state": {"const": "observed"}, "value": {"type": "integer", "minimum": 0}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["state", "evidence"],
+          "properties": {"state": {"enum": ["unknown", "unavailable"]}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}
+        }
+      ]
+    },
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider", "path"],
+      "properties": {"provider": {"type": "string", "minLength": 1}, "path": {"type": "string", "minLength": 3}}
+    },
+    "canonical": {
+      "type": "object", "additionalProperties": false,
+      "required": ["identity", "default_branch", "commit", "visibility", "current_actor_push_permission"],
+      "properties": {
+        "identity": {"$ref": "#/$defs/identity"},
+        "default_branch": {"$ref": "#/$defs/factString"},
+        "commit": {"$ref": "#/$defs/factString"},
+        "visibility": {"$ref": "#/$defs/factString"},
+        "current_actor_push_permission": {"$ref": "#/$defs/factBool"}
+      }
+    },
+    "mirror": {
+      "type": "object", "additionalProperties": false,
+      "required": ["identity", "cache_remote", "default_branch", "default_branch_drift", "commit", "divergence", "ahead", "behind", "visibility", "current_actor_push_permission", "tag_drift", "release_drift"],
+      "properties": {
+        "identity": {"$ref": "#/$defs/identity"},
+        "cache_remote": {"$ref": "#/$defs/factString"},
+        "default_branch": {"$ref": "#/$defs/factString"},
+        "default_branch_drift": {"$ref": "#/$defs/factBool"},
+        "commit": {"$ref": "#/$defs/factString"},
+        "divergence": {"$ref": "#/$defs/factString"},
+        "ahead": {"$ref": "#/$defs/factInt"},
+        "behind": {"$ref": "#/$defs/factInt"},
+        "visibility": {"$ref": "#/$defs/factString"},
+        "current_actor_push_permission": {"$ref": "#/$defs/factBool"},
+        "tag_drift": {"$ref": "#/$defs/factBool"},
+        "release_drift": {"$ref": "#/$defs/factBool"}
+      }
+    },
+    "repository": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "uid", "mode", "direction", "canonical", "mirrors", "evidence"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "uid": {"type": "string", "minLength": 1},
+        "mode": {"$ref": "#/$defs/factString"},
+        "direction": {"$ref": "#/$defs/factString"},
+        "canonical": {"$ref": "#/$defs/canonical"},
+        "mirrors": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/mirror"}},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}
+      }
+    }
+  }
+}

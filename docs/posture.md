@@ -2,231 +2,152 @@
 
 Repora treats repository security posture and CI/CD posture as declarative repository state, not as a standalone scanner.
 
-The goal is to collect normalized facts about repositories, evaluate them against explicit posture policies, and eventually produce reviewable remediation plans.
+The architecture is intentionally layered: collect normalized facts first, then evaluate explicit policy, then produce findings and reviewable remediation. Fact collectors do not decide whether observed state is acceptable.
 
 ## Implementation status
 
-The posture architecture is intentionally layered. Current implementation covers fact collection only:
+Current fact collectors are:
 
-- `repoctl posture inventory OWNER/REPO` emits `repora.posture-inventory` v1 for GitHub repository/CI facts;
-- `repoctl posture docs OWNER/REPO` emits `repora.posture-documentation` v1 for deterministic documentation/README facts;
-- both collectors preserve observed/unknown/unavailable evidence and use a structurally GET-only GitHub provider boundary;
-- documentation observation targets may be declared in `.repora/posture-documentation.yaml`, but that profile is fact-selection configuration rather than severity/remediation policy.
+- `repoctl posture inventory OWNER/REPO` → `repora.posture-inventory` v1 for GitHub repository/CI facts;
+- `repoctl posture docs OWNER/REPO` → `repora.posture-documentation` v1 for deterministic documentation/README facts;
+- `repoctl posture mirrors -f repora.yaml` → `repora.posture-mirrors` v1 from declared Repora topology and existing mirror reconciliation evidence.
 
-Mirror, hook/local-workflow, and commit/process fact domains remain next. Policy evaluation, findings, Markdown reports, issue/PR remediation, provider mutation, and non-GitHub provider adapters are not implemented yet.
+All posture domains preserve `observed`, `unknown`, and `unavailable` evidence. Provider API collection is read-only. Mirror posture may refresh Repora's local bare cache for observation, but it does not push or synchronize repositories.
+
+Hook/local-workflow and commit/process facts remain next. Policy evaluation, findings, Markdown reports, automatic issue/PR remediation, provider mutation, and broad non-GitHub provider-administration adapters are not implemented yet.
 
 ## Goals
 
-Posture work should make Repora useful for recurring repository stewardship, not only one-time bootstrapping.
+Posture work should support recurring repository stewardship across these domains:
 
-Primary goals:
+- **Repository security** — branch protection, ownership, dependency automation, access boundaries, release hygiene, and security metadata.
+- **CI/CD security** — workflow permissions, runner trust, third-party actions, privileged events, deployment boundaries, and supply-chain controls.
+- **Mirror management** — canonical/mirror identity, default-branch and commit drift, remotes, provider metadata, and synchronization expectations.
+- **Documentation hygiene** — required docs, README shape, configured links, stale metadata signals, and canonical-document authority.
+- **Commit/process analysis** — bounded evidence about risky change patterns and declared-vs-observed process without developer scoring or intent inference.
+- **Hooks/local workflow** — configured local safeguards and their relationship to authoritative CI enforcement.
 
-- **Harden repository security** by evaluating branch protection, ownership, access boundaries, secrets posture, dependency automation, release hygiene, and CI/CD trust boundaries.
-- **Manage mirrors** by keeping canonical repositories, mirrors, remotes, provider metadata, and synchronization expectations explicit and drift-aware.
-- **Maintain documentation and README hygiene** by checking for required docs, stale or missing sections, inconsistent project metadata, and repository-specific documentation expectations.
-- **Analyze commit history** by surfacing risky change patterns, large or unusual commits, unsigned or unreviewed changes, release-boundary changes, and drift between declared process and observed history.
-- **Govern hooks and local workflow controls** by tracking expected Git hooks, pre-commit checks, local policy entrypoints, and repo-specific developer workflow safeguards.
-
-These goals should be expressed as facts, policies, findings, and remediation plans so they remain auditable and provider-neutral where possible.
-
-## Purpose
-
-Repository posture covers the durable controls around a repository: branch protection, ownership, security metadata, dependency automation, access boundaries, and release hygiene.
-
-CI/CD posture covers the executable control plane around a repository: workflow permissions, runner trust, secret exposure, deployment gates, artifact handling, and supply-chain hardening.
-
-Repora's role is to orchestrate posture management across repositories and providers.
+These concerns should remain facts, policies, findings, and remediation plans rather than opaque scoring.
 
 ## Non-goals
 
-Repora should not become a replacement for specialized scanners.
+Repora should not replace specialized scanners or execute them implicitly. Later layers may normalize outputs from tools such as Gitleaks, Semgrep, OSV-Scanner, Trivy, OpenSSF Scorecard, or Sigstore, but current posture collectors do not run scanners.
 
-It should delegate scan execution and vulnerability databases to tools such as:
-
-- Gitleaks or equivalent secret scanners
-- Semgrep or equivalent SAST engines
-- OSV-Scanner or equivalent dependency advisory tools
-- Trivy or equivalent container and SBOM scanners
-- OpenSSF Scorecard or equivalent supply-chain posture tools
-- Sigstore or equivalent artifact signing and provenance tools
-
-Later posture layers may normalize scanner outputs into repository facts/findings, but current posture collectors do not execute scanners.
+Repora also does not use posture analysis for developer productivity scoring, identity profiling, intent inference, or automatic provider mutation.
 
 ## Mental model
 
 ```mermaid
 flowchart TD
-    Inventory[Repository Inventory] --> Fetchers[Provider Fetchers]
+    Inventory[Repository Inventory] --> Fetchers[Provider / Git / File Observers]
     Fetchers --> Facts[Normalized Facts]
     Facts --> Policy[Posture Policy]
-    Policy --> Findings[Findings]
-    Findings --> Risk[Risk Ranking]
-    Risk --> Plan[Remediation Plan]
-    Plan --> Outputs[Reports / Issues / PRs / Provider Changes]
+    Policy --> Findings[Explainable Findings]
+    Findings --> Plan[Remediation Plan]
+    Plan --> Outputs[Reports / Issues / PRs / Guarded Provider Changes]
 ```
 
-The important boundary is between fact collection and policy evaluation.
-
-Facts describe observed state. Policies decide whether that state is acceptable.
+The important boundary is between **facts** and **policy**. Facts describe observed state. Policies decide whether that state is acceptable.
 
 ## Repository posture
 
-Initial repository posture facts include or may later include:
+Repository posture facts include or may later include:
 
-- default branch name
-- branch protection state
-- required status checks
-- review and approval requirements
-- force-push and deletion protection
-- CODEOWNERS presence and coverage
-- `SECURITY.md` presence
-- license presence
-- issue and pull request template presence
-- dependency update automation presence
-- secret scanning support and enablement where provider APIs expose it
-- deploy key and collaborator posture where provider APIs expose it
+- default branch and protection state;
+- required status checks and reviews;
+- force-push and deletion protection;
+- CODEOWNERS, `SECURITY.md`, license, issue/PR templates;
+- dependency update automation;
+- secret-scanning/provider-security controls where APIs expose them;
+- deploy-key and collaborator/access posture where APIs expose them.
 
-The current GitHub inventory implements the default-branch/protection and file-backed metadata subset. Provider administration/access and scanner-specific facts remain future work.
-
-Example finding categories for a future policy layer:
-
-| Severity | Examples |
-| --- | --- |
-| High | default branch unprotected; force pushes allowed; broad write access |
-| Medium | missing CODEOWNERS; dependency automation absent; release artifacts unsigned |
-| Low | missing PR template; incomplete repo metadata |
+The current GitHub inventory implements the default-branch/protection and file-backed metadata subset. Broader provider administration and scanner-specific facts remain future work.
 
 ## CI/CD posture
 
-Initial CI/CD posture facts include or may later include:
+Current GitHub workflow observation includes:
 
-- workflow files and CI provider configuration paths
-- default workflow token permissions
-- job-level permissions
-- third-party action references and pinning style
-- use of `pull_request_target`
-- self-hosted runner labels
-- deployment environment protections
-- secret and variable scopes where provider APIs expose them
-- artifact retention settings
-- cache key patterns
-- release and publishing workflows
+- workflow/job declared permissions;
+- `pull_request_target`;
+- runner labels, including literal `self-hosted` label evidence;
+- action and reusable-workflow references;
+- mutable versus immutable action pinning.
 
-The current GitHub inventory observes workflow/job declared permissions, `pull_request_target`, runner labels including literal `self-hosted` label evidence, and action/reusable-workflow pinning. It does not infer actual runner infrastructure from arbitrary labels or groups.
+It does not infer actual infrastructure from arbitrary runner labels or groups.
 
-Important risk patterns for a future policy layer include:
-
-- untrusted pull requests reaching privileged workflow contexts
-- mutable third-party CI dependencies
-- default write permissions for workflow tokens
-- secrets exposed to forked or external contributions
-- self-hosted runners reachable from untrusted code
-- deployment jobs without explicit environment approval
-- release workflows that publish unsigned or unaudited artifacts
+Future policy may flag patterns such as privileged untrusted PR execution, mutable third-party actions, broad token permissions, unsafe self-hosted-runner exposure, missing deployment gates, or weak release controls. Those are policy conclusions, not collector behavior.
 
 ## Mirror management posture
 
-Mirror management should be part of posture because mirrors can silently become security, availability, and provenance risks.
+Mirror management is a separate versioned fact domain because mirrors can silently become security, availability, and provenance risks.
 
-Initial mirror facts should include:
+`repora.posture-mirrors` v1 records:
 
-- canonical repository identity
-- declared mirror repositories
-- configured remotes
-- default branches across canonical and mirror repositories
-- synchronization direction and mode
-- drift between canonical and mirrors
-- provider visibility and access settings
-- release and tag propagation expectations
+- canonical identity from declared `provider:path` topology;
+- declared mirror identities and cache remote names;
+- configured `mirror` mode and `canonical_to_mirror` direction;
+- canonical and mirror default-branch names where observable;
+- canonical and mirror default-branch commit evidence;
+- default-branch-name drift;
+- the existing `EQUAL`, `BEHIND`, `AHEAD`, and `DIVERGED` reconciliation state with ahead/behind counts;
+- provider visibility and authenticated/current-actor push permission where exposed by an implemented adapter;
+- tag and release drift as explicit `unknown` facts under the current default-branch-only scope.
 
-Important risk patterns:
+The collector reuses `status.CheckAll`; it does not implement a second divergence algorithm. `status.CheckAll` can create or refresh Repora's local bare mirror cache, configure cache remotes, and fetch repository data. Mirror posture does not call push, mirror synchronization, release publication, or provider mutation operations.
 
-- mirror accepts writes when it should be read-only
-- mirror default branch diverges from canonical
-- tags or releases exist in one provider but not another
-- stale mirror presents outdated security fixes as current
-- mirror metadata implies a different source of truth than `repora.yaml`
+For GitHub endpoints, the mirror-specific GET adapter normalizes `default_branch`, `visibility`, and `permissions.push` when GitHub returns them. If actor permissions are omitted, push permission remains `unknown`; omission is not interpreted as `false`. Provider reads hidden by access remain `unavailable`.
 
-This domain is planned under issue #120 and must reuse Repora's existing `provider:path` topology and mirror semantics rather than inventing a second scanner.
+GitLab transport/reconciliation evidence is current, but GitLab provider-administration metadata remains `unavailable` until a posture adapter is implemented.
+
+Missing provider metadata never becomes a healthy or drifted conclusion. Default-branch-name drift can still be observed from refreshed Git remote evidence independently of provider-administration metadata.
+
+See [`posture-mirrors.md`](posture-mirrors.md).
 
 ## Documentation and README hygiene
 
-Documentation hygiene is evaluated as repository state, not as prose preference.
-
-The implemented documentation posture v1 can observe:
+Documentation posture v1 can observe:
 
 - repository-profile-selected document presence;
-- README presence and configured ATX heading sections;
+- README presence and configured ATX headings;
 - configured repository-relative README links;
 - deterministic exact content markers for bounded stale-metadata signals;
 - document-router metadata presence and whether its trust subset is usable by documentation posture;
 - canonical, implementation, generated, experimental, archived, external, or unclassified trust tiers for selected documents.
 
-A repository may select these facts through `.repora/posture-documentation.yaml`. That repository-owned profile does not assign severity or make policy decisions. Missing facts are observed `false` only when evidence is complete; truncated or inaccessible evidence stays unknown/unavailable.
+A repository may select observations through `.repora/posture-documentation.yaml`. That repository-owned profile chooses facts to collect; it does not assign severity, suppress external policy, or authorize remediation.
 
-The collector preserves routing authority rather than treating all Markdown equally. Generated or archived documents are not silently promoted to canonical. It does not claim to validate the complete document router; full routing validity remains owned by the routing contract and validators. This is particularly important for AI-assisted workflows that need deterministic source authority.
+Missing facts are observed `false` only when evidence is complete. Truncated or inaccessible evidence remains `unknown` or `unavailable`. Generated and archived documents are not silently promoted to canonical.
 
-Important risk patterns for a future policy layer include:
-
-- README describes obsolete commands or unsupported workflows
-- security contact or disclosure process is missing
-- docs disagree with configured CI/CD or release process
-- archived/generated docs are treated as canonical
-- repository purpose is unclear enough to cause unsafe automation
-
-Full prose linting, semantic review, metadata inference, and LLM-based documentation judgment remain non-goals for the current fact collector.
+Full prose linting, semantic review, metadata inference, and LLM-based documentation judgment remain non-goals for this collector.
 
 ## Commit analysis posture
 
-Commit analysis should provide evidence about how repository changes actually happen over time.
+Commit/process analysis should eventually provide bounded evidence such as:
 
-Initial commit facts should include:
+- signed commit and tag prevalence;
+- merge strategy patterns;
+- commit size and file-scope outliers;
+- sensitive-path and release-boundary changes;
+- direct-to-main or unreviewed changes where provider APIs expose them;
+- relationships between commits, issues, PRs, and releases.
 
-- signed commit and tag prevalence
-- merge strategy patterns
-- commit size and file-scope outliers
-- sensitive-path changes
-- release-boundary changes
-- unreviewed or direct-to-main changes where provider APIs expose them
-- author and committer patterns only where needed to establish process facts
-- relationship between commits, issues, PRs, and releases
-
-Important risk patterns:
-
-- direct commits to protected or sensitive branches
-- large mixed-purpose commits that obscure review
-- unsigned release tags
-- sensitive files changed outside expected review paths
-- repeated hotfixes bypassing declared process
-
-Commit analysis should focus on repository and process risk. It should not become individual productivity scoring, identity profiling, or intent inference. Findings should be grounded in observable repository evidence and phrased as review or governance signals.
+This domain is repository/process risk analysis. It must not become developer productivity scoring, identity profiling, or unsupported intent inference.
 
 ## Hooks and local workflow posture
 
-Hooks and local workflow controls should be tracked where repositories rely on them for safety or consistency.
+Local workflow posture should eventually observe:
 
-Initial hook facts should include:
+- expected hook manager or local policy entrypoint;
+- configured hook entrypoints and required checks;
+- bootstrap documentation;
+- relationship between local hooks and CI enforcement;
+- documented bypass/escape hatches.
 
-- expected hook manager, such as pre-commit, Lefthook, Husky, or custom Git hooks
-- configured hook entrypoints
-- required local checks
-- relationship between local hooks and CI checks
-- bootstrap instructions for developer machines
-- bypass or escape hatch documentation
-
-Important risk patterns:
-
-- local hooks are required by convention but not documented
-- CI does not enforce checks that local hooks are expected to catch
-- hook bootstrap is missing or stale
-- hooks execute unreviewed or network-loaded code
-- repo-specific policy entrypoints are inconsistent across mirrors
+Collection must inspect configuration without installing or executing repository hook code. Local checks remain early feedback unless CI or explicit policy makes them authoritative.
 
 ## Normalized facts
 
-Posture implementation should prefer provider-neutral facts over provider-specific checks.
-
-The current versioned fact envelopes use explicit evidence state instead of collapsing missing access into `false`:
+Versioned posture contracts use explicit evidence state instead of collapsing missing access into `false`:
 
 ```json
 {
@@ -241,13 +162,13 @@ The current versioned fact envelopes use explicit evidence state instead of coll
 }
 ```
 
-Provider-specific data can remain available as evidence, but future policies should consume normalized facts where possible.
+Provider-specific data may remain in evidence, but policy should consume normalized facts where possible.
 
 ## Policy evaluation
 
-Policies should be explicit, versioned, and explainable. This layer is not implemented yet.
+Policy evaluation is not implemented yet. Future policies should be explicit, versioned, and explainable.
 
-Illustrative future shape:
+Illustrative shape:
 
 ```yaml
 posture:
@@ -264,62 +185,25 @@ posture:
         self_hosted_runners_on_public_prs: deny
 ```
 
-A future finding should explain:
-
-- observed fact
-- expected policy
-- severity
-- provider evidence
-- remediation options
-- whether automated remediation is safe
+A future finding should identify the observed fact, expected policy, severity, source evidence, remediation options, and whether automated remediation is safe.
 
 Repository-owned documentation observation profiles are deliberately separate from this policy layer.
 
 ## Exceptions
 
-Exceptions should be first-class once policy evaluation exists.
-
-Illustrative future shape:
-
-```yaml
-posture:
-  repos:
-    repo.example:
-      profile: baseline
-      exceptions:
-        - rule: ci.pin_third_party_actions
-          reason: Internal workflow under active migration
-          owner: platform
-          expires: 2026-09-01
-```
-
-Exceptions should require a reason, owner, and expiry. Expired exceptions should become findings.
+Once policy evaluation exists, exceptions should be first-class and require a reason, owner, and expiry. Expired exceptions should become findings rather than silently persisting.
 
 ## Remediation plans
 
-Posture remediation should separate observation, planning, and mutation. These commands are future design, not current CLI behavior:
+Posture remediation must separate observation, planning, and mutation. Candidate future commands include:
 
 ```bash
 repoctl posture check
 repoctl posture plan
-repoctl posture apply
+repoctl posture report --format markdown
 ```
 
-`check` must be read-only.
-
-A future `plan` may propose explicit changes, such as:
-
-- update workflow permissions
-- add missing `SECURITY.md`
-- create or update CODEOWNERS
-- open issues for provider settings that require manual confirmation
-- propose branch protection updates
-- update README or documentation sections
-- reconcile mirror metadata or remote configuration
-- flag risky commit history patterns for review
-- add or standardize hook configuration
-
-Any future `apply` must only run after review and preserve the diff-first execution model used elsewhere in Repora.
+A future plan may propose file changes, issues, PRs, or provider-setting changes, but any apply path must remain explicitly reviewed and preserve Repora's diff-first/exact-plan execution model.
 
 ## CLI surface
 
@@ -328,49 +212,29 @@ Current posture commands are:
 ```bash
 repoctl posture inventory OWNER/REPO
 repoctl posture docs OWNER/REPO
+repoctl posture mirrors -f repora.yaml
 ```
 
-Candidate future commands include:
-
-```bash
-repoctl posture check
-repoctl posture diff
-repoctl posture plan
-repoctl posture report --format markdown
-repoctl posture issue create --repo repo.example
-```
-
-Focused helpers may be useful later:
-
-```bash
-repoctl mirrors check
-repoctl commits analyze
-repoctl hooks check
-```
-
-These should remain posture-oriented commands rather than becoming a general CI runner, documentation linter, or commit-forensics tool.
+Candidate later surfaces include policy checking/reporting plus focused commit and hook helpers. They should remain posture-oriented rather than becoming a general CI runner, documentation linter, or forensic tool.
 
 ## Provider support
 
-Provider support should be incremental.
-
 | Provider | Current/planned support |
 | --- | --- |
-| GitHub | Current repository/CI and documentation fact collection; broader provider-admin facts planned |
-| GitLab | Planned protected branches, CI configuration, approval rules, repository metadata |
-| Bitbucket | Planned branch restrictions, pipelines configuration, repository metadata |
-| Local repositories | Planned file/config/lockfile/hook and scanner-output facts where appropriate |
+| GitHub | Current repository/CI and documentation collection; mirror default branch, visibility, and current-actor push permission where returned; broader provider-admin facts planned |
+| GitLab | Current Git transport/reconciliation evidence in mirror posture; provider-admin posture metadata planned |
+| Bitbucket | Planned branch restrictions, pipelines configuration, and repository metadata |
+| Local repositories | Current Repora mirror-cache observation; broader file/config/lockfile/hook evidence planned |
 
-GitHub is the first implementation target because it exposes enough API surface to validate the model end-to-end.
+Mirror drift itself remains grounded in Repora's provider-neutral topology and Git reconciliation semantics.
 
 ## Security model
 
-Posture management is security-sensitive because later layers may propose changes to repository controls.
+Posture management is security-sensitive because later layers may propose changes to repository controls. Current and future work must preserve these boundaries:
 
-Current and future implementation must preserve these boundaries:
-
-- read-only fact collection by default;
-- no implicit provider mutations;
+- read-only provider fact collection by default;
+- local mirror-cache refresh may occur for observation, but posture does not push to repositories;
+- no implicit provider mutation;
 - explicit plans before writes;
 - least-privilege provider tokens;
 - no secrets stored in `repora.yaml` or posture evidence;
@@ -382,16 +246,14 @@ Provider API mutation should come only after deterministic facts, policy/reporti
 
 ## Implementation phases
 
-Current ordered path:
-
 1. **Complete** — read-only GitHub repository/CI inventory and normalized fact/evidence contract (#118).
 2. **Complete** — deterministic documentation/README hygiene facts and observation profile (#119).
-3. **Next** — mirror-management drift facts reusing existing topology/status semantics (#120).
-4. **Planned** — hooks/local-workflow facts without executing hook code (#123).
+3. **Complete** — mirror-management drift facts reusing existing topology/status semantics (#120).
+4. **Next** — hooks/local-workflow facts without executing hook code (#123).
 5. **Planned** — bounded commit/process-risk facts without productivity scoring or intent inference (#122).
 6. **Convergence** — explicit policy evaluation and deterministic Markdown reporting over normalized facts (#121).
 7. **Later** — issue/PR-backed remediation after reporting is proven.
 8. **Later/separate decision** — guarded provider API mutation.
-9. **Later** — GitLab and Bitbucket adapters.
+9. **Later** — broader GitLab and Bitbucket provider-administration adapters.
 
 The active implementation order is maintained in [`plans/current.md`](plans/current.md) and GitHub issue #124.
