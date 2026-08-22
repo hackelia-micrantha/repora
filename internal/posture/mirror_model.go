@@ -35,8 +35,8 @@ type MirrorTargetFacts struct {
 	Behind                     Fact[int]              `json:"behind"`
 	Visibility                 Fact[string]           `json:"visibility"`
 	CurrentActorPushPermission Fact[bool]             `json:"current_actor_push_permission"`
-	TagDrift                   Fact[bool]              `json:"tag_drift"`
-	ReleaseDrift               Fact[bool]              `json:"release_drift"`
+	TagDrift                   Fact[bool]             `json:"tag_drift"`
+	ReleaseDrift               Fact[bool]             `json:"release_drift"`
 }
 
 type MirrorRepositoryFacts struct {
