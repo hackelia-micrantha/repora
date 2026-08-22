@@ -46,17 +46,23 @@ Commit drift is not recalculated independently. Mirror posture projects the same
 
 Default-branch-name drift is a separate fact. A mirror can have equal commit evidence while declaring a different default branch name; the posture artifact preserves that distinction.
 
-Missing or inaccessible evidence never becomes an observed drift value. If either branch name cannot be established, `default_branch_drift` is `unknown` or `unavailable` rather than `false`.
+Missing or inaccessible evidence never becomes an observed drift value. If either branch name cannot be established, `default_branch_drift` is `unknown` or `unavailable` rather than `false`, unless an independent provider read establishes the branch name.
 
 ## Provider metadata
 
 The provider metadata boundary is intentionally narrower than repository mutation authority.
 
-GitHub mirror posture currently reuses the existing GET-only GitHub repository reader. That shared reader exposes the provider default branch but not repository visibility or authenticated-actor permissions, so those two facts remain `unknown` for GitHub in the production v1 adapter.
+For GitHub endpoints, mirror posture uses the existing GET-only HTTP transport against repository metadata. When returned by GitHub it normalizes:
+
+- `default_branch`;
+- `visibility`;
+- the authenticated/current actor's `permissions.push` value.
+
+If GitHub omits actor permissions, `current_actor_push_permission` remains `unknown`; omission is not interpreted as `false`. A `401`, `403`, or `404` remains `unavailable` under the shared provider evidence semantics.
 
 GitLab provider-administration metadata is not implemented in mirror posture v1, so those facts are `unavailable` with explicit unsupported-provider evidence. This does not affect local Git reconciliation evidence when the repository can still be fetched.
 
-The fact names use `current_actor_push_permission`, not generic `writeable`, because provider authorization depends on the authenticated identity and does not prove that every actor can write.
+The fact name is `current_actor_push_permission`, not generic `writeable`, because provider authorization depends on the authenticated identity and does not prove that every actor can write.
 
 ## Tags and releases
 
