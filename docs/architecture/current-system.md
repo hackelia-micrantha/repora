@@ -14,7 +14,8 @@ Repora is a local-first repository controller exposed primarily through the `rep
 4. **Document routing** — deterministic repository-owned routing/trust/context contracts used to select evidence without executing source or granting mutation authority.
 5. **Repository/CI posture inventory** — GET-only GitHub observation that normalizes repository, protection, file, and Actions evidence without evaluating policy or mutating provider state.
 6. **Documentation posture** — GET-only profile-driven document/README hygiene observation that preserves routing trust metadata without prose scoring, policy evaluation, or remediation authority.
-7. **Packaging and assurance** — release archives plus a standalone Nix package/check/development surface that reuses canonical validation boundaries.
+7. **Mirror posture** — topology-driven canonical/mirror identity and drift observation that reuses existing reconciliation semantics, may refresh Repora's local cache, and never pushes or mutates provider settings.
+8. **Packaging and assurance** — release archives plus a standalone Nix package/check/development surface that reuses canonical validation boundaries.
 
 Repora does not provide arbitrary repository-file mutation, provider provisioning, hosted orchestration, automatic posture remediation, or a general policy engine.
 
@@ -66,60 +67,72 @@ Current local assessment commands validate `repora.repository-assessment` v1, pr
 
 Repository-owned `.repora/` routing contracts support deterministic manifests, trust tiers, context receipts, hierarchical summaries, and bounded Go AST selectors. Routing does not execute selected source, perform semantic/vector retrieval, infer ownership, or grant mutation authority.
 
+## Shared posture fact model
+
+Posture fact contracts distinguish:
+
+- `observed` — source evidence was available and the value was actually seen, including observed boolean `false`;
+- `unknown` — the fact is representable but current evidence/scope cannot establish a value;
+- `unavailable` — relevant evidence could not be read or safely established under the current observation boundary.
+
+Fact collection remains separate from policy evaluation. Current collectors do not assign severity, create findings, execute scanners, authorize remediation, or mutate provider settings.
+
 ## Repository/CI posture inventory domain
 
 `repoctl posture inventory OWNER/REPO` emits `repora.posture-inventory` v1 JSON for a GitHub repository.
 
-The normalized fact model distinguishes:
-
-- `observed` — source evidence was available and the value was actually seen, including observed boolean `false`;
-- `unknown` — evidence was readable but incomplete or dynamic enough that a value cannot be asserted;
-- `unavailable` — the relevant provider evidence could not be read under current access.
-
-Current GitHub facts include default branch, branch-protection summary/detail where available, required status checks/reviews, force-push/deletion protection, supported CODEOWNERS/SECURITY/license/template/dependency-automation paths, workflow paths, workflow/job permissions, `pull_request_target`, runner labels/self-hosted-label evidence, and action/reusable-workflow references with pinning classification.
+Current facts include default branch, branch-protection summary/detail where available, required status checks/reviews, force-push/deletion protection, supported CODEOWNERS/SECURITY/license/template/dependency-automation paths, workflow paths, workflow/job permissions, `pull_request_target`, runner labels/literal `self-hosted` evidence, and action/reusable-workflow references with pinning classification.
 
 Important boundaries:
 
-- the collector depends on a `GitHubReader` interface exposing only repository, branch, branch-protection, tree, and blob reads;
+- the collector depends on a `GitHubReader` exposing only repository, branch, branch-protection, tree, and blob reads;
 - the production HTTP adapter issues only GET requests;
 - optional `GITHUB_TOKEN`/`GH_TOKEN` values are environment-only runtime inputs and are not persisted in evidence;
 - provider-hidden 401/403/404 data becomes unavailable rather than a false negative;
 - Git tree truncation preserves known-present facts but makes unsupported negative claims unknown;
-- workflow YAML is treated as untrusted data and normalization is bounded to 1 MiB per workflow;
-- GitHub path casing is respected for provider-recognized locations;
-- malformed workflows become unknown rather than passing;
-- no policy profile, finding, scanner, issue/PR generation, branch-protection update, or other provider mutation is reachable from inventory.
+- workflow YAML is treated as bounded untrusted data;
+- no policy, finding, scanner, issue/PR generation, branch-protection update, or provider mutation is reachable from inventory.
 
 ## Documentation posture domain
 
-`repoctl posture docs OWNER/REPO` emits `repora.posture-documentation` v1 JSON while preserving the same observed/unknown/unavailable evidence semantics.
+`repoctl posture docs OWNER/REPO` emits `repora.posture-documentation` v1 JSON while preserving the shared fact states.
 
 A repository may declare deterministic observation targets in `.repora/posture-documentation.yaml` using `repora.posture-documentation-profile` v1. The profile selects facts to observe; it does not assign severity, suppress external policy, create findings, or grant remediation authority.
 
-Current documentation facts include:
-
-- default branch and observed commit identity;
-- configured document presence;
-- configured README ATX-heading presence;
-- configured repository-relative README-link presence;
-- exact configured content-marker presence with only the expected marker SHA-256 retained in the output artifact;
-- document-router presence and whether its trust subset is usable by documentation posture;
-- canonical/implementation/generated/experimental/archived/external/unclassified trust-tier evidence for configured documents when routing trust metadata is usable.
+Current documentation facts include configured document presence, README ATX-heading/link presence, exact configured content markers, and document-router trust-tier evidence. The collector preserves generated/archived/canonical authority rather than treating every document as equivalent.
 
 Important boundaries:
 
-- the collector reuses the same GET-only `GitHubReader` capability and immutable default-branch Git tree/blob evidence;
-- a built-in baseline observes only root `README.md` when a repository profile is known absent from a complete tree;
-- a truncated tree never proves that the profile or configured documents are missing;
-- malformed or inaccessible profile/router/content evidence becomes unknown or unavailable rather than a passing fact;
-- documentation posture does not claim to validate the complete router; full router validity remains owned by the routing contract/validators;
-- malformed repository-controlled profile/router evidence uses generic diagnostics rather than reflecting parser input into posture artifacts;
-- profile targets are bounded and inspected Markdown/profile data is never executed;
-- routing specificity preserves the existing canonical/generated/archived authority model and does not promote generated or archived documents to canonical;
-- exact content markers provide deterministic stale-metadata evidence without semantic or LLM judgment;
-- policy evaluation, severity, findings, Markdown reports, issue/PR generation, prose rewriting, and provider mutation remain outside this domain.
+- it reuses the GET-only GitHub reader and default-branch tree/blob evidence;
+- a built-in baseline observes only root `README.md` when a profile is known absent from a complete tree;
+- truncated/inaccessible/malformed evidence becomes unknown or unavailable rather than a passing fact;
+- repository-controlled profile/router/Markdown input is bounded data and is never executed;
+- full prose linting, semantic/LLM judgment, policy evaluation, reports, rewrites, and provider mutation remain outside the domain.
 
-The broader posture architecture remains fact collection -> policy -> findings -> remediation. Repository/CI and documentation fact collection are implemented; policy/findings/remediation are not.
+## Mirror posture domain
+
+`repoctl posture mirrors -f repora.yaml` emits `repora.posture-mirrors` v1 JSON for repositories already declared in Repora topology.
+
+Mirror posture records:
+
+- repository ID and durable UID;
+- configured `mirror` mode and `canonical_to_mirror` direction;
+- canonical and mirror `provider:path` identities;
+- Repora cache remote names;
+- canonical and mirror default-branch names where observable;
+- default-branch commit evidence;
+- default-branch-name drift;
+- existing `EQUAL`, `BEHIND`, `AHEAD`, and `DIVERGED` reconciliation state plus ahead/behind counts;
+- GitHub visibility and authenticated/current-actor push permission when returned by the GET-only repository endpoint;
+- tag and release drift as explicit `unknown` facts under the current default-branch-only scope.
+
+Mirror drift is not recalculated independently. The collector reuses `status.CheckAll`, preserving the existing reconciliation algorithm and per-mirror partial-error semantics.
+
+Observation can create or refresh Repora's local bare mirror cache, configure cache remotes, and fetch repository state. That local observation boundary is not side-effect-free, but it does not call push, synchronization, release publication, or provider-setting mutation operations.
+
+A failed mirror does not cause cached remote HEAD data to be treated as current. Missing/unavailable branch evidence therefore cannot produce an observed healthy/default-branch-drift result by inference. Independent GitHub metadata may establish a branch name even when local branch evidence is unavailable, while commit/reconciliation evidence remains unavailable.
+
+GitLab Git transport/reconciliation evidence is supported; GitLab provider-administration metadata remains unavailable until a posture adapter exists. GitHub actor permissions are identity-specific and are therefore exposed as `current_actor_push_permission`, not a universal writeability claim.
 
 ## Package ownership
 
@@ -136,7 +149,7 @@ The broader posture architecture remains fact collection -> policy -> findings -
 | `internal/managedartifact` | README template/render/observation/plan/preflight/candidate verification | Generic file authority or mirror reconciliation |
 | `internal/managedartifactapply` | journaled managed README execution/result correlation | Replanning reviewed content |
 | `internal/assessment` | strict assessment contracts, validation, skeleton, projections | Live discovery, automated scoring, mutation |
-| `internal/posture` | normalized posture fact contracts, read-only GitHub observation, workflow/document normalization | Policy evaluation, findings, scanners, remediation, provider mutation |
+| `internal/posture` | versioned posture facts and bounded repository/CI, documentation, and mirror observation | Policy evaluation, findings, scanners, remediation, provider mutation |
 | `internal/journal` | immutable intent/result evidence and protected persistence | Mutation or replay authority |
 | `internal/git` | bounded Git subprocess/cache/object/ref/push mechanics | Product policy or durable identity |
 | `.repora/` + routing/posture profile validators | deterministic route/trust/context and documentation-observation contracts | Source execution, severity policy, or mutation authority |
@@ -146,7 +159,7 @@ The broader posture architecture remains fact collection -> policy -> findings -
 
 Repora distinguishes human `id`, durable logical `uid`, durable `(provider,path)` target identity, deterministic configuration order, and ephemeral resolved URLs/remote aliases.
 
-Mirror destructive intent requires existing local policy plus explicit `--force`. Managed README apply is a separate authority domain and accepts no force override. Posture inventory and documentation posture have no mutation authority at all.
+Mirror destructive intent requires existing local policy plus explicit `--force`. Managed README apply is a separate authority domain and accepts no force override. Repository/CI and documentation posture expose no mutation authority; mirror posture can refresh only Repora's observation cache and exposes no push/synchronization/provider-mutation capability.
 
 ADR-0018 defines a future optional Anthesis `pre_apply` authorization seam after Repora local preparation but before Git execution INTENT/mutation. No runtime evaluator, transport, CLI/config integration, or approval workflow is currently implemented.
 
@@ -166,7 +179,8 @@ Current serialized contracts include:
 - `repora.repository-assessment` v1 and linked evidence/scorecard schemas;
 - `repora.posture-inventory` v1;
 - `repora.posture-documentation` v1;
-- `repora.posture-documentation-profile` v1.
+- `repora.posture-documentation-profile` v1;
+- `repora.posture-mirrors` v1.
 
 Versioned files under `schemas/` are authoritative for serialized shapes.
 
@@ -177,9 +191,3 @@ Versioned files under `schemas/` are authoritative for serialized shapes.
 Assurance includes race-enabled tests, contract/CLI E2E tests, Go vet and Staticcheck, immutable workflow action pins, least-privilege permissions, govulncheck, CodeQL, full-history secret detection, dependency-license validation, release-package reproduction, and scheduled deep validation.
 
 A repository-wide benchmark gate, release signing, and full provenance attestation remain deferred.
-
-## Current next boundary
-
-The mirror controller, managed README lifecycle, routing/assessment foundations, optional Anthesis integration design, standalone Nix packaging, GitHub posture inventory, and documentation posture foundations are complete.
-
-The next posture work extends the shared normalized fact/evidence model through mirror drift (#120), local workflow/hooks (#123), and bounded commit/process evidence (#122) before policy evaluation/reporting (#121). Provider mutation and Anthesis runtime coupling remain deferred.
