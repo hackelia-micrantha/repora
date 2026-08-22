@@ -35,7 +35,7 @@ func mirrorTestRepo() config.Repo {
 	return config.Repo{
 		ID: "example", UID: "repo.example", Mode: "mirror",
 		Canonical: config.Endpoint{Provider: "gitlab", Path: "acme/example"},
-		Mirrors: []config.Endpoint{{Provider: "github", Path: "acme/example"}},
+		Mirrors:   []config.Endpoint{{Provider: "github", Path: "acme/example"}},
 	}
 }
 
@@ -44,10 +44,10 @@ func mirrorLocal(branch string, mirrorState status.State) MirrorLocalObservation
 		Status: status.RepositoryResult{
 			ID: "example", UID: "repo.example",
 			Canonical: status.RefResult{Ref: "HEAD", Commit: "abc1234"},
-			Mirrors: []status.MirrorResult{{Target: "github:acme/example", Provider: "github", Path: "acme/example", Ref: "HEAD", Commit: "abc1234", State: mirrorState}},
+			Mirrors:   []status.MirrorResult{{Target: "github:acme/example", Provider: "github", Path: "acme/example", Ref: "HEAD", Commit: "abc1234", State: mirrorState}},
 		},
 		CanonicalBranch: MirrorBranchObservation{Name: "main", Available: true, Evidence: Evidence{Source: "git.remote_head", Reference: "canonical"}},
-		MirrorBranches: []MirrorBranchObservation{{Name: branch, Available: true, Evidence: Evidence{Source: "git.remote_head", Reference: "mirror-0"}}},
+		MirrorBranches:  []MirrorBranchObservation{{Name: branch, Available: true, Evidence: Evidence{Source: "git.remote_head", Reference: "mirror-0"}}},
 	}
 }
 
