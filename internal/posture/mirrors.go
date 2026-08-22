@@ -35,7 +35,7 @@ type MirrorTargetFacts struct {
 	Identity                   MirrorEndpointIdentity `json:"identity"`
 	CacheRemote                Fact[string]           `json:"cache_remote"`
 	DefaultBranch              Fact[string]           `json:"default_branch"`
-	DefaultBranchDrift         Fact[bool]             `json:"default_branch_drift"`
+	DefaultBranchDrift         Fact[bool]              `json:"default_branch_drift"`
 	Commit                     Fact[string]           `json:"commit"`
 	Divergence                 Fact[string]           `json:"divergence"`
 	Ahead                      Fact[int]              `json:"ahead"`
@@ -94,6 +94,13 @@ func (GitMirrorLocalObserver) Observe(repo config.Repo) (MirrorLocalObservation,
 	out := MirrorLocalObservation{Status: result, MirrorBranches: make([]MirrorBranchObservation, len(repo.Mirrors))}
 	out.CanonicalBranch = observeRemoteHead(client, cachePath, repo.DurableID(), "canonical")
 	for i := range repo.Mirrors {
+		if i < len(result.Mirrors) && result.Mirrors[i].State == status.StateError {
+			out.MirrorBranches[i] = MirrorBranchObservation{Evidence: Evidence{
+				Source: "git.remote_head", Reference: repo.DurableID() + ":mirror-" + strconv.Itoa(i) + "/HEAD",
+				Detail: "mirror reconciliation failed; cached remote HEAD is not current evidence",
+			}}
+			continue
+		}
 		out.MirrorBranches[i] = observeRemoteHead(client, cachePath, repo.DurableID(), "mirror-"+strconv.Itoa(i))
 	}
 	return out, nil
@@ -349,6 +356,9 @@ func (i MirrorInventory) Validate() error {
 		}
 		if repo.Mirrors == nil || repo.Evidence == nil {
 			return fmt.Errorf("repo[%d] mirror and evidence arrays are required", ri)
+		}
+		if strings.TrimSpace(repo.Canonical.Identity.Provider) == "" || strings.TrimSpace(repo.Canonical.Identity.Path) == "" {
+			return fmt.Errorf("repo[%d] canonical identity is required", ri)
 		}
 		if err := validateFact("mode", repo.Mode); err != nil {
 			return err
