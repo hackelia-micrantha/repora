@@ -4,7 +4,7 @@ Status: Active
 
 ## Current objective
 
-Repora's released mirror controller and first post-v0.1 managed-artifact, routing, assessment, policy-design, standalone packaging, read-only GitHub posture-inventory, and deterministic documentation-posture foundations are complete. The current objective is to extend the normalized posture fact model across mirror, local-workflow, and commit/process domains before adding policy evaluation or reporting.
+Repora's released mirror controller and first post-v0.1 managed-artifact, routing, assessment, policy-design, standalone packaging, repository/CI posture, documentation posture, and mirror-posture foundations are complete. The current objective is to extend the normalized posture fact model across local-workflow and commit/process domains before adding policy evaluation or reporting.
 
 ## Completed foundation
 
@@ -27,28 +27,27 @@ Repora's released mirror controller and first post-v0.1 managed-artifact, routin
 | Test pyramid/static analysis | Complete | Fast/unit, integration, contract, CLI E2E, race/deep validation, Go vet, and Staticcheck are explicit repository/CI boundaries. |
 | GitHub posture inventory v1 | Complete | GET-only normalized repository/CI facts preserve observed, unknown, and unavailable evidence; no mutation-capable provider boundary is exposed. |
 | Documentation posture v1 | Complete | Profile-driven document/README/link/content-marker facts reuse the posture evidence model and preserve routing trust tiers without prose scoring or remediation authority. |
+| Mirror posture v1 | Complete | Declared canonical/mirror identities, default-branch names, existing reconciliation drift, and bounded provider metadata facts reuse topology/status semantics without provider mutation or expanded ref scope. |
 
 ## Active sequence
 
-### 1. Add mirror-management drift facts (#120)
+### 1. Add local workflow/hook facts (#123)
 
-Reuse existing provider/path topology and mirror semantics rather than creating a separate mirror scanner.
+Add bounded local workflow evidence without installing or executing hook code.
 
 Exit condition:
 
-- canonical/mirror identities and default branches are normalized into posture evidence;
-- drift, visibility/writeability, and release/tag evidence preserve unavailable provider state explicitly;
-- no synchronization or provider mutation occurs;
-- tests cover in-sync, drift, missing, and unavailable evidence.
+- configured hook/workflow signals are normalized into the shared posture fact model;
+- presence/configuration is distinguished from authoritative CI enforcement;
+- collection does not install, execute, or trust repository hook code;
+- missing and unavailable evidence remain explicit;
+- tests cover configured, absent, malformed, and unsupported cases.
 
-### 2. Add local workflow/hook and commit/process fact domains (#123, #122)
+### 2. Add bounded commit/process facts (#122)
 
-Add independent bounded sources after the shared model is proven:
+Add repository/process-risk evidence without productivity scoring, identity profiling, or intent inference.
 
-- hooks/local workflow facts (#123) without installing or executing hook code;
-- bounded commit/process-risk facts (#122) without productivity scoring, identity profiling, or intent inference.
-
-These slices may proceed independently where their dependencies permit and must not bypass the shared evidence representation.
+This slice may proceed independently where its dependencies permit and must not bypass the shared evidence representation.
 
 ### 3. Converge facts into explainable policy/reporting (#121)
 
@@ -72,6 +71,7 @@ Resume only when there is a concrete evaluator contract/deployment path and oper
 ## Explicit deferrals
 
 - tags, non-default branches, wildcard refspecs, and deleted-ref reconciliation;
+- tag/release mirror-drift observation beyond explicit `unknown` v1 facts;
 - concurrent mirror mutation;
 - automatic rollback or cross-repository/cross-remote transactions;
 - Anthesis runtime transport/authentication and approval workflows;
