@@ -89,6 +89,10 @@ func runPosture(args []string) int {
 }
 
 func runMirrorPosture(args []string) int {
+	if len(args) == 1 && (args[0] == "-h" || args[0] == "--help") {
+		fmt.Fprintln(os.Stdout, "usage: repoctl posture mirrors -f repora.yaml")
+		return 0
+	}
 	flags := flag.NewFlagSet("repoctl posture mirrors", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	configPath := flags.String("f", "repora.yaml", "path to SCHEMA-0001 YAML config")
