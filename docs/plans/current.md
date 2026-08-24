@@ -4,7 +4,7 @@ Status: Active
 
 ## Current objective
 
-Repora's released mirror controller and first post-v0.1 managed-artifact, routing, assessment, policy-design, standalone packaging, repository/CI posture, documentation posture, mirror-posture, local-workflow posture, and bounded commit-history posture foundations are complete. The current objective is to converge normalized posture facts into explicit policy evaluation and deterministic reporting without introducing provider mutation.
+Repora's released mirror controller and first post-v0.1 managed-artifact, routing, assessment, policy-design, standalone packaging, repository/CI posture, documentation posture, mirror posture, local-workflow posture, bounded commit-history posture, and posture-policy/reporting foundations are complete in the current implementation line. The immediate objective is to finish independent review and exact-head validation of the posture convergence slice, then reassess the next concrete operator need rather than expand the posture system speculatively.
 
 ## Completed foundation
 
@@ -30,27 +30,30 @@ Repora's released mirror controller and first post-v0.1 managed-artifact, routin
 | Mirror posture v1 | Complete | Declared canonical/mirror identities, default-branch names, existing reconciliation drift, and bounded provider metadata facts reuse topology/status semantics without provider mutation or expanded ref scope. |
 | Hooks/local-workflow posture v1 | Complete | Common/custom hook signals, declared local checks, CI-coverage evidence, bootstrap/bypass documentation, and static network-load signals are normalized without installing or executing repository hook code. |
 | Bounded commit-history posture v1 | Complete | A capped default-branch history window exposes signature, merge-shape, size/file-scope, sensitive-path, and commit/PR-association evidence without identity analytics, productivity scoring, blame, or intent inference. |
+| Posture policy/reporting v1 | Complete | External versioned policy evaluates normalized fact inputs offline with explicit severity, remediation, time-bounded exceptions, warning/failure states, preserved unknown/unavailable evidence, an explicit `as_of` date, and deterministic Markdown/JSON reports without provider re-scan or opaque scoring. |
 
 ## Active sequence
 
-### 1. Converge facts into explainable policy/reporting (#121)
+### 1. Finish posture-policy convergence validation (#121)
 
-Now that the source fact contracts are proven, add explicit policy evaluation and deterministic posture reporting over those normalized facts.
+Implementation is complete on the active branch. Remaining completion gates are independent review, review/fix iteration, and exact-head CI/security/release validation.
 
 Exit condition:
 
 - profiles express expected vs observed state with explicit severity;
+- informational mismatches are explicit warnings rather than hidden passes;
 - unknown/unavailable evidence remains visible;
-- exceptions require reason, owner, and expiry;
-- reports are deterministic and evidence-backed;
-- policy/reporting consumes normalized facts and does not rescan providers itself;
-- no provider mutation is introduced.
+- exceptions require reason, owner, and expiry, and expired exceptions return as findings;
+- reports are deterministic and evidence-backed using an explicit `as_of` date;
+- typed adapters consume validated normalized posture artifacts and fail atomically on collisions;
+- policy/reporting does not rescan providers itself;
+- no provider mutation or opaque score is introduced.
 
-### 2. Reassess runtime policy integration only on concrete demand
+### 2. Reassess the next concrete operator need
 
-ADR-0018 defines the optional Anthesis `pre_apply` seam, but design completion does not imply runtime implementation priority.
+After #121 closes the posture roadmap, do not automatically broaden posture scope. Prioritize existing project issues based on operator value, release impact, security, and dependency order.
 
-Resume only when there is a concrete evaluator contract/deployment path and operator need. If resumed, the first implementation slice remains transport-free and mutation-neutral: versioned policy facts/decision schemas, deterministic facts construction, evaluator interface/fakes, and local policy evidence before inserting a live gate.
+ADR-0018 defines the optional Anthesis `pre_apply` seam, but design completion does not imply runtime implementation priority. Resume that work only when there is a concrete evaluator contract/deployment path and operator need.
 
 ## Explicit deferrals
 
@@ -63,6 +66,9 @@ Resume only when there is a concrete evaluator contract/deployment path and oper
 - Anthesis runtime transport/authentication and approval workflows;
 - provider provisioning or hosted control-plane behavior;
 - automatic provider-setting remediation from posture findings;
+- automatic PR remediation from posture findings;
+- scanner integration into posture policy;
+- opaque numeric posture scoring;
 - automatic managed-artifact mirror propagation;
 - arbitrary managed file generation;
 - package-manager publication beyond the repository-owned Nix flake unless separately prioritized;
@@ -75,8 +81,9 @@ Deferred tracks must reuse current identity, plan, policy, execution, result, ev
 
 - Preserve Repora as a standalone local-first controller.
 - Prefer vertical capabilities over disconnected internal models.
-- Keep Git-ref reconciliation, managed artifacts, routing, assessments, posture, and optional external policy as separate bounded domain contracts.
-- Reuse durable `uid`, `provider:path`, and shared posture/assessment evidence concepts across posture work.
+- Keep Git-ref reconciliation, managed artifacts, routing, assessments, posture fact collection, posture policy, and optional external authorization policy as separate bounded domain contracts.
+- Reuse durable `uid`, `provider:path`, shared posture fact states, and evidence concepts across posture work.
+- Repository-owned observation profiles select facts only; external posture policy owns severity, expectations, remediation, and exceptions.
 - External policy may add authorization but may never rewrite or weaken reviewed Repora intent.
 - Keep ref-policy v1 closed and mirrors sequential until a separate decision expands them.
 - Do not imply cross-remote atomicity, rollback, provider remediation, or approval semantics that are not implemented.
@@ -84,6 +91,7 @@ Deferred tracks must reuse current identity, plan, policy, execution, result, ev
 - CI/Nix/posture must inspect or reuse canonical validation rather than redefine it independently.
 - Hooks posture may inspect repository-owned configuration only as bounded data; it must never install, source, execute, or bootstrap target-repository hook code.
 - Commit posture remains repository/process evidence only; author/committer identities, productivity metrics, blame, and intent inference are outside its contract.
+- Posture policy consumes normalized facts offline; it does not call providers, run scanners, or collapse findings into a numeric grade.
 
 ## Definition of done
 
