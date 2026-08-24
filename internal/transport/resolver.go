@@ -45,7 +45,8 @@ func DefaultResolver(kind Kind) Resolver {
 
 func (r Resolver) Resolve(endpoint config.Endpoint) (ResolvedRemote, error) {
 	provider := strings.TrimSpace(endpoint.Provider)
-	path := strings.Trim(strings.TrimSpace(endpoint.Path), "/")
+	rawPath := strings.TrimSpace(endpoint.Path)
+	path := strings.Trim(rawPath, "/")
 
 	if path == "" {
 		return r.resolveLegacyURL(provider, endpoint.URL)
@@ -57,8 +58,8 @@ func (r Resolver) Resolve(endpoint config.Endpoint) (ResolvedRemote, error) {
 		return ResolvedRemote{}, fmt.Errorf("resolve %s endpoint path %q: %w", provider, path, err)
 	}
 	if provider == "bitbucket" {
-		if err := validateBitbucketPath(path); err != nil {
-			return ResolvedRemote{}, fmt.Errorf("resolve bitbucket endpoint path %q: %w", path, err)
+		if err := validateBitbucketPath(rawPath); err != nil {
+			return ResolvedRemote{}, fmt.Errorf("resolve bitbucket endpoint path %q: %w", rawPath, err)
 		}
 	}
 
@@ -113,7 +114,11 @@ func validatePath(path string) error {
 }
 
 func validateBitbucketPath(path string) error {
-	parts := strings.Split(path, "/")
+	trimmed := strings.TrimSpace(path)
+	if trimmed != strings.Trim(trimmed, "/") {
+		return fmt.Errorf("must not have leading or trailing slashes")
+	}
+	parts := strings.Split(trimmed, "/")
 	if len(parts) != 2 {
 		return fmt.Errorf("must be workspace/repository")
 	}
