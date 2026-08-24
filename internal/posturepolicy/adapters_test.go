@@ -43,21 +43,7 @@ func TestAddInventoryPreservesFactStates(t *testing.T) {
 
 func TestAdaptersRejectRepositoryMixing(t *testing.T) {
 	inventory := posture.NewInventory("other/project")
-	inventory.RepositoryFacts = posture.RepositoryFacts{
-		DefaultBranch:              posture.Observed("main"),
-		DefaultBranchProtected:     posture.Observed(true),
-		RequiredStatusChecks:       posture.Observed([]string{}),
-		RequiredReviews:            posture.Observed(1),
-		ForcePushProtected:         posture.Observed(true),
-		DeletionProtected:          posture.Observed(true),
-		CODEOWNERSPresent:          posture.Observed(true),
-		SecurityMDPresent:          posture.Observed(true),
-		LicensePresent:             posture.Observed(true),
-		IssueTemplatePresent:       posture.Observed(true),
-		PullRequestTemplatePresent: posture.Observed(true),
-		DependencyAutomation:       posture.Observed([]string{}),
-		WorkflowPaths:              posture.Observed([]string{}),
-	}
+	inventory.RepositoryFacts = validRepositoryFactsForAdapterTest()
 	inventory.WorkflowsState = posture.StateObserved
 	inputs := NewInputs("acme/project")
 	if err := AddInventory(&inputs, inventory); err == nil {
@@ -107,24 +93,7 @@ func TestDocumentationHooksCommitsAndMirrorsAdaptWithoutInference(t *testing.T) 
 		t.Fatal(err)
 	}
 
-	commits := posture.CommitInventory{
-		Kind:                       posture.CommitInventoryKind,
-		Version:                    posture.CommitInventoryVersion,
-		Repository:                 posture.RepositoryIdentity{Provider: "github", FullName: "acme/project"},
-		DefaultBranch:              posture.Observed("main"),
-		DefaultCommit:              posture.Observed("abc1234"),
-		ProfileDeclared:            posture.Observed(false),
-		HistoryLimit:               posture.Observed(20),
-		HistoryTruncated:           posture.Observed(false),
-		FileCountThreshold:         posture.Observed(50),
-		ChangedLinesThreshold:      posture.Observed(1000),
-		SensitivePathPatterns:      posture.Observed([]string{}),
-		Commits:                    []posture.CommitHistoryFact{},
-		SignedTagCount:             posture.Unknown[int](posture.Evidence{Source: "scope", Reference: "tags"}),
-		UnsignedTagCount:           posture.Unknown[int](posture.Evidence{Source: "scope", Reference: "tags"}),
-		ReleaseBoundaryChangeCount: posture.Unknown[int](posture.Evidence{Source: "scope", Reference: "releases"}),
-		Evidence:                   []posture.Evidence{},
-	}
+	commits := validCommitInventoryForAdapterTest()
 	if err := AddCommits(&inputs, commits); err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +113,9 @@ func TestDocumentationHooksCommitsAndMirrorsAdaptWithoutInference(t *testing.T) 
 		Mirrors:  []posture.MirrorTargetFacts{},
 		Evidence: []posture.Evidence{},
 	}
-	if err := AddMirrorRepository(&inputs, mirrorRepo); err != nil {
+	mirrorInventory := posture.NewMirrorInventory()
+	mirrorInventory.Repos = append(mirrorInventory.Repos, mirrorRepo)
+	if err := AddMirrors(&inputs, mirrorInventory, "repo.project"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -165,10 +136,55 @@ func TestDocumentationHooksCommitsAndMirrorsAdaptWithoutInference(t *testing.T) 
 	}
 }
 
-func TestDuplicateAdaptedFactIsRejected(t *testing.T) {
+func TestDuplicateAdaptedFactIsRejectedAtomically(t *testing.T) {
 	inputs := NewInputs("acme/project")
 	inputs.Facts["commits.observed_count"] = FactInput{State: posture.StateObserved, Value: json.RawMessage(`0`), Evidence: []posture.Evidence{}}
-	commits := posture.CommitInventory{
+	before := len(inputs.Facts)
+	if err := AddCommits(&inputs, validCommitInventoryForAdapterTest()); err == nil {
+		t.Fatal("expected duplicate fact to fail")
+	}
+	if len(inputs.Facts) != before {
+		t.Fatalf("adapter partially mutated inputs on error: before=%d after=%d", before, len(inputs.Facts))
+	}
+	if _, exists := inputs.Facts["commits.default_branch"]; exists {
+		t.Fatal("adapter inserted facts before duplicate preflight completed")
+	}
+}
+
+func TestAddMirrorsRequiresValidatedInventoryAndKnownUID(t *testing.T) {
+	inputs := NewInputs("acme/project")
+	inventory := posture.NewMirrorInventory()
+	if err := AddMirrors(&inputs, inventory, "repo.missing"); err == nil {
+		t.Fatal("expected unknown mirror uid to fail")
+	}
+
+	invalid := posture.NewMirrorInventory()
+	invalid.Repos = append(invalid.Repos, posture.MirrorRepositoryFacts{UID: "repo.bad"})
+	if err := AddMirrors(&inputs, invalid, "repo.bad"); err == nil {
+		t.Fatal("expected invalid mirror inventory to fail before adaptation")
+	}
+}
+
+func validRepositoryFactsForAdapterTest() posture.RepositoryFacts {
+	return posture.RepositoryFacts{
+		DefaultBranch:              posture.Observed("main"),
+		DefaultBranchProtected:     posture.Observed(true),
+		RequiredStatusChecks:       posture.Observed([]string{}),
+		RequiredReviews:            posture.Observed(1),
+		ForcePushProtected:         posture.Observed(true),
+		DeletionProtected:          posture.Observed(true),
+		CODEOWNERSPresent:          posture.Observed(true),
+		SecurityMDPresent:          posture.Observed(true),
+		LicensePresent:             posture.Observed(true),
+		IssueTemplatePresent:       posture.Observed(true),
+		PullRequestTemplatePresent: posture.Observed(true),
+		DependencyAutomation:       posture.Observed([]string{}),
+		WorkflowPaths:              posture.Observed([]string{}),
+	}
+}
+
+func validCommitInventoryForAdapterTest() posture.CommitInventory {
+	return posture.CommitInventory{
 		Kind:                       posture.CommitInventoryKind,
 		Version:                    posture.CommitInventoryVersion,
 		Repository:                 posture.RepositoryIdentity{Provider: "github", FullName: "acme/project"},
@@ -181,12 +197,9 @@ func TestDuplicateAdaptedFactIsRejected(t *testing.T) {
 		ChangedLinesThreshold:      posture.Observed(1000),
 		SensitivePathPatterns:      posture.Observed([]string{}),
 		Commits:                    []posture.CommitHistoryFact{},
-		SignedTagCount:             posture.Unknown[int](),
-		UnsignedTagCount:           posture.Unknown[int](),
-		ReleaseBoundaryChangeCount: posture.Unknown[int](),
+		SignedTagCount:             posture.Unknown[int](posture.Evidence{Source: "scope", Reference: "tags"}),
+		UnsignedTagCount:           posture.Unknown[int](posture.Evidence{Source: "scope", Reference: "tags"}),
+		ReleaseBoundaryChangeCount: posture.Unknown[int](posture.Evidence{Source: "scope", Reference: "releases"}),
 		Evidence:                   []posture.Evidence{},
-	}
-	if err := AddCommits(&inputs, commits); err == nil {
-		t.Fatal("expected duplicate fact to fail")
 	}
 }
