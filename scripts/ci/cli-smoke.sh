@@ -40,6 +40,7 @@ assert_subcommand_help apply
 "$binary" posture hooks --help >/dev/null
 "$binary" posture commits --help >/dev/null
 "$binary" posture mirrors --help >/dev/null
+"$binary" posture report --help >/dev/null
 "$binary" plan-readme --help >/dev/null
 "$binary" apply-readme --help >/dev/null
 "$binary" validate-report --help >/dev/null
