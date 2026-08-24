@@ -27,10 +27,10 @@ func TestEvaluateCoversPassFailExceptionUnknownAndUnavailable(t *testing.T) {
 		Repository: "hackelia-micrantha/repora",
 		Facts: map[string]FactInput{
 			"repository.default_branch_protected": observed(true, "branch-protection"),
-			"repository.required_reviews": observed(0, "branch-protection"),
-			"repository.security_md_present": observed(false, "tree"),
-			"mirrors.reconciliation_state": {State: posture.StateUnavailable, Evidence: []posture.Evidence{{Source: "mirror", Reference: "origin"}}},
-			"repository.required_status_checks": {State: posture.StateUnknown, Evidence: []posture.Evidence{{Source: "github", Reference: "branch-protection"}}},
+			"repository.required_reviews":         observed(0, "branch-protection"),
+			"repository.security_md_present":      observed(false, "tree"),
+			"mirrors.reconciliation_state":        {State: posture.StateUnavailable, Evidence: []posture.Evidence{{Source: "mirror", Reference: "origin"}}},
+			"repository.required_status_checks":   {State: posture.StateUnknown, Evidence: []posture.Evidence{{Source: "github", Reference: "branch-protection"}}},
 		},
 	}
 
@@ -62,7 +62,7 @@ func TestEvaluateCoversPassFailExceptionUnknownAndUnavailable(t *testing.T) {
 func TestExpiredExceptionRemainsFinding(t *testing.T) {
 	profile := Profile{
 		Kind: ProfileKind, Version: ProfileVersion, ID: "baseline",
-		Rules: []Rule{{ID: "protected", Area: "repository", Fact: "protected", Operator: OperatorEquals, Expected: json.RawMessage(`true`), Severity: SeverityHigh, Title: "Protected", Remediation: []string{}}},
+		Rules:      []Rule{{ID: "protected", Area: "repository", Fact: "protected", Operator: OperatorEquals, Expected: json.RawMessage(`true`), Severity: SeverityHigh, Title: "Protected", Remediation: []string{}}},
 		Exceptions: []Exception{{RuleID: "protected", Reason: "migration", Owner: "platform", Expires: "2026-08-01"}},
 	}
 	report, err := Evaluate(profile, Inputs{Repository: "o/r", Facts: map[string]FactInput{"protected": observed(false, "branch")}}, time.Date(2026, 8, 23, 0, 0, 0, 0, time.UTC))
@@ -107,8 +107,10 @@ func TestRenderMarkdownIsDeterministicAndVisible(t *testing.T) {
 
 func TestProfileRequiresCompleteExceptions(t *testing.T) {
 	profile := Profile{
-		Kind: ProfileKind, Version: ProfileVersion, ID: "baseline",
-		Rules: []Rule{{ID: "r", Area: "repository", Fact: "f", Operator: OperatorEquals, Expected: json.RawMessage(`true`), Severity: SeverityLow, Title: "Rule", Remediation: []string{}}},
+		Kind:       ProfileKind,
+		Version:    ProfileVersion,
+		ID:         "baseline",
+		Rules:      []Rule{{ID: "r", Area: "repository", Fact: "f", Operator: OperatorEquals, Expected: json.RawMessage(`true`), Severity: SeverityLow, Title: "Rule", Remediation: []string{}}},
 		Exceptions: []Exception{{RuleID: "r", Reason: "", Owner: "platform", Expires: "2026-09-01"}},
 	}
 	if err := profile.Validate(); err == nil {
