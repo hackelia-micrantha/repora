@@ -8,7 +8,7 @@ import (
 type GitHubCommitReader interface {
 	Commits(context.Context, string, string, int) ([]GitHubCommitSummary, bool, ReadObservation, error)
 	Commit(context.Context, string, string) (GitHubCommitDetail, ReadObservation, error)
-	CommitPullRequests(context.Context, string, string) (int, ReadObservation, error)
+	CommitPullRequests(context.Context, string, string) (int, bool, ReadObservation, error)
 }
 
 func CollectGitHubCommits(ctx context.Context, repoReader GitHubReader, commitReader GitHubCommitReader, fullName string) (CommitInventory, error) {
@@ -67,7 +67,9 @@ func CollectGitHubCommits(ctx context.Context, repoReader GitHubReader, commitRe
 	inventory.ChangedLinesThreshold = Observed(profile.ChangedLinesThreshold, profileEvidence)
 	inventory.SensitivePathPatterns = Observed(profile.SensitivePaths, profileEvidence)
 
-	summaries, truncated, commitsObs, err := commitReader.Commits(ctx, fullName, repo.DefaultBranch, profile.HistoryLimit)
+	// Pin the history query to the exact commit observed above. Using the branch
+	// name here would allow a concurrent branch advance to mix two snapshots.
+	summaries, truncated, commitsObs, err := commitReader.Commits(ctx, fullName, branch.CommitSHA, profile.HistoryLimit)
 	if err != nil {
 		return CommitInventory{}, err
 	}
@@ -105,17 +107,19 @@ func collectCommitFact(ctx context.Context, reader GitHubCommitReader, fullName 
 	}
 	association := Unknown[int](Evidence{Source: "repora.scope", Reference: summary.SHA, Detail: "pull-request association observation disabled by profile"})
 	if profile.InspectPullRequests {
-		count, prObs, err := reader.CommitPullRequests(ctx, fullName, summary.SHA)
+		count, complete, prObs, err := reader.CommitPullRequests(ctx, fullName, summary.SHA)
 		if err != nil {
 			return CommitHistoryFact{}, err
 		}
-		if prObs.Available {
+		if !prObs.Available {
+			association = Unavailable[int](prObs.Evidence)
+		} else if complete {
 			association = Observed(count, prObs.Evidence)
 		} else {
-			association = Unavailable[int](prObs.Evidence)
+			association = Unknown[int](evidenceWithDetail(prObs.Evidence, "pull-request association list may be incomplete; exact count cannot be established"))
 		}
 	}
-	inferenceEvidence := Evidence{Source: "repora.scope", Reference: summary.SHA, Detail: "commit/PR association does not prove direct-push or review status"}
+	inferenceEvidence := unsupportedReviewEvidence(summary.SHA)
 	return CommitHistoryFact{
 		SHA:                           detail.SHA,
 		MergeCommit:                   Observed(detail.ParentCount > 1, obs.Evidence),
@@ -133,6 +137,7 @@ func collectCommitFact(ctx context.Context, reader GitHubCommitReader, fullName 
 }
 
 func unavailableCommitFact(sha string, evidence Evidence) CommitHistoryFact {
+	inferenceEvidence := unsupportedReviewEvidence(sha)
 	return CommitHistoryFact{
 		SHA:                           sha,
 		MergeCommit:                   Unavailable[bool](evidence),
@@ -144,9 +149,13 @@ func unavailableCommitFact(sha string, evidence Evidence) CommitHistoryFact {
 		ChangedLinesThresholdExceeded: Unavailable[bool](evidence),
 		SensitivePathsChanged:         Unavailable[[]string](evidence),
 		AssociatedPullRequests:        Unavailable[int](evidence),
-		DirectToDefaultBranch:         Unavailable[bool](evidence),
-		UnreviewedChange:              Unavailable[bool](evidence),
+		DirectToDefaultBranch:         Unknown[bool](inferenceEvidence),
+		UnreviewedChange:              Unknown[bool](inferenceEvidence),
 	}
+}
+
+func unsupportedReviewEvidence(sha string) Evidence {
+	return Evidence{Source: "repora.scope", Reference: sha, Detail: "commit/PR association does not prove direct-push or review status"}
 }
 
 func thresholdFact(observed, threshold int, complete bool, evidence Evidence) Fact[bool] {
