@@ -4,7 +4,6 @@
 
 ![status](https://img.shields.io/badge/status-pre--alpha-blue)
 ![license](https://img.shields.io/badge/license-BSL%201.1-orange)
-![release](https://img.shields.io/badge/release-v0.1.0-black)
 
 ## Overview
 
@@ -148,7 +147,7 @@ See [Posture policy and deterministic reports](docs/posture-policy.md).
 
 ### Build, release, and assurance
 
-- published `v0.1.0` release with Linux amd64, macOS amd64/arm64, and Windows amd64 archives plus SHA-256 checksums;
+- `v0.1.0` established the first published archive baseline with Linux amd64, macOS amd64/arm64, and Windows amd64 archives plus SHA-256 checksums;
 - standalone Nix package/app/check/dev-shell/formatter outputs for Linux x86_64 and macOS x86_64/aarch64;
 - explicit fast/unit, integration, contract, CLI end-to-end, and cross-platform build gates;
 - Go vet + Staticcheck, vulnerability scanning, CodeQL, Git-history secret detection, dependency-license validation, and workflow-policy validation.
@@ -175,9 +174,7 @@ See [Posture policy and deterministic reports](docs/posture-policy.md).
 
 ### Release archives
 
-`v0.1.0` is the currently published release through GitHub Releases. Version tags publish archives for Linux amd64, macOS amd64/arm64, and Windows amd64. Each release includes `checksums.txt`; packaged binaries report the embedded tag and source commit through `repoctl --version`.
-
-The `v0.2.0` capability set described in this branch is a release candidate until the immutable tag is published and independently verified.
+GitHub Releases publish versioned archives for Linux amd64, macOS amd64/arm64, and Windows amd64. Each release includes `checksums.txt`; packaged binaries report the embedded tag and source commit through `repoctl --version`. `v0.1.0` established the first released baseline; the tagged changelog and GitHub Release define the supported surface for each later version.
 
 See [release installation and verification](docs/release.md) for target support, checksum commands, local reproduction, and rollback guidance.
 
@@ -409,7 +406,7 @@ See [LICENSE](LICENSE).
 
 ## Project status
 
-Pre-alpha and actively evolving. `v0.1.0` remains the currently published release until `v0.2.0` is tagged and independently verified; the release candidate preserves explicit versioned contracts and deferred authority boundaries.
+Pre-alpha and actively evolving. Tagged releases define supported release scope; current `main` may contain additional unreleased work. The changelog and versioned contracts remain the compatibility authority until a later stability milestone.
 
 External contributions are currently closed while the core model stabilizes. Concrete use cases and failure reports are welcome.
 
