@@ -10,7 +10,7 @@
 
 **Repora** manages repository state through explicit topology, observation, policy, exact planning, stale-safe execution, honest partial results, and durable evidence.
 
-**repoctl** is the current Go CLI. Its primary runtime is a local-first Git mirror controller: each repository has one GitLab canonical and one or more GitHub/GitLab mirrors. Repora also has a separate bounded managed-README plan/apply domain, local repository-assessment commands, deterministic document-routing contracts, GitHub repository/CI and documentation posture collectors, and mirror-posture observation built on declared topology plus existing reconciliation evidence.
+**repoctl** is the current Go CLI. Its primary runtime is a local-first Git mirror controller: each repository has one GitLab canonical and one or more GitHub/GitLab mirrors. Repora also has a separate bounded managed-README plan/apply domain, local repository-assessment commands, deterministic document-routing contracts, GitHub repository/CI, documentation, and hooks/local-workflow posture collectors, and mirror-posture observation built on declared topology plus existing reconciliation evidence.
 
 Repora remains pre-alpha. The broader repository-control-plane model is product direction, not a claim that provider provisioning, hosted orchestration, automatic posture remediation, or arbitrary repository mutation exists today.
 
@@ -99,6 +99,20 @@ See [GitHub posture inventory v1](docs/posture-inventory.md).
 
 See [Documentation posture v1](docs/posture-documentation.md).
 
+### Hooks and local-workflow posture
+
+- versioned `repora.posture-hooks` v1 fact contract using the shared observed/unknown/unavailable evidence model;
+- `repoctl posture hooks OWNER/REPO` GET-only collection from default-branch tree/blob evidence;
+- common manager/config detection for pre-commit, Lefthook, Husky, and custom `.githooks` entrypoints;
+- optional bounded `.repora/posture-hooks.yaml` profile for manager, hook paths, required local checks, bootstrap docs, and bypass docs;
+- required-check comparison against observable GitHub Actions workflow text while keeping CI authoritative;
+- bounded static network-load signals for hook/config text without following or executing referenced code;
+- missing paths become observed `false` only when tree evidence is complete; inaccessible/truncated evidence remains unavailable/unknown;
+- hook presence is not treated as trust, and target-repository hooks or package-manager commands are never installed or executed;
+- executable state remains explicit `unknown` in v1 because the shared GitHub tree model does not yet expose file mode.
+
+See [Hooks/local-workflow posture v1](docs/posture-hooks.md).
+
 ### Mirror posture
 
 - versioned `repora.posture-mirrors` v1 fact contract derived from normal `repora.yaml` topology;
@@ -133,6 +147,7 @@ See [Mirror posture v1](docs/posture-mirrors.md).
 - posture provider APIs are GitHub-first; GitLab/Bitbucket provider-administration posture adapters, policy evaluation, reports, and remediation are not implemented;
 - mirror posture does not yet observe tag/release drift and does not perform synchronization;
 - documentation posture is deterministic/file-backed only; it does not perform prose linting, semantic review, LLM analysis, or automatic rewrites;
+- hooks posture uses static bounded text evidence only and does not execute hooks or prove semantic equivalence between local checks and CI;
 - routing and assessments do not automatically mutate repositories or provider settings;
 - no release signing or full provenance attestation.
 
@@ -200,7 +215,7 @@ repos:
 
 Credentials must not be embedded in configuration. Authentication is delegated to system Git and credential helpers. Managed README templates are local configuration-root-relative files and cannot execute code or fetch remote content. Posture provider tokens are optional environment inputs and are never stored in `repora.yaml`.
 
-Documentation posture targets are independently declared in `.repora/posture-documentation.yaml`; that repository-owned profile is observation configuration, not policy or mutation authority.
+Documentation posture targets are independently declared in `.repora/posture-documentation.yaml`; hooks/local-workflow posture expectations are independently declared in `.repora/posture-hooks.yaml`. These repository-owned profiles are observation configuration, not policy or mutation authority.
 
 See [`docs/configuration/provider-path-topology-v1.md`](docs/configuration/provider-path-topology-v1.md) and [`examples/managed-readme/`](examples/managed-readme/).
 
@@ -248,10 +263,13 @@ Managed README apply does not accept `--force`. Stale exact plans exit `2`; inva
 ```bash
 repoctl posture inventory OWNER/REPO > posture.json
 repoctl posture docs OWNER/REPO > documentation-posture.json
+repoctl posture hooks OWNER/REPO > hooks-posture.json
 repoctl posture mirrors -f repora.yaml > mirror-posture.json
 ```
 
-`posture inventory` and `posture docs` use GET-only GitHub provider reads. Public repositories need no token; private or protected provider evidence may use `GITHUB_TOKEN` or `GH_TOKEN`.
+`posture inventory`, `posture docs`, and `posture hooks` use GET-only GitHub provider reads. Public repositories need no token; private or protected provider evidence may use `GITHUB_TOKEN` or `GH_TOKEN`.
+
+`posture hooks` never installs or executes target-repository hooks. It emits local-workflow evidence for later policy evaluation; CI remains the enforcement authority.
 
 `posture mirrors` loads the normal Repora topology, refreshes local mirror-cache observation using existing status semantics, and may also use GET-only GitHub metadata reads. It emits facts, not findings, and does not push or synchronize repositories.
 
@@ -273,6 +291,7 @@ These commands operate on local assessment artifacts and do not perform Git or p
 - [Managed README planning/apply lifecycle](docs/architecture/managed-artifact-planning.md)
 - [GitHub posture inventory v1](docs/posture-inventory.md)
 - [Documentation posture v1](docs/posture-documentation.md)
+- [Hooks/local-workflow posture v1](docs/posture-hooks.md)
 - [Mirror posture v1](docs/posture-mirrors.md)
 - [Repository/CI posture model](docs/posture.md)
 - [Failure and recovery semantics](docs/architecture/failure-semantics.md)
@@ -315,9 +334,10 @@ Current controls include:
 - fail-closed intent persistence;
 - path-bound per-target result evidence;
 - managed README fixed-path authority, contained local templates, exact-plan preflight, and exact-base leased pushes;
-- repository/CI and documentation posture provider reads are GET-only, with environment-only optional tokens and explicit unavailable evidence;
+- repository/CI, documentation, and hooks posture provider reads are GET-only, with environment-only optional tokens and explicit unavailable evidence;
 - mirror posture reuses fetch-only local cache observation and GET-only provider metadata reads, with no push/synchronization/provider-mutation path;
-- documentation profiles/Markdown are treated as bounded data and are never executed; profile configuration cannot grant severity, remediation, or mutation authority;
+- documentation and hooks profiles/configuration are treated as bounded data and are never executed; profile configuration cannot grant severity, remediation, or mutation authority;
+- target-repository hook code is never installed, sourced, or executed by posture collection;
 - sanitized diagnostics and safe relative journal references;
 - no implicit target selection, replay, rollback, cross-remote atomicity, provider mutation, or approval claim;
 - tag-only release publication with least-privilege workflow permissions;
@@ -327,9 +347,9 @@ ADR-0018 defines an optional future Anthesis `pre_apply` authorization seam. Run
 
 ## Roadmap
 
-The `v0.1.0` mirror-controller release is published and independently verified. The first post-release managed-README, routing, assessment, standalone Nix packaging, GitHub repository/CI posture, documentation posture, and mirror posture foundations are implemented.
+The `v0.1.0` mirror-controller release is published and independently verified. The first post-release managed-README, routing, assessment, standalone Nix packaging, GitHub repository/CI posture, documentation posture, mirror posture, and hooks/local-workflow posture foundations are implemented.
 
-The next posture slices extend the shared fact/evidence model with hooks/local workflow signals (#123) and bounded commit/process evidence (#122) before policy evaluation/reporting (#121). Provider mutation, Anthesis runtime coupling, expanded ref scope, concurrent mirror mutation, signing, full provenance, and hosted control-plane behavior remain explicitly deferred.
+The next posture slice is bounded commit/process evidence (#122), followed by policy evaluation/reporting convergence (#121). Provider mutation, Anthesis runtime coupling, expanded ref scope, concurrent mirror mutation, signing, full provenance, and hosted control-plane behavior remain explicitly deferred.
 
 The authoritative order is maintained in [`docs/plans/current.md`](docs/plans/current.md) and GitHub issues.
 
