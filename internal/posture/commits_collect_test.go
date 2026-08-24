@@ -51,7 +51,7 @@ inspect_pull_requests: true
 			{Path: commitProfilePath, Type: "blob", SHA: "profile"},
 		}},
 		treeObs: available("github.git_tree", "acme/project:tree"),
-		blobs: map[string][]byte{"profile": profile},
+		blobs:   map[string][]byte{"profile": profile},
 		blobObs: map[string]ReadObservation{"profile": available("github.blob", "profile")},
 	}
 	commitReader := &fakeCommitReader{
@@ -122,8 +122,8 @@ func TestCommitFileIncompletenessPreservesUnknownNegativeFacts(t *testing.T) {
 		details: map[string]GitHubCommitDetail{
 			"a": {SHA: "a", ParentCount: 1, VerifyReason: "unsigned", Files: []string{"README.md"}, FilesComplete: false},
 		},
-		detailObs: map[string]ReadObservation{"a": available("github.commit", "a")},
-		pullRequests: map[string]int{"a": 0},
+		detailObs:      map[string]ReadObservation{"a": available("github.commit", "a")},
+		pullRequests:   map[string]int{"a": 0},
 		pullRequestObs: map[string]ReadObservation{"a": available("github.commit_pulls", "a")},
 	}
 	fact, err := collectCommitFact(context.Background(), reader, "acme/project", profile, GitHubCommitSummary{SHA: "a"})
@@ -145,8 +145,8 @@ func TestCommitPositiveSensitiveMatchSurvivesIncompleteFileList(t *testing.T) {
 		details: map[string]GitHubCommitDetail{
 			"a": {SHA: "a", VerifyReason: "unsigned", Files: []string{"SECURITY.md"}, FilesComplete: false},
 		},
-		detailObs: map[string]ReadObservation{"a": available("github.commit", "a")},
-		pullRequests: map[string]int{"a": 0},
+		detailObs:      map[string]ReadObservation{"a": available("github.commit", "a")},
+		pullRequests:   map[string]int{"a": 0},
 		pullRequestObs: map[string]ReadObservation{"a": available("github.commit_pulls", "a")},
 	}
 	fact, err := collectCommitFact(context.Background(), reader, "acme/project", profile, GitHubCommitSummary{SHA: "a"})
