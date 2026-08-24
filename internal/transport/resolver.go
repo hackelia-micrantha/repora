@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"unicode"
 
 	"repoctl/internal/config"
 )
@@ -125,8 +126,11 @@ func validateBitbucketPath(path string) error {
 	if len(parts) != 2 {
 		return fmt.Errorf("must be workspace/repository")
 	}
+	if strings.HasSuffix(parts[1], ".git") {
+		return fmt.Errorf("repository segment must not end in .git")
+	}
 	for _, part := range parts {
-		if strings.TrimSpace(part) != part || strings.ContainsAny(part, `\:@?#`) {
+		if strings.IndexFunc(part, unicode.IsSpace) >= 0 || strings.ContainsAny(part, `\:@?#`) {
 			return fmt.Errorf("contains an unsafe workspace or repository segment")
 		}
 	}
