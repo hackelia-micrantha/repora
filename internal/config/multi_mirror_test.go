@@ -16,8 +16,8 @@ func TestLoadAllowsMultipleProviderPathMirrors(t *testing.T) {
     mirrors:
       - provider: github
         path: org/payments-api
-      - provider: gitlab
-        path: backup/payments-api
+      - provider: bitbucket
+        path: workspace/payments-api
 `))
 
 	spec, err := Load(path)
@@ -26,6 +26,9 @@ func TestLoadAllowsMultipleProviderPathMirrors(t *testing.T) {
 	}
 	if got := len(spec.Repos[0].Mirrors); got != 2 {
 		t.Fatalf("mirror count = %d, want 2", got)
+	}
+	if got := spec.Repos[0].Mirrors[1]; got.Provider != "bitbucket" || got.Path != "workspace/payments-api" {
+		t.Fatalf("second mirror = %#v", got)
 	}
 }
 
