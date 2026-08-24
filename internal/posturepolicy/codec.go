@@ -155,13 +155,39 @@ func (r Report) Validate() error {
 		if evaluation.Evidence == nil || evaluation.Remediation == nil {
 			return fmt.Errorf("evaluation[%d] evidence and remediation arrays are required", idx)
 		}
+		if !validSeverity(evaluation.Severity) {
+			return fmt.Errorf("evaluation[%d] has unsupported severity %q", idx, evaluation.Severity)
+		}
 		switch evaluation.Status {
 		case StatusPass, StatusFail, StatusWarning, StatusExcepted, StatusUnknown, StatusUnavailable:
 		default:
 			return fmt.Errorf("evaluation[%d] has unsupported status %q", idx, evaluation.Status)
 		}
+		if len(evaluation.Expected) > 0 && !json.Valid(evaluation.Expected) {
+			return fmt.Errorf("evaluation[%d] expected value is invalid JSON", idx)
+		}
+		if len(evaluation.Observed) > 0 && !json.Valid(evaluation.Observed) {
+			return fmt.Errorf("evaluation[%d] observed value is invalid JSON", idx)
+		}
+		if evaluation.Exception != nil {
+			if evaluation.Exception.RuleID != evaluation.RuleID || strings.TrimSpace(evaluation.Exception.Reason) == "" || strings.TrimSpace(evaluation.Exception.Owner) == "" {
+				return fmt.Errorf("evaluation[%d] exception is incomplete or references a different rule", idx)
+			}
+			if _, err := time.Parse("2006-01-02", evaluation.Exception.Expires); err != nil {
+				return fmt.Errorf("evaluation[%d] exception expiry must use YYYY-MM-DD: %w", idx, err)
+			}
+		}
 	}
 	return nil
+}
+
+func validSeverity(severity Severity) bool {
+	switch severity {
+	case SeverityCritical, SeverityHigh, SeverityMedium, SeverityLow, SeverityInfo:
+		return true
+	default:
+		return false
+	}
 }
 
 func marshalIndented(value any, name string) ([]byte, error) {
