@@ -42,6 +42,9 @@ func runPosture(args []string) int {
 	if len(args) > 0 && args[0] == "mirrors" {
 		return runMirrorPosture(args[1:])
 	}
+	if len(args) > 0 && args[0] == "report" {
+		return runPostureReport(args[1:])
+	}
 	if len(args) == 2 && (args[1] == "-h" || args[1] == "--help") {
 		switch args[0] {
 		case "inventory", "docs", "hooks", "commits":
@@ -185,4 +188,5 @@ func printPostureUsage(w *os.File) {
 	fmt.Fprintln(w, "       repoctl posture hooks OWNER/REPO")
 	fmt.Fprintln(w, "       repoctl posture commits OWNER/REPO")
 	fmt.Fprintln(w, "       repoctl posture mirrors -f repora.yaml")
+	fmt.Fprintln(w, "       repoctl posture report --profile POLICY.json --facts FACTS.json --as-of YYYY-MM-DD [--format markdown|json]")
 }
