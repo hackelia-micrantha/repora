@@ -215,6 +215,8 @@ repos:
 
 Credentials must not be embedded in configuration. Authentication is delegated to system Git and credential helpers. Managed README templates are local configuration-root-relative files and cannot execute code or fetch remote content. Posture provider tokens are optional environment inputs and are never stored in `repora.yaml`.
 
+Repora stores bare repository caches under `$HOME/.cache/repora` by default. Containers, sandboxes, and other environments with a read-only home may set `REPORA_CACHE_DIR` to an absolute writable directory. The override is runtime-only, is not serialized into plans or evidence, and does not weaken the existing safe-UID, symlink, or cache-integrity checks.
+
 Documentation posture targets are independently declared in `.repora/posture-documentation.yaml`; hooks/local-workflow posture expectations are independently declared in `.repora/posture-hooks.yaml`. These repository-owned profiles are observation configuration, not policy or mutation authority.
 
 See [`docs/configuration/provider-path-topology-v1.md`](docs/configuration/provider-path-topology-v1.md) and [`examples/managed-readme/`](examples/managed-readme/).
