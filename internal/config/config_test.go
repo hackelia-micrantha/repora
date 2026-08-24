@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -175,10 +176,10 @@ func TestLoadRejectsUnsupportedCanonicalProvider(t *testing.T) {
   - id: payments-api
     canonical:
       provider: bitbucket
-      url: git@bitbucket.org:org/payments-api.git
+      path: org/payments-api
     mirrors:
       - provider: github
-        url: git@github.com:org/payments-api.git
+        path: org/payments-api
     mode: mirror
 `))
 
@@ -188,16 +189,77 @@ func TestLoadRejectsUnsupportedCanonicalProvider(t *testing.T) {
 	}
 }
 
+func TestLoadAllowsBitbucketProviderPathMirror(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "repora.yaml")
+	writeFile(t, path, []byte(`repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      path: org/payments-api
+    mirrors:
+      - provider: bitbucket
+        path: workspace/payments-api
+    mode: mirror
+`))
+
+	spec, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	mirror := spec.Repos[0].Mirrors[0]
+	if mirror.Provider != "bitbucket" || mirror.Path != "workspace/payments-api" {
+		t.Fatalf("mirror = %#v", mirror)
+	}
+}
+
+func TestLoadRejectsBitbucketLegacyURL(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "repora.yaml")
+	writeFile(t, path, []byte(`repos:
+  - id: payments-api
+    canonical:
+      provider: gitlab
+      path: org/payments-api
+    mirrors:
+      - provider: bitbucket
+        url: https://bitbucket.org/workspace/payments-api.git
+    mode: mirror
+`))
+
+	_, err := Load(path)
+	if err == nil || !strings.Contains(err.Error(), "requires provider/path identity") {
+		t.Fatalf("error = %v, want provider/path-only rejection", err)
+	}
+}
+
+func TestLoadRejectsMalformedBitbucketPaths(t *testing.T) {
+	for _, mirrorPath := range []string{
+		"workspace/group/payments-api",
+		"workspace/payments-api?token=value",
+		"workspace/payments-api#fragment",
+		`workspace/payments-api\other`,
+		"workspace/payments-api:other",
+		"workspace/payments-api/",
+	} {
+		t.Run(mirrorPath, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "repora.yaml")
+			writeFile(t, path, []byte("repos:\n  - id: payments-api\n    canonical:\n      provider: gitlab\n      path: org/payments-api\n    mirrors:\n      - provider: bitbucket\n        path: \""+mirrorPath+"\"\n"))
+			if _, err := Load(path); err == nil {
+				t.Fatalf("Load(%q) returned nil error", mirrorPath)
+			}
+		})
+	}
+}
+
 func TestLoadRejectsUnsupportedMirrorProvider(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "repora.yaml")
 	writeFile(t, path, []byte(`repos:
   - id: payments-api
     canonical:
       provider: gitlab
-      url: git@gitlab.com:org/payments-api.git
+      path: org/payments-api
     mirrors:
-      - provider: bitbucket
-        url: git@bitbucket.org:org/payments-api.git
+      - provider: other
+        path: org/payments-api
     mode: mirror
 `))
 
