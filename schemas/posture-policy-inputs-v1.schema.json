@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/posture-policy-inputs-v1.schema.json",
+  "title": "Repora posture policy normalized inputs v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "repository", "facts"],
+  "properties": {
+    "kind": {"const": "repora.posture-policy-inputs"},
+    "version": {"const": 1},
+    "repository": {"type": "string", "minLength": 1},
+    "facts": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/fact"}
+    }
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "reference"],
+      "properties": {
+        "source": {"type": "string", "minLength": 1},
+        "reference": {"type": "string", "minLength": 1},
+        "detail": {"type": "string"}
+      }
+    },
+    "fact": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "value", "evidence"],
+          "properties": {
+            "state": {"const": "observed"},
+            "value": {},
+            "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "evidence"],
+          "properties": {
+            "state": {"enum": ["unknown", "unavailable"]},
+            "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}
+          }
+        }
+      ]
+    }
+  }
+}
