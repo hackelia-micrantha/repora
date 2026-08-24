@@ -95,7 +95,9 @@ Integration tests must use `t.TempDir()` or another disposable workspace and mus
 
 ## Scheduled deep validation
 
-`.github/workflows/deep-validation.yml` runs every Sunday at 08:17 UTC and can also be started manually. It is non-blocking for commits that have already merged. Each job is a separate failure boundary:
+`.github/workflows/deep-validation.yml` runs every Sunday at 08:17 UTC and can also be started manually. It is non-blocking for commits that have already merged. Release candidates require successful deep-validation evidence on the exact release candidate revision before the immutable tag is created; the release issue must record the run or an explicitly reviewed equivalent.
+
+Each job is a separate failure boundary:
 
 - **Repeated fast tests** runs the race-enabled short suite ten times. The log records the exact command, package pattern, iteration count, and failing iteration.
 - **Full integration race tests** runs every Go test without `-short` under the race detector. Fixtures remain disposable and do not contact provider-hosted remotes.

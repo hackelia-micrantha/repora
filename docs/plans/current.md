@@ -4,9 +4,9 @@ Status: Active
 
 ## Current objective
 
-Repora's v0.1 mirror-controller baseline is published, and current `main` contains a coherent post-v0.1 capability set: managed README mutation, routing and assessment foundations, standalone Nix packaging, repository posture collectors, offline posture policy/reporting, and Bitbucket Cloud mirror transport.
+Repora's v0.1 mirror-controller baseline is published, and current `main` contains a coherent post-v0.1 capability set: managed README mutation, routing and assessment foundations, standalone Nix packaging, repository posture collectors, offline posture convergence/policy/reporting, and Bitbucket Cloud mirror transport.
 
-The immediate milestone is to reconcile project truth, exercise the integrated operator workflows against representative repositories, and publish the next independently verified pre-alpha release before selecting additional product scope.
+Project-truth reconciliation and representative operator acceptance are complete. The immediate milestone is to publish and independently verify the `v0.2.0` pre-alpha capability baseline before selecting additional product scope.
 
 ## Completed foundation
 
@@ -32,46 +32,37 @@ The immediate milestone is to reconcile project truth, exercise the integrated o
 | Mirror posture v1 | Complete | Declared canonical/mirror identities, default-branch names, existing reconciliation drift, and bounded provider metadata facts reuse topology/status semantics without provider mutation or expanded ref scope. |
 | Hooks/local-workflow posture v1 | Complete | Common/custom hook signals, declared local checks, CI-coverage evidence, bootstrap/bypass documentation, and static network-load signals are normalized without installing or executing repository hook code. |
 | Bounded commit-history posture v1 | Complete | A capped default-branch history window exposes signature, merge-shape, size/file-scope, sensitive-path, and commit/PR-association evidence without identity analytics, productivity scoring, blame, or intent inference. |
-| Posture policy/reporting v1 | Complete | External versioned policy evaluates normalized fact inputs offline with explicit severity, remediation, time-bounded exceptions, warning/failure states, preserved unknown/unavailable evidence, an explicit `as_of` date, and deterministic Markdown/JSON reports without provider re-scan or opaque scoring. |
+| Posture convergence/policy/reporting v1 | Complete | Captured collector artifacts converge offline into normalized inputs; external versioned policy evaluates them with explicit severity, remediation, time-bounded exceptions, warning/failure states, preserved unknown/unavailable evidence, an explicit `as_of` date, and deterministic Markdown/JSON reports without provider re-scan or opaque scoring. |
+| Project-truth reconciliation | Complete | #139 reconciled current architecture, documentation, and active backlog with merged behavior. |
+| Representative operator acceptance | Complete | #137 exercised mirror/read-only/dry-run paths, exposed/fixed #141 and #143, and recorded deterministic convergence/report evidence. |
 
 ## Active sequence
 
-### 1. Reconcile post-v0.1 project truth (#139)
+### 1. Publish the v0.2.0 capability baseline (#138)
 
-Align the active plan, roadmap, current architecture, README, and live GitHub backlog with merged implementation. Preserve the distinction between the published v0.1 surface and unreleased current-main capability.
-
-Exit condition:
-
-- no closed issue is described as active;
-- every implemented top-level domain appears in current architecture;
-- GitHub, GitLab, and Bitbucket Cloud provider claims are consistent;
-- the active issue queue is dependency-ordered and bounded.
-
-### 2. Exercise representative operator workflows (#137)
-
-Run the integrated read-only and dry-run workflows against a bounded representative repository set. Record the exact source commit, environment, unavailable evidence, deterministic report comparison, and any operator-facing defect.
+Perform release readiness, curate the changelog, reconcile README/current architecture/current plan claims, validate the exact release commit, publish through the documented immutable tag workflow, and independently download and verify the resulting assets.
 
 Exit condition:
 
-- mirror status, plan, and dry-run behavior is exercised without remote mutation;
-- inventory, documentation, hooks, commits, mirrors, and offline policy/report paths are exercised;
-- repeated output is deterministic where the contract requires it;
-- release-blocking defects are fixed or explicitly tracked.
-
-### 3. Publish the post-v0.1 capability baseline (#138)
-
-Perform release readiness, curate the changelog, select the next pre-alpha version, validate the exact release commit, publish through the documented tag workflow, and independently download and verify the resulting assets.
-
-Exit condition:
-
-- the supported capability set and known limitations are explicit;
-- CI, security, Nix, and release-package gates pass at the release commit;
+- the supported `v0.2.0` capability set and known limitations are explicit;
+- CI, security, Nix, deep validation, and release-package gates pass at the release commit;
 - published checksums and installed Linux binary are independently verified;
-- the release reports its exact tag and source commit.
+- the release reports its exact tag and source commit;
+- a safe representative path for newly released posture convergence/reporting succeeds from the published binary.
 
-### 4. Reassess the next concrete operator need
+### 2. Reassess the next concrete operator need
 
 After the release, prioritize new work from observed operator friction, security/reliability evidence, and dependency leverage. Do not automatically broaden posture, provider mutation, ref scope, or Anthesis integration.
+
+## Completed release-preparation sequence
+
+### Reconcile post-v0.1 project truth (#139)
+
+Completed before release acceptance. Current documentation/backlog distinguishes the published v0.1 surface from the post-v0.1 implementation and keeps provider/authority claims bounded.
+
+### Exercise representative operator workflows (#137)
+
+Completed on 2026-08-24. Live mirror/status/plan/dry-run and posture collector paths were exercised without remote mutation. Acceptance exposed the read-only-home cache defect (#141/#142) and missing convergence CLI (#143/#145); both were fixed. The final offline convergence/report path produced byte-identical repeated outputs for an explicit `--as-of` date.
 
 ## Explicit deferrals
 
@@ -109,7 +100,7 @@ Deferred tracks must reuse current identity, plan, policy, execution, result, ev
 - CI/Nix/posture must inspect or reuse canonical validation rather than redefine it independently.
 - Hooks posture may inspect repository-owned configuration only as bounded data; it must never install, source, execute, or bootstrap target-repository hook code.
 - Commit posture remains repository/process evidence only; author/committer identities, productivity metrics, blame, and intent inference are outside its contract.
-- Posture policy consumes normalized facts offline; it does not call providers, run scanners, or collapse findings into a numeric grade.
+- Posture convergence/policy/reporting consumes captured normalized evidence offline; it does not call providers, run scanners, or collapse findings into a numeric grade.
 
 ## Definition of done
 
