@@ -130,8 +130,8 @@ Configured exact marker text is not serialized in the output. Malformed profile/
 
 The repository-declared profile is intentionally not a security policy. A repository can influence which documentation signals it asks Repora to observe, but it cannot use the profile to assign severity, suppress external policy, grant mutation authority, or mark generated/archived content canonical outside the explicit routing trust rules.
 
-## Relationship to later posture work
+## Relationship to posture policy
 
-Issue #119 owns deterministic documentation facts. Issue #121 remains the convergence layer for expected-vs-observed policy findings, severity, remediation guidance, Markdown reports, and eventual issue/PR workflows.
+`repora.posture-documentation` v1 owns deterministic documentation facts. The offline posture policy layer consumes this artifact for expected-vs-observed findings, explicit severity, remediation guidance, exceptions, and deterministic reports.
 
-Downstream policy should consume this artifact rather than re-reading README/docs independently, preserving one observation/provenance boundary.
+Policy consumes this artifact rather than re-reading README/docs independently, preserving one observation/provenance boundary. Any future issue/PR remediation remains a separate mutation capability.

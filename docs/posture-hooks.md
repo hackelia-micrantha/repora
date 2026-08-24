@@ -50,7 +50,7 @@ The profile is bounded data, not executable policy. Paths must be normalized rep
 
 ## Trust signals
 
-Hook/config blobs are inspected only as bounded text. `network_loaded=true` is emitted when static inspection sees common network-loading signals such as `curl`, `wget`, or HTTP(S) references. This does not execute or validate the remote content; it gives #121 normalized evidence from which policy can later produce findings.
+Hook/config blobs are inspected only as bounded text. `network_loaded=true` is emitted when static inspection sees common network-loading signals such as `curl`, `wget`, or HTTP(S) references. This does not execute or validate the remote content; it gives the offline posture policy layer normalized evidence from which explicit policy can produce findings.
 
 A missing bootstrap or bypass document is represented as an observed `false` only when a declared path can be proven absent from a complete tree. Truncated or inaccessible evidence stays `unknown` or `unavailable` rather than becoming a healthy conclusion.
 

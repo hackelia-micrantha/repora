@@ -15,14 +15,16 @@ Repora is a local-first repository controller exposed primarily through the `rep
 5. **Repository/CI posture inventory** — GET-only GitHub observation that normalizes repository, protection, file, and Actions evidence without evaluating policy or mutating provider state.
 6. **Documentation posture** — GET-only profile-driven document/README hygiene observation that preserves routing trust metadata without prose scoring, policy evaluation, or remediation authority.
 7. **Hooks/local-workflow posture** — GET-only bounded hook/config/workflow observation that preserves CI authority and never installs or executes target-repository hook code.
-8. **Mirror posture** — topology-driven canonical/mirror identity and drift observation that reuses existing reconciliation semantics, may refresh Repora's local cache, and never pushes or mutates provider settings.
-9. **Packaging and assurance** — release archives plus a standalone Nix package/check/development surface that reuses canonical validation boundaries.
+8. **Bounded commit-history posture** — GET-only process evidence over a capped default-branch history window without identity analytics, productivity scoring, blame, or intent inference.
+9. **Mirror posture** — topology-driven canonical/mirror identity and drift observation that reuses existing reconciliation semantics, may refresh Repora's local cache, and never pushes or mutates provider settings.
+10. **Offline posture policy and reporting** — deterministic expected-versus-observed evaluation over normalized facts, explicit severity/remediation/exceptions, and JSON/Markdown reports without provider access or opaque scoring.
+11. **Packaging and assurance** — release archives plus a standalone Nix package/check/development surface that reuses canonical validation boundaries.
 
-Repora does not provide arbitrary repository-file mutation, provider provisioning, hosted orchestration, automatic posture remediation, or a general policy engine.
+Repora does not provide arbitrary repository-file mutation, provider provisioning, hosted orchestration, automatic posture remediation, or a general execution/authorization policy engine. Its posture policy evaluates normalized evidence offline and grants no mutation authority.
 
 ## Git-ref reconciliation domain
 
-For each repository entry Repora supports one GitLab canonical and one or more GitHub/GitLab mirrors, provider/path identity, runtime HTTPS resolution, default-branch-only policy, independent mirror status, exact reconciliation artifact v2, complete stale/OID preflight, sequential independent mirror mutation, reviewed force-with-lease overwrites, per-target apply v3 outcomes, immutable execution evidence, and bounded repository concurrency.
+For each repository entry Repora supports one GitLab canonical and one or more GitHub, GitLab, or Bitbucket Cloud mirrors, provider/path identity, runtime HTTPS resolution, default-branch-only policy, independent mirror status, exact reconciliation artifact v2, complete stale/OID preflight, sequential independent mirror mutation, reviewed force-with-lease overwrites, per-target apply v3 outcomes, immutable execution evidence, and bounded repository concurrency.
 
 It does not provide tags, non-default branches, deleted-ref reconciliation, provider provisioning, rollback, or cross-remote transactions.
 
@@ -136,6 +138,22 @@ Important boundaries:
 - truncated/inaccessible/malformed evidence becomes unknown or unavailable rather than a passing fact;
 - policy evaluation, findings, remediation, and provider mutation remain outside the domain.
 
+## Bounded commit-history posture domain
+
+`repoctl posture commits OWNER/REPO` emits `repora.posture-commits` v1 evidence for a capped default-branch history window. An optional repository profile configures the history limit, change-size thresholds, sensitive-path patterns, and pull-request association observation.
+
+The collector records merge shape, provider signature state, bounded file/change counts, configured sensitive-path matches, and pull-request association counts where available. Incomplete provider evidence preserves unknown rather than producing negative conclusions. Direct-push, missing-review, tag-signature, and release-boundary conclusions remain unknown when the observed evidence cannot prove them.
+
+Commit posture is repository/process evidence, not people analytics: author and committer identities, productivity metrics, blame, and inferred intent are excluded. Collection remains GET-only and cannot mutate branches, tags, releases, or provider settings.
+
+## Offline posture policy and reporting domain
+
+`repoctl posture report` consumes validated normalized posture facts plus an external `repora.posture-policy-profile` v1. It evaluates explicit expectations, severity, remediation, and time-bounded exceptions and emits deterministic `repora.posture-report` v1 JSON or Markdown.
+
+Evaluation requires an explicit `--as-of` date so exception expiry has no hidden wall-clock dependency. Typed adapters consume the inventory, documentation, hooks, commits, and mirror fact contracts, preserve observed/unknown/unavailable state and source evidence, reject identity mixing and fact collisions atomically, and do not re-scan providers.
+
+Policy profiles are external policy data. Repository-owned observation profiles cannot assign severity, suppress policy, grant provider access, authorize mutation, or convert missing evidence into a pass. The policy layer does not call providers, execute scanners, create issues, mutate repositories, or calculate an opaque score.
+
 ## Mirror posture domain
 
 `repoctl posture mirrors -f repora.yaml` emits `repora.posture-mirrors` v1 JSON for repositories already declared in Repora topology.
@@ -159,7 +177,7 @@ Observation can create or refresh Repora's local bare mirror cache, configure ca
 
 A failed mirror does not cause cached remote HEAD data to be treated as current. Missing/unavailable branch evidence therefore cannot produce an observed healthy/default-branch-drift result by inference. Independent GitHub metadata may establish a branch name even when local branch evidence is unavailable, while commit/reconciliation evidence remains unavailable.
 
-GitLab Git transport/reconciliation evidence is supported; GitLab provider-administration metadata remains unavailable until a posture adapter exists. GitHub actor permissions are identity-specific and are therefore exposed as `current_actor_push_permission`, not a universal writeability claim.
+GitLab and Bitbucket Cloud Git transport/reconciliation evidence is supported; GitLab and Bitbucket provider-administration metadata remains unavailable until posture adapters exist. GitHub actor permissions are identity-specific and are therefore exposed as `current_actor_push_permission`, not a universal writeability claim.
 
 ## Package ownership
 
@@ -176,7 +194,8 @@ GitLab Git transport/reconciliation evidence is supported; GitLab provider-admin
 | `internal/managedartifact` | README template/render/observation/plan/preflight/candidate verification | Generic file authority or mirror reconciliation |
 | `internal/managedartifactapply` | journaled managed README execution/result correlation | Replanning reviewed content |
 | `internal/assessment` | strict assessment contracts, validation, skeleton, projections | Live discovery, automated scoring, mutation |
-| `internal/posture` | versioned posture facts and bounded repository/CI, documentation, hooks/local-workflow, and mirror observation | Policy evaluation, findings, scanners, remediation, provider mutation |
+| `internal/posture` | versioned posture facts and bounded repository/CI, documentation, hooks/local-workflow, commit-history, and mirror observation | Policy evaluation, findings, scanners, remediation, provider mutation |
+| `internal/posturepolicy` | offline normalized-fact adapters, expectation evaluation, exceptions, and deterministic reports | Provider reads, scanner execution, opaque scoring, or mutation |
 | `internal/journal` | immutable intent/result evidence and protected persistence | Mutation or replay authority |
 | `internal/git` | bounded Git subprocess/cache/object/ref/push mechanics | Product policy or durable identity |
 | `.repora/` + routing/posture profile validators | deterministic route/trust/context and documentation/hooks observation contracts | Source execution, severity policy, or mutation authority |
@@ -186,7 +205,7 @@ GitLab Git transport/reconciliation evidence is supported; GitLab provider-admin
 
 Repora distinguishes human `id`, durable logical `uid`, durable `(provider,path)` target identity, deterministic configuration order, and ephemeral resolved URLs/remote aliases.
 
-Mirror destructive intent requires existing local policy plus explicit `--force`. Managed README apply is a separate authority domain and accepts no force override. Repository/CI, documentation, and hooks posture expose no mutation authority; mirror posture can refresh only Repora's observation cache and exposes no push/synchronization/provider-mutation capability.
+Mirror destructive intent requires existing local policy plus explicit `--force`. Managed README apply is a separate authority domain and accepts no force override. Repository/CI, documentation, hooks, and commit posture expose no mutation authority; mirror posture can refresh only Repora's observation cache and exposes no push/synchronization/provider-mutation capability. Offline posture policy consumes normalized evidence and cannot grant provider or mutation authority.
 
 ADR-0018 defines a future optional Anthesis `pre_apply` authorization seam after Repora local preparation but before Git execution INTENT/mutation. No runtime evaluator, transport, CLI/config integration, or approval workflow is currently implemented.
 
@@ -209,7 +228,12 @@ Current serialized contracts include:
 - `repora.posture-documentation-profile` v1;
 - `repora.posture-hooks` v1;
 - `repora.posture-hooks-profile` v1;
-- `repora.posture-mirrors` v1.
+- `repora.posture-commits` v1;
+- `repora.posture-commits-profile` v1;
+- `repora.posture-mirrors` v1;
+- `repora.posture-policy-inputs` v1;
+- `repora.posture-policy-profile` v1;
+- `repora.posture-report` v1.
 
 Versioned files under `schemas/` are authoritative for serialized shapes.
 

@@ -258,14 +258,14 @@ Provider API mutation should come only after deterministic facts, policy/reporti
 
 ## Implementation phases
 
-1. **Complete** — read-only GitHub repository/CI inventory and normalized fact/evidence contract (#118).
-2. **Complete** — deterministic documentation/README hygiene facts and observation profile (#119).
-3. **Complete** — mirror-management drift facts reusing existing topology/status semantics (#120).
-4. **Complete** — hooks/local-workflow facts without executing hook code (#123).
-5. **Next** — bounded commit/process-risk facts without productivity scoring or intent inference (#122).
-6. **Convergence** — explicit policy evaluation and deterministic Markdown reporting over normalized facts (#121).
-7. **Later** — issue/PR-backed remediation after reporting is proven.
+1. **Complete** — read-only GitHub repository/CI inventory and normalized fact/evidence contract.
+2. **Complete** — deterministic documentation/README hygiene facts and observation profile.
+3. **Complete** — mirror-management drift facts reusing existing topology/status semantics.
+4. **Complete** — hooks/local-workflow facts without executing hook code.
+5. **Complete** — bounded commit/process-risk facts without productivity scoring or intent inference.
+6. **Complete** — explicit offline policy evaluation and deterministic JSON/Markdown reporting over normalized facts.
+7. **Later** — issue/PR-backed remediation after reporting is proven through operator acceptance.
 8. **Later/separate decision** — guarded provider API mutation.
 9. **Later** — broader GitLab and Bitbucket provider-administration adapters.
 
-The active implementation order is maintained in [`plans/current.md`](plans/current.md) and GitHub issue #124.
+The active implementation order is maintained in [`plans/current.md`](plans/current.md) and live GitHub issues.

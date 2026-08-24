@@ -4,7 +4,9 @@ Status: Active
 
 ## Current objective
 
-Repora's released mirror controller and first post-v0.1 managed-artifact, routing, assessment, policy-design, standalone packaging, repository/CI posture, documentation posture, mirror posture, local-workflow posture, bounded commit-history posture, and posture-policy/reporting foundations are complete in the current implementation line. The immediate objective is to finish independent review and exact-head validation of the posture convergence slice, then reassess the next concrete operator need rather than expand the posture system speculatively.
+Repora's v0.1 mirror-controller baseline is published, and current `main` contains a coherent post-v0.1 capability set: managed README mutation, routing and assessment foundations, standalone Nix packaging, repository posture collectors, offline posture policy/reporting, and Bitbucket Cloud mirror transport.
+
+The immediate milestone is to reconcile project truth, exercise the integrated operator workflows against representative repositories, and publish the next independently verified pre-alpha release before selecting additional product scope.
 
 ## Completed foundation
 
@@ -34,26 +36,42 @@ Repora's released mirror controller and first post-v0.1 managed-artifact, routin
 
 ## Active sequence
 
-### 1. Finish posture-policy convergence validation (#121)
+### 1. Reconcile post-v0.1 project truth (#139)
 
-Implementation is complete on the active branch. Remaining completion gates are independent review, review/fix iteration, and exact-head CI/security/release validation.
+Align the active plan, roadmap, current architecture, README, and live GitHub backlog with merged implementation. Preserve the distinction between the published v0.1 surface and unreleased current-main capability.
 
 Exit condition:
 
-- profiles express expected vs observed state with explicit severity;
-- informational mismatches are explicit warnings rather than hidden passes;
-- unknown/unavailable evidence remains visible;
-- exceptions require reason, owner, and expiry, and expired exceptions return as findings;
-- reports are deterministic and evidence-backed using an explicit `as_of` date;
-- typed adapters consume validated normalized posture artifacts and fail atomically on collisions;
-- policy/reporting does not rescan providers itself;
-- no provider mutation or opaque score is introduced.
+- no closed issue is described as active;
+- every implemented top-level domain appears in current architecture;
+- GitHub, GitLab, and Bitbucket Cloud provider claims are consistent;
+- the active issue queue is dependency-ordered and bounded.
 
-### 2. Reassess the next concrete operator need
+### 2. Exercise representative operator workflows (#137)
 
-After #121 closes the posture roadmap, do not automatically broaden posture scope. Prioritize existing project issues based on operator value, release impact, security, and dependency order.
+Run the integrated read-only and dry-run workflows against a bounded representative repository set. Record the exact source commit, environment, unavailable evidence, deterministic report comparison, and any operator-facing defect.
 
-ADR-0018 defines the optional Anthesis `pre_apply` seam, but design completion does not imply runtime implementation priority. Resume that work only when there is a concrete evaluator contract/deployment path and operator need.
+Exit condition:
+
+- mirror status, plan, and dry-run behavior is exercised without remote mutation;
+- inventory, documentation, hooks, commits, mirrors, and offline policy/report paths are exercised;
+- repeated output is deterministic where the contract requires it;
+- release-blocking defects are fixed or explicitly tracked.
+
+### 3. Publish the post-v0.1 capability baseline (#138)
+
+Perform release readiness, curate the changelog, select the next pre-alpha version, validate the exact release commit, publish through the documented tag workflow, and independently download and verify the resulting assets.
+
+Exit condition:
+
+- the supported capability set and known limitations are explicit;
+- CI, security, Nix, and release-package gates pass at the release commit;
+- published checksums and installed Linux binary are independently verified;
+- the release reports its exact tag and source commit.
+
+### 4. Reassess the next concrete operator need
+
+After the release, prioritize new work from observed operator friction, security/reliability evidence, and dependency leverage. Do not automatically broaden posture, provider mutation, ref scope, or Anthesis integration.
 
 ## Explicit deferrals
 
