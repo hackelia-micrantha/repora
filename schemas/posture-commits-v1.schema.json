@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/posture-commits-v1.schema.json",
+  "title": "Repora bounded commit-history posture inventory v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "repository", "default_branch", "default_commit", "profile_declared", "history_limit", "history_truncated", "file_count_threshold", "changed_lines_threshold", "sensitive_path_patterns", "commits", "signed_tag_count", "unsigned_tag_count", "release_boundary_change_count", "evidence"],
+  "properties": {
+    "kind": {"const": "repora.posture-commits"},
+    "version": {"const": 1},
+    "repository": {"$ref": "#/$defs/repository"},
+    "default_branch": {"$ref": "#/$defs/factString"},
+    "default_commit": {"$ref": "#/$defs/factString"},
+    "profile_declared": {"$ref": "#/$defs/factBool"},
+    "history_limit": {"$ref": "#/$defs/factInt"},
+    "history_truncated": {"$ref": "#/$defs/factBool"},
+    "file_count_threshold": {"$ref": "#/$defs/factInt"},
+    "changed_lines_threshold": {"$ref": "#/$defs/factInt"},
+    "sensitive_path_patterns": {"$ref": "#/$defs/factStringArray"},
+    "commits": {"type": "array", "items": {"$ref": "#/$defs/commit"}},
+    "signed_tag_count": {"$ref": "#/$defs/factInt"},
+    "unsigned_tag_count": {"$ref": "#/$defs/factInt"},
+    "release_boundary_change_count": {"$ref": "#/$defs/factInt"},
+    "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "reference"],
+      "properties": {
+        "source": {"type": "string", "minLength": 1},
+        "reference": {"type": "string", "minLength": 1},
+        "detail": {"type": "string"}
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "full_name"],
+      "properties": {
+        "provider": {"const": "github"},
+        "full_name": {"type": "string", "minLength": 3}
+      }
+    },
+    "factBool": {"oneOf": [
+      {"type": "object", "additionalProperties": false, "required": ["state", "value", "evidence"], "properties": {"state": {"const": "observed"}, "value": {"type": "boolean"}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}},
+      {"type": "object", "additionalProperties": false, "required": ["state", "evidence"], "properties": {"state": {"enum": ["unknown", "unavailable"]}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}}
+    ]},
+    "factInt": {"oneOf": [
+      {"type": "object", "additionalProperties": false, "required": ["state", "value", "evidence"], "properties": {"state": {"const": "observed"}, "value": {"type": "integer"}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}},
+      {"type": "object", "additionalProperties": false, "required": ["state", "evidence"], "properties": {"state": {"enum": ["unknown", "unavailable"]}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}}
+    ]},
+    "factString": {"oneOf": [
+      {"type": "object", "additionalProperties": false, "required": ["state", "value", "evidence"], "properties": {"state": {"const": "observed"}, "value": {"type": "string"}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}},
+      {"type": "object", "additionalProperties": false, "required": ["state", "evidence"], "properties": {"state": {"enum": ["unknown", "unavailable"]}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}}
+    ]},
+    "factStringArray": {"oneOf": [
+      {"type": "object", "additionalProperties": false, "required": ["state", "value", "evidence"], "properties": {"state": {"const": "observed"}, "value": {"type": "array", "items": {"type": "string"}}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}},
+      {"type": "object", "additionalProperties": false, "required": ["state", "evidence"], "properties": {"state": {"enum": ["unknown", "unavailable"]}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}}
+    ]},
+    "commit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha", "merge_commit", "signature_verification", "changed_lines", "observed_file_count", "files_complete", "file_count_threshold_exceeded", "changed_lines_threshold_exceeded", "sensitive_paths_changed", "associated_pull_requests", "direct_to_default_branch", "unreviewed_change"],
+      "properties": {
+        "sha": {"type": "string", "minLength": 1},
+        "merge_commit": {"$ref": "#/$defs/factBool"},
+        "signature_verification": {"$ref": "#/$defs/factString"},
+        "changed_lines": {"$ref": "#/$defs/factInt"},
+        "observed_file_count": {"$ref": "#/$defs/factInt"},
+        "files_complete": {"$ref": "#/$defs/factBool"},
+        "file_count_threshold_exceeded": {"$ref": "#/$defs/factBool"},
+        "changed_lines_threshold_exceeded": {"$ref": "#/$defs/factBool"},
+        "sensitive_paths_changed": {"$ref": "#/$defs/factStringArray"},
+        "associated_pull_requests": {"$ref": "#/$defs/factInt"},
+        "direct_to_default_branch": {"$ref": "#/$defs/factBool"},
+        "unreviewed_change": {"$ref": "#/$defs/factBool"}
+      }
+    }
+  }
+}

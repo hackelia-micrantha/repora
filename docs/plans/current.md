@@ -4,7 +4,7 @@ Status: Active
 
 ## Current objective
 
-Repora's released mirror controller and first post-v0.1 managed-artifact, routing, assessment, policy-design, standalone packaging, repository/CI posture, documentation posture, mirror-posture, and local-workflow posture foundations are complete. The current objective is to extend the normalized posture fact model into bounded commit/process evidence before adding policy evaluation or reporting.
+Repora's released mirror controller and first post-v0.1 managed-artifact, routing, assessment, policy-design, standalone packaging, repository/CI posture, documentation posture, mirror-posture, local-workflow posture, and bounded commit-history posture foundations are complete. The current objective is to converge normalized posture facts into explicit policy evaluation and deterministic reporting without introducing provider mutation.
 
 ## Completed foundation
 
@@ -29,23 +29,13 @@ Repora's released mirror controller and first post-v0.1 managed-artifact, routin
 | Documentation posture v1 | Complete | Profile-driven document/README/link/content-marker facts reuse the posture evidence model and preserve routing trust tiers without prose scoring or remediation authority. |
 | Mirror posture v1 | Complete | Declared canonical/mirror identities, default-branch names, existing reconciliation drift, and bounded provider metadata facts reuse topology/status semantics without provider mutation or expanded ref scope. |
 | Hooks/local-workflow posture v1 | Complete | Common/custom hook signals, declared local checks, CI-coverage evidence, bootstrap/bypass documentation, and static network-load signals are normalized without installing or executing repository hook code. |
+| Bounded commit-history posture v1 | Complete | A capped default-branch history window exposes signature, merge-shape, size/file-scope, sensitive-path, and commit/PR-association evidence without identity analytics, productivity scoring, blame, or intent inference. |
 
 ## Active sequence
 
-### 1. Add bounded commit/process facts (#122)
+### 1. Converge facts into explainable policy/reporting (#121)
 
-Add repository/process-risk evidence without productivity scoring, identity profiling, or intent inference.
-
-Exit condition:
-
-- bounded commit/process observations reuse the shared posture fact/evidence model;
-- collection avoids identity profiling, productivity scoring, or inferred developer intent;
-- missing and unavailable evidence remain explicit;
-- tests cover relevant history/process evidence boundaries and failure cases.
-
-### 2. Converge facts into explainable policy/reporting (#121)
-
-Only after the source fact contracts are proven should Repora evaluate them into deterministic posture findings and Markdown reports.
+Now that the source fact contracts are proven, add explicit policy evaluation and deterministic posture reporting over those normalized facts.
 
 Exit condition:
 
@@ -56,7 +46,7 @@ Exit condition:
 - policy/reporting consumes normalized facts and does not rescan providers itself;
 - no provider mutation is introduced.
 
-### 3. Reassess runtime policy integration only on concrete demand
+### 2. Reassess runtime policy integration only on concrete demand
 
 ADR-0018 defines the optional Anthesis `pre_apply` seam, but design completion does not imply runtime implementation priority.
 
@@ -66,6 +56,8 @@ Resume only when there is a concrete evaluator contract/deployment path and oper
 
 - tags, non-default branches, wildcard refspecs, and deleted-ref reconciliation;
 - tag/release mirror-drift observation beyond explicit `unknown` v1 facts;
+- tag-signature/release-boundary commit posture beyond explicit `unknown` v1 facts;
+- provider-derived direct-push/unreviewed commit conclusions until evidence can prove them;
 - concurrent mirror mutation;
 - automatic rollback or cross-repository/cross-remote transactions;
 - Anthesis runtime transport/authentication and approval workflows;
@@ -91,6 +83,7 @@ Deferred tracks must reuse current identity, plan, policy, execution, result, ev
 - Packaging may expose capability; it must not silently grant mutation authority.
 - CI/Nix/posture must inspect or reuse canonical validation rather than redefine it independently.
 - Hooks posture may inspect repository-owned configuration only as bounded data; it must never install, source, execute, or bootstrap target-repository hook code.
+- Commit posture remains repository/process evidence only; author/committer identities, productivity metrics, blame, and intent inference are outside its contract.
 
 ## Definition of done
 
