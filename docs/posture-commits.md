@@ -1,6 +1,6 @@
 # Bounded commit-history posture v1
 
-Status: Current when merged with #122
+Status: Current
 
 ## Purpose
 
@@ -79,7 +79,7 @@ Commit posture is repository/process-risk evidence, not people analytics. The v1
 - blame assignments;
 - inferred developer intent.
 
-Signing requirements, sensitive-path expectations, threshold severity, and remediation belong to the later policy layer (#121).
+Signing requirements, sensitive-path expectations, threshold severity, and remediation belong to the offline posture policy layer.
 
 ## Security boundary
 
