@@ -73,7 +73,7 @@ type CommitInventory struct {
 	DefaultCommit              Fact[string]        `json:"default_commit"`
 	ProfileDeclared            Fact[bool]          `json:"profile_declared"`
 	HistoryLimit               Fact[int]           `json:"history_limit"`
-	HistoryTruncated           Fact[bool]           `json:"history_truncated"`
+	HistoryTruncated           Fact[bool]          `json:"history_truncated"`
 	FileCountThreshold         Fact[int]           `json:"file_count_threshold"`
 	ChangedLinesThreshold      Fact[int]           `json:"changed_lines_threshold"`
 	SensitivePathPatterns      Fact[[]string]      `json:"sensitive_path_patterns"`
