@@ -16,6 +16,7 @@ import (
 type Client struct{}
 
 const defaultGitTimeout = 30 * time.Second
+const cacheDirectoryEnvironment = "REPORA_CACHE_DIR"
 
 var gitTimeout = defaultGitTimeout
 
@@ -24,15 +25,30 @@ var scpCredentialPattern = regexp.MustCompile(`(?i)([^\s/@:]+):([^\s/@]+)@([a-z0
 var credentialValuePattern = regexp.MustCompile(`(?i)\b(password|passwd|token|access_token|oauth2)=([^\s&]+)`)
 
 func MirrorPath(identity string) (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("find home directory: %w", err)
-	}
 	segment, err := SafePathSegment(identity)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".cache", "repora", segment+".git"), nil
+	root, err := cacheRoot()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, segment+".git"), nil
+}
+
+func cacheRoot() (string, error) {
+	if configured := os.Getenv(cacheDirectoryEnvironment); configured != "" {
+		if !filepath.IsAbs(configured) {
+			return "", fmt.Errorf("%s must be an absolute path", cacheDirectoryEnvironment)
+		}
+		return filepath.Clean(configured), nil
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("find home directory: %w", err)
+	}
+	return filepath.Join(home, ".cache", "repora"), nil
 }
 
 func SafePathSegment(identity string) (string, error) {
