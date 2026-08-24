@@ -19,6 +19,10 @@ var collectGitHubDocumentationPosture = func(ctx context.Context, fullName, toke
 	return posture.CollectGitHubDocumentation(ctx, posture.NewHTTPGitHubReader(token), fullName)
 }
 
+var collectGitHubHooksPosture = func(ctx context.Context, fullName, token string) (posture.HooksInventory, error) {
+	return posture.CollectGitHubHooks(ctx, posture.NewHTTPGitHubReader(token), fullName)
+}
+
 var collectMirrorPosture = func(ctx context.Context, spec config.Spec, token string) (posture.MirrorInventory, error) {
 	return posture.CollectMirrorPosture(ctx, spec, posture.GitMirrorLocalObserver{}, posture.DefaultMirrorProviderReader{
 		GitHub: posture.NewHTTPGitHubReader(token),
@@ -35,7 +39,7 @@ func runPosture(args []string) int {
 	}
 	if len(args) == 2 && (args[1] == "-h" || args[1] == "--help") {
 		switch args[0] {
-		case "inventory", "docs":
+		case "inventory", "docs", "hooks":
 			fmt.Fprintf(os.Stdout, "usage: repoctl posture %s OWNER/REPO\n", args[0])
 			return 0
 		}
@@ -79,6 +83,22 @@ func runPosture(args []string) int {
 		}
 		if _, err := os.Stdout.Write(data); err != nil {
 			fmt.Fprintf(os.Stderr, "repoctl: write documentation posture inventory: %v\n", err)
+			return 1
+		}
+		return 0
+	case "hooks":
+		inventory, err := collectGitHubHooksPosture(ctx, args[1], token)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: posture hooks: %v\n", err)
+			return 1
+		}
+		data, err := inventory.Marshal()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: posture hooks: %v\n", err)
+			return 1
+		}
+		if _, err := os.Stdout.Write(data); err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: write hooks posture inventory: %v\n", err)
 			return 1
 		}
 		return 0
@@ -137,5 +157,6 @@ func githubPostureToken() string {
 func printPostureUsage(w *os.File) {
 	fmt.Fprintln(w, "usage: repoctl posture inventory OWNER/REPO")
 	fmt.Fprintln(w, "       repoctl posture docs OWNER/REPO")
+	fmt.Fprintln(w, "       repoctl posture hooks OWNER/REPO")
 	fmt.Fprintln(w, "       repoctl posture mirrors -f repora.yaml")
 }
