@@ -47,7 +47,7 @@ func Evaluate(profile Profile, inputs Inputs, asOf time.Time) (Report, error) {
 		if exception, ok := exceptions[rule.ID]; ok && isMismatch(evaluation.Status) {
 			expires, _ := time.Parse("2006-01-02", exception.Expires)
 			evaluation.Exception = &exception
-			if asOf.Before(expires.Add(24 * time.Hour)) {
+			if asOf.UTC().Before(expires.Add(24 * time.Hour)) {
 				evaluation.Status = StatusExcepted
 			} else {
 				evaluation.ExceptionGap = "exception expired"
@@ -61,6 +61,7 @@ func Evaluate(profile Profile, inputs Inputs, asOf time.Time) (Report, error) {
 		Version:     ReportVersion,
 		Repository:  inputs.Repository,
 		ProfileID:   profile.ID,
+		AsOf:        asOf.UTC().Format("2006-01-02"),
 		Evaluations: sortedEvaluations(evaluations),
 	}, nil
 }
