@@ -92,12 +92,6 @@ Transport failures, malformed provider responses, oversized provider responses, 
 
 ## Next layer
 
-Issue #118 owns fact collection only. Downstream posture work should extend/reuse this fact/provenance model:
-
-- #119 documentation/README hygiene;
-- #120 mirror drift;
-- #123 hooks/local workflow signals;
-- bounded #122 commit/process facts;
-- #121 policy evaluation and deterministic reporting after the source facts are stable.
+`repora.posture-inventory` v1 owns repository/CI fact collection only. The implemented documentation, mirror, hooks/local-workflow, and bounded commit-history domains reuse the shared fact/provenance model. Offline posture policy and deterministic reporting consume those normalized facts after source artifacts validate.
 
 Those layers must not reclassify unavailable evidence as failure/success or bypass this observation-versus-policy boundary.
