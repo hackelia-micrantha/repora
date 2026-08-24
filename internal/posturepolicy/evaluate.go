@@ -24,9 +24,6 @@ func Evaluate(profile Profile, inputs Inputs, asOf time.Time) (Report, error) {
 
 	exceptions := make(map[string]Exception, len(profile.Exceptions))
 	for _, exception := range profile.Exceptions {
-		if _, exists := exceptions[exception.RuleID]; exists {
-			return Report{}, fmt.Errorf("duplicate exception for rule %q", exception.RuleID)
-		}
 		exceptions[exception.RuleID] = exception
 	}
 
@@ -47,7 +44,7 @@ func Evaluate(profile Profile, inputs Inputs, asOf time.Time) (Report, error) {
 		if err != nil {
 			return Report{}, fmt.Errorf("evaluate rule %q: %w", rule.ID, err)
 		}
-		if exception, ok := exceptions[rule.ID]; ok && evaluation.Status == StatusFail {
+		if exception, ok := exceptions[rule.ID]; ok && isMismatch(evaluation.Status) {
 			expires, _ := time.Parse("2006-01-02", exception.Expires)
 			evaluation.Exception = &exception
 			if asOf.Before(expires.Add(24 * time.Hour)) {
@@ -104,10 +101,16 @@ func evaluateRule(rule Rule, fact FactInput) (Evaluation, error) {
 	}
 	if matched {
 		evaluation.Status = StatusPass
+	} else if rule.Severity == SeverityInfo {
+		evaluation.Status = StatusWarning
 	} else {
 		evaluation.Status = StatusFail
 	}
 	return evaluation, nil
+}
+
+func isMismatch(status ResultStatus) bool {
+	return status == StatusFail || status == StatusWarning
 }
 
 func matches(rule Rule, observed json.RawMessage) (bool, error) {
@@ -178,7 +181,7 @@ func cloneRaw(value json.RawMessage) json.RawMessage {
 func SummaryBySeverity(report Report) map[Severity]int {
 	out := map[Severity]int{}
 	for _, evaluation := range report.Evaluations {
-		if evaluation.Status == StatusFail {
+		if isMismatch(evaluation.Status) {
 			out[evaluation.Severity]++
 		}
 	}
