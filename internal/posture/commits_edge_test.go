@@ -9,9 +9,9 @@ import (
 func TestUnavailableCommitDetailDoesNotInventFacts(t *testing.T) {
 	reader := &fakeCommitReader{
 		details:        map[string]GitHubCommitDetail{},
-		detailObs:       map[string]ReadObservation{"a": unavailable("github.commit", "a")},
-		pullRequests:    map[string]int{},
-		pullRequestObs:  map[string]ReadObservation{},
+		detailObs:      map[string]ReadObservation{"a": unavailable("github.commit", "a")},
+		pullRequests:   map[string]int{},
+		pullRequestObs: map[string]ReadObservation{},
 	}
 	fact, err := collectCommitFact(context.Background(), reader, "acme/project", defaultCommitProfile(), GitHubCommitSummary{SHA: "a"})
 	if err != nil {
