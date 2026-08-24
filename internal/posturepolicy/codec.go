@@ -7,6 +7,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"time"
 
 	"repoctl/internal/posture"
 )
@@ -135,6 +136,9 @@ func (r Report) Validate() error {
 	}
 	if strings.TrimSpace(r.Repository) == "" || strings.TrimSpace(r.ProfileID) == "" {
 		return fmt.Errorf("posture report repository and profile_id are required")
+	}
+	if _, err := time.Parse("2006-01-02", r.AsOf); err != nil {
+		return fmt.Errorf("posture report as_of must use YYYY-MM-DD: %w", err)
 	}
 	if r.Evaluations == nil {
 		return fmt.Errorf("posture report evaluations array is required")
