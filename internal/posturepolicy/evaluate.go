@@ -15,11 +15,8 @@ func Evaluate(profile Profile, inputs Inputs, asOf time.Time) (Report, error) {
 	if err := profile.Validate(); err != nil {
 		return Report{}, err
 	}
-	if inputs.Repository == "" {
-		return Report{}, fmt.Errorf("repository identity is required")
-	}
-	if inputs.Facts == nil {
-		return Report{}, fmt.Errorf("facts map is required")
+	if err := inputs.Validate(); err != nil {
+		return Report{}, err
 	}
 
 	exceptions := make(map[string]Exception, len(profile.Exceptions))
@@ -86,12 +83,7 @@ func evaluateRule(rule Rule, fact FactInput) (Evaluation, error) {
 		evaluation.Status = StatusUnavailable
 		return evaluation, nil
 	case posture.StateObserved:
-		if len(fact.Value) == 0 {
-			return Evaluation{}, fmt.Errorf("observed fact %q has no value", rule.Fact)
-		}
 		evaluation.Observed = cloneRaw(fact.Value)
-	case "":
-		return Evaluation{}, fmt.Errorf("fact %q has empty state", rule.Fact)
 	default:
 		return Evaluation{}, fmt.Errorf("fact %q has unsupported state %q", rule.Fact, fact.State)
 	}
