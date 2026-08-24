@@ -53,6 +53,23 @@ func validDocumentationInventory(fullName string) posture.DocumentationInventory
 	}
 }
 
+func validHooksInventory(fullName string) posture.HooksInventory {
+	return posture.HooksInventory{
+		Kind:             posture.HooksInventoryKind,
+		Version:          posture.HooksInventoryVersion,
+		Repository:       posture.RepositoryIdentity{Provider: "github", FullName: fullName},
+		DefaultBranch:    posture.Observed("main"),
+		DefaultCommit:    posture.Observed("abc1234"),
+		ProfileDeclared:  posture.Observed(false),
+		Manager:          posture.Observed("none"),
+		Entrypoints:      []posture.HookEntrypointFact{},
+		RequiredChecks:   []posture.LocalCheckFact{},
+		BootstrapPresent: posture.Unknown[bool](),
+		BypassPresent:    posture.Unknown[bool](),
+		Evidence:         []posture.Evidence{},
+	}
+}
+
 func TestPostureInventoryCommandEmitsVersionedJSONAndUsesEnvironmentToken(t *testing.T) {
 	old := collectGitHubPosture
 	t.Cleanup(func() { collectGitHubPosture = old })
@@ -62,7 +79,6 @@ func TestPostureInventoryCommandEmitsVersionedJSONAndUsesEnvironmentToken(t *tes
 		gotRepo, gotToken = fullName, token
 		return validPostureInventory(fullName), nil
 	}
-
 	var stdout bytes.Buffer
 	code := withStdout(t, &stdout, func() int {
 		return run([]string{"posture", "inventory", "acme/project"})
@@ -91,7 +107,6 @@ func TestPostureDocumentationCommandEmitsVersionedJSONAndUsesEnvironmentToken(t 
 		gotRepo, gotToken = fullName, token
 		return validDocumentationInventory(fullName), nil
 	}
-
 	var stdout bytes.Buffer
 	code := withStdout(t, &stdout, func() int {
 		return run([]string{"posture", "docs", "acme/project"})
@@ -108,6 +123,34 @@ func TestPostureDocumentationCommandEmitsVersionedJSONAndUsesEnvironmentToken(t 
 	}
 	if decoded.Kind != posture.DocumentationInventoryKind || decoded.Version != posture.DocumentationInventoryVersion || decoded.Repository.FullName != "acme/project" {
 		t.Fatalf("documentation inventory envelope = %#v", decoded)
+	}
+}
+
+func TestPostureHooksCommandEmitsVersionedJSONAndUsesEnvironmentToken(t *testing.T) {
+	old := collectGitHubHooksPosture
+	t.Cleanup(func() { collectGitHubHooksPosture = old })
+	t.Setenv("GITHUB_TOKEN", "hooks-token")
+	var gotRepo, gotToken string
+	collectGitHubHooksPosture = func(_ context.Context, fullName, token string) (posture.HooksInventory, error) {
+		gotRepo, gotToken = fullName, token
+		return validHooksInventory(fullName), nil
+	}
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"posture", "hooks", "acme/project"})
+	})
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	if gotRepo != "acme/project" || gotToken != "hooks-token" {
+		t.Fatalf("collector inputs repo=%q token=%q", gotRepo, gotToken)
+	}
+	var decoded posture.HooksInventory
+	if err := json.Unmarshal(stdout.Bytes(), &decoded); err != nil {
+		t.Fatalf("decode output: %v\n%s", err, stdout.String())
+	}
+	if decoded.Kind != posture.HooksInventoryKind || decoded.Version != posture.HooksInventoryVersion || decoded.Repository.FullName != "acme/project" {
+		t.Fatalf("hooks inventory envelope = %#v", decoded)
 	}
 }
 
@@ -131,7 +174,7 @@ func TestPostureInventoryFallsBackToGHToken(t *testing.T) {
 }
 
 func TestPostureHelpAndUsage(t *testing.T) {
-	for _, subcommand := range []string{"inventory", "docs"} {
+	for _, subcommand := range []string{"inventory", "docs", "hooks"} {
 		var stdout bytes.Buffer
 		code := withStdout(t, &stdout, func() int {
 			return run([]string{"posture", subcommand, "--help"})
@@ -141,12 +184,11 @@ func TestPostureHelpAndUsage(t *testing.T) {
 			t.Fatalf("%s help code=%d output=%q want=%q", subcommand, code, stdout.String(), want)
 		}
 	}
-
 	var stderr bytes.Buffer
 	code := withStderr(t, &stderr, func() int {
 		return run([]string{"posture", "inventory"})
 	})
-	want := "usage: repoctl posture inventory OWNER/REPO\n       repoctl posture docs OWNER/REPO\n       repoctl posture mirrors -f repora.yaml\n"
+	want := "usage: repoctl posture inventory OWNER/REPO\n       repoctl posture docs OWNER/REPO\n       repoctl posture hooks OWNER/REPO\n       repoctl posture mirrors -f repora.yaml\n"
 	if code != 1 || stderr.String() != want {
 		t.Fatalf("usage code=%d output=%q want=%q", code, stderr.String(), want)
 	}

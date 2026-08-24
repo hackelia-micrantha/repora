@@ -10,11 +10,12 @@ Current fact collectors are:
 
 - `repoctl posture inventory OWNER/REPO` → `repora.posture-inventory` v1 for GitHub repository/CI facts;
 - `repoctl posture docs OWNER/REPO` → `repora.posture-documentation` v1 for deterministic documentation/README facts;
+- `repoctl posture hooks OWNER/REPO` → `repora.posture-hooks` v1 for bounded hooks/local-workflow facts;
 - `repoctl posture mirrors -f repora.yaml` → `repora.posture-mirrors` v1 from declared Repora topology and existing mirror reconciliation evidence.
 
-All posture domains preserve `observed`, `unknown`, and `unavailable` evidence. Provider API collection is read-only. Mirror posture may refresh Repora's local bare cache for observation, but it does not push or synchronize repositories.
+All posture domains preserve `observed`, `unknown`, and `unavailable` evidence. Provider API collection is read-only. Mirror posture may refresh Repora's local bare cache for observation, but it does not push or synchronize repositories. Hooks posture reads hook/config/document/workflow content only as bounded data and never installs or executes target-repository hook code.
 
-Hook/local-workflow and commit/process facts remain next. Policy evaluation, findings, Markdown reports, automatic issue/PR remediation, provider mutation, and broad non-GitHub provider-administration adapters are not implemented yet.
+Commit/process facts remain next. Policy evaluation, findings, Markdown reports, automatic issue/PR remediation, provider mutation, and broad non-GitHub provider-administration adapters are not implemented yet.
 
 ## Goals
 
@@ -135,15 +136,24 @@ This domain is repository/process risk analysis. It must not become developer pr
 
 ## Hooks and local workflow posture
 
-Local workflow posture should eventually observe:
+`repora.posture-hooks` v1 observes:
 
-- expected hook manager or local policy entrypoint;
-- configured hook entrypoints and required checks;
-- bootstrap documentation;
-- relationship between local hooks and CI enforcement;
-- documented bypass/escape hatches.
+- common manager/config signals for pre-commit, Lefthook, Husky, and custom `.githooks` entrypoints;
+- additional repository-declared hook paths and manager expectations from `.repora/posture-hooks.yaml`;
+- required local checks and whether their names are observable in GitHub Actions workflow text;
+- declared bootstrap-document presence;
+- declared bypass/escape-hatch-document presence;
+- bounded static network-load signals in hook/config blobs.
 
-Collection must inspect configuration without installing or executing repository hook code. Local checks remain early feedback unless CI or explicit policy makes them authoritative.
+The repository profile is observation configuration only. It cannot assign severity, suppress policy, authorize remediation, or make local hooks authoritative.
+
+A CI coverage fact indicates that a declared local-check string is observable in GitHub Actions workflow content. It is evidence of apparent coverage, not proof that the local and CI commands are semantically equivalent. CI remains the enforcement source unless a later explicit policy says otherwise.
+
+Hook content is never installed, sourced, executed, bootstrapped, or followed over the network. Presence is not treated as trust. Executable state remains `unknown` in v1 because the shared GitHub tree reader does not currently normalize file mode; this limitation is explicit rather than inferred.
+
+Missing paths are observed `false` only with complete tree evidence. Truncated or inaccessible evidence remains `unknown` or `unavailable`.
+
+See [`posture-hooks.md`](posture-hooks.md).
 
 ## Normalized facts
 
@@ -187,7 +197,7 @@ posture:
 
 A future finding should identify the observed fact, expected policy, severity, source evidence, remediation options, and whether automated remediation is safe.
 
-Repository-owned documentation observation profiles are deliberately separate from this policy layer.
+Repository-owned posture observation profiles are deliberately separate from this policy layer.
 
 ## Exceptions
 
@@ -212,19 +222,20 @@ Current posture commands are:
 ```bash
 repoctl posture inventory OWNER/REPO
 repoctl posture docs OWNER/REPO
+repoctl posture hooks OWNER/REPO
 repoctl posture mirrors -f repora.yaml
 ```
 
-Candidate later surfaces include policy checking/reporting plus focused commit and hook helpers. They should remain posture-oriented rather than becoming a general CI runner, documentation linter, or forensic tool.
+Candidate later surfaces include policy checking/reporting plus focused commit helpers. They should remain posture-oriented rather than becoming a general CI runner, documentation linter, or forensic tool.
 
 ## Provider support
 
 | Provider | Current/planned support |
 | --- | --- |
-| GitHub | Current repository/CI and documentation collection; mirror default branch, visibility, and current-actor push permission where returned; broader provider-admin facts planned |
+| GitHub | Current repository/CI, documentation, and hooks/local-workflow collection; mirror default branch, visibility, and current-actor push permission where returned; broader provider-admin facts planned |
 | GitLab | Current Git transport/reconciliation evidence in mirror posture; provider-admin posture metadata planned |
 | Bitbucket | Planned branch restrictions, pipelines configuration, and repository metadata |
-| Local repositories | Current Repora mirror-cache observation; broader file/config/lockfile/hook evidence planned |
+| Local repositories | Current Repora mirror-cache observation; broader file/config/lockfile evidence planned |
 
 Mirror drift itself remains grounded in Repora's provider-neutral topology and Git reconciliation semantics.
 
@@ -240,6 +251,7 @@ Posture management is security-sensitive because later layers may propose change
 - no secrets stored in `repora.yaml` or posture evidence;
 - provider evidence retained for audit;
 - repository-owned observation profiles cannot grant policy or mutation authority;
+- hook/config inspection never executes target-repository code;
 - clear distinction between file PRs and direct provider API mutations.
 
 Provider API mutation should come only after deterministic facts, policy/reporting, and reviewable file-based remediation are proven.
@@ -249,8 +261,8 @@ Provider API mutation should come only after deterministic facts, policy/reporti
 1. **Complete** — read-only GitHub repository/CI inventory and normalized fact/evidence contract (#118).
 2. **Complete** — deterministic documentation/README hygiene facts and observation profile (#119).
 3. **Complete** — mirror-management drift facts reusing existing topology/status semantics (#120).
-4. **Next** — hooks/local-workflow facts without executing hook code (#123).
-5. **Planned** — bounded commit/process-risk facts without productivity scoring or intent inference (#122).
+4. **Complete** — hooks/local-workflow facts without executing hook code (#123).
+5. **Next** — bounded commit/process-risk facts without productivity scoring or intent inference (#122).
 6. **Convergence** — explicit policy evaluation and deterministic Markdown reporting over normalized facts (#121).
 7. **Later** — issue/PR-backed remediation after reporting is proven.
 8. **Later/separate decision** — guarded provider API mutation.

@@ -4,7 +4,7 @@ Status: Current
 
 ## Purpose
 
-This subtree contains versioned machine-readable compatibility contracts for Repora CLI output, reconciliation plans, execution records, document routing, context receipts, repository assessment artifacts, managed repository artifact planning/execution evidence, normalized repository posture inventory, deterministic documentation posture observations, and mirror posture observations.
+This subtree contains versioned machine-readable compatibility contracts for Repora CLI output, reconciliation plans, execution records, document routing, context receipts, repository assessment artifacts, managed repository artifact planning/execution evidence, normalized repository posture inventory, deterministic documentation posture observations, mirror posture observations, and hooks/local-workflow posture observations.
 
 ## Canonical sources
 
@@ -22,6 +22,8 @@ Use the schema matching the exact artifact kind and version being produced or co
 - `posture-documentation-v1.schema.json`
 - `posture-documentation-profile-v1.schema.json`
 - `posture-mirrors-v1.schema.json`
+- `posture-hooks-v1.schema.json`
+- `posture-hooks-profile-v1.schema.json`
 - `document-router.schema.json`
 - `context-receipt-v1.schema.json`
 - `repository-assessment-v1.schema.json`
@@ -30,7 +32,7 @@ Use the schema matching the exact artifact kind and version being produced or co
 - `evidence-v1.schema.json`
 - `scorecard-v1.schema.json`
 
-Migration guidance for public CLI contracts lives under [`../docs/cli/`](../docs/cli/). Repository/CI posture fact-state and collection semantics live in [`../docs/posture-inventory.md`](../docs/posture-inventory.md); documentation posture/profile semantics live in [`../docs/posture-documentation.md`](../docs/posture-documentation.md); mirror posture semantics live in [`../docs/posture-mirrors.md`](../docs/posture-mirrors.md). Assessment semantics and evidence-strength guidance live in [`../docs/assessments.md`](../docs/assessments.md). Managed artifact semantics live in [`../docs/architecture/managed-artifacts.md`](../docs/architecture/managed-artifacts.md) and ADR-0017.
+Migration guidance for public CLI contracts lives under [`../docs/cli/`](../docs/cli/). Repository/CI posture fact-state and collection semantics live in [`../docs/posture-inventory.md`](../docs/posture-inventory.md); documentation posture/profile semantics live in [`../docs/posture-documentation.md`](../docs/posture-documentation.md); mirror posture semantics live in [`../docs/posture-mirrors.md`](../docs/posture-mirrors.md); hooks/local-workflow and profile semantics live in [`../docs/posture-hooks.md`](../docs/posture-hooks.md). Assessment semantics and evidence-strength guidance live in [`../docs/assessments.md`](../docs/assessments.md). Managed artifact semantics live in [`../docs/architecture/managed-artifacts.md`](../docs/architecture/managed-artifacts.md) and ADR-0017.
 
 ## Ownership boundaries
 
@@ -42,4 +44,4 @@ Load the exact schema whenever validating fields, required properties, enums, co
 
 ## Exclusions and stale areas
 
-Do not assume a higher version is interchangeable with an older consumer. Historical schemas remain valid evidence for their own version but are not substitutes for the requested contract version. Posture inventories are observed evidence, not findings or risk scores. Documentation observation profiles choose deterministic facts to collect; they do not define severity, suppress policy, or grant remediation authority. Mirror posture v1 remains default-branch scoped: tag and release drift are explicit unknown facts rather than inferred results. Assessment scorecards are scoped evidence summaries, not objective whole-project grades unless the report explicitly supports that scope. Managed artifact plan, execution-record, and apply-result schemas define review/evidence contracts; mutation safety is governed by the managed-artifact architecture and exact-plan preflight/lease rules.
+Do not assume a higher version is interchangeable with an older consumer. Historical schemas remain valid evidence for their own version but are not substitutes for the requested contract version. Posture inventories are observed evidence, not findings or risk scores. Documentation observation profiles choose deterministic facts to collect; they do not define severity, suppress policy, or grant remediation authority. Mirror posture v1 remains default-branch scoped: tag and release drift are explicit unknown facts rather than inferred results. Hooks posture profiles select bounded observation expectations only: local hooks are early feedback, CI remains authoritative, and no hook code is installed or executed. Assessment scorecards are scoped evidence summaries, not objective whole-project grades unless the report explicitly supports that scope. Managed artifact plan, execution-record, and apply-result schemas define review/evidence contracts; mutation safety is governed by the managed-artifact architecture and exact-plan preflight/lease rules.

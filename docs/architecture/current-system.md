@@ -14,8 +14,9 @@ Repora is a local-first repository controller exposed primarily through the `rep
 4. **Document routing** — deterministic repository-owned routing/trust/context contracts used to select evidence without executing source or granting mutation authority.
 5. **Repository/CI posture inventory** — GET-only GitHub observation that normalizes repository, protection, file, and Actions evidence without evaluating policy or mutating provider state.
 6. **Documentation posture** — GET-only profile-driven document/README hygiene observation that preserves routing trust metadata without prose scoring, policy evaluation, or remediation authority.
-7. **Mirror posture** — topology-driven canonical/mirror identity and drift observation that reuses existing reconciliation semantics, may refresh Repora's local cache, and never pushes or mutates provider settings.
-8. **Packaging and assurance** — release archives plus a standalone Nix package/check/development surface that reuses canonical validation boundaries.
+7. **Hooks/local-workflow posture** — GET-only bounded hook/config/workflow observation that preserves CI authority and never installs or executes target-repository hook code.
+8. **Mirror posture** — topology-driven canonical/mirror identity and drift observation that reuses existing reconciliation semantics, may refresh Repora's local cache, and never pushes or mutates provider settings.
+9. **Packaging and assurance** — release archives plus a standalone Nix package/check/development surface that reuses canonical validation boundaries.
 
 Repora does not provide arbitrary repository-file mutation, provider provisioning, hosted orchestration, automatic posture remediation, or a general policy engine.
 
@@ -109,6 +110,32 @@ Important boundaries:
 - repository-controlled profile/router/Markdown input is bounded data and is never executed;
 - full prose linting, semantic/LLM judgment, policy evaluation, reports, rewrites, and provider mutation remain outside the domain.
 
+## Hooks/local-workflow posture domain
+
+`repoctl posture hooks OWNER/REPO` emits `repora.posture-hooks` v1 JSON while preserving the shared fact states.
+
+A repository may declare bounded observation expectations in `.repora/posture-hooks.yaml` using `repora.posture-hooks-profile` v1. The profile may name a manager, additional hook paths, required local checks, bootstrap documentation, and bypass/escape-hatch documentation. It is observation configuration only and cannot assign severity, suppress policy, create findings, or grant remediation authority.
+
+Current hooks/local-workflow facts include:
+
+- common manager/config signals for pre-commit, Lefthook, Husky, and generic `.githooks` layouts;
+- configured hook-entrypoint presence;
+- required local-check declarations and whether each check name is observable in GitHub Actions workflow text;
+- bootstrap and bypass-document presence where explicitly declared;
+- bounded static network-load signals in hook/config blobs;
+- explicit executable state, currently `unknown` because the shared GitHub tree model does not normalize file mode.
+
+Important boundaries:
+
+- it reuses the GET-only GitHub reader and immutable default-branch tree/blob evidence;
+- hook, profile, and workflow inputs are treated as bounded untrusted data;
+- target-repository hooks, generated scripts, package managers, and hook-manager binaries are never installed, sourced, executed, or bootstrapped;
+- network references are only detected as static signals and are never followed;
+- apparent CI coverage is a deterministic text observation, not proof of semantic equivalence;
+- CI remains the enforcement authority unless a future explicit policy states otherwise;
+- truncated/inaccessible/malformed evidence becomes unknown or unavailable rather than a passing fact;
+- policy evaluation, findings, remediation, and provider mutation remain outside the domain.
+
 ## Mirror posture domain
 
 `repoctl posture mirrors -f repora.yaml` emits `repora.posture-mirrors` v1 JSON for repositories already declared in Repora topology.
@@ -149,17 +176,17 @@ GitLab Git transport/reconciliation evidence is supported; GitLab provider-admin
 | `internal/managedartifact` | README template/render/observation/plan/preflight/candidate verification | Generic file authority or mirror reconciliation |
 | `internal/managedartifactapply` | journaled managed README execution/result correlation | Replanning reviewed content |
 | `internal/assessment` | strict assessment contracts, validation, skeleton, projections | Live discovery, automated scoring, mutation |
-| `internal/posture` | versioned posture facts and bounded repository/CI, documentation, and mirror observation | Policy evaluation, findings, scanners, remediation, provider mutation |
+| `internal/posture` | versioned posture facts and bounded repository/CI, documentation, hooks/local-workflow, and mirror observation | Policy evaluation, findings, scanners, remediation, provider mutation |
 | `internal/journal` | immutable intent/result evidence and protected persistence | Mutation or replay authority |
 | `internal/git` | bounded Git subprocess/cache/object/ref/push mechanics | Product policy or durable identity |
-| `.repora/` + routing/posture profile validators | deterministic route/trust/context and documentation-observation contracts | Source execution, severity policy, or mutation authority |
+| `.repora/` + routing/posture profile validators | deterministic route/trust/context and documentation/hooks observation contracts | Source execution, severity policy, or mutation authority |
 | `cmd/repoctl` | command routing, output contracts, bounded orchestration | Duplicated domain mechanics |
 
 ## Identity, authorization, and evidence
 
 Repora distinguishes human `id`, durable logical `uid`, durable `(provider,path)` target identity, deterministic configuration order, and ephemeral resolved URLs/remote aliases.
 
-Mirror destructive intent requires existing local policy plus explicit `--force`. Managed README apply is a separate authority domain and accepts no force override. Repository/CI and documentation posture expose no mutation authority; mirror posture can refresh only Repora's observation cache and exposes no push/synchronization/provider-mutation capability.
+Mirror destructive intent requires existing local policy plus explicit `--force`. Managed README apply is a separate authority domain and accepts no force override. Repository/CI, documentation, and hooks posture expose no mutation authority; mirror posture can refresh only Repora's observation cache and exposes no push/synchronization/provider-mutation capability.
 
 ADR-0018 defines a future optional Anthesis `pre_apply` authorization seam after Repora local preparation but before Git execution INTENT/mutation. No runtime evaluator, transport, CLI/config integration, or approval workflow is currently implemented.
 
@@ -180,6 +207,8 @@ Current serialized contracts include:
 - `repora.posture-inventory` v1;
 - `repora.posture-documentation` v1;
 - `repora.posture-documentation-profile` v1;
+- `repora.posture-hooks` v1;
+- `repora.posture-hooks-profile` v1;
 - `repora.posture-mirrors` v1.
 
 Versioned files under `schemas/` are authoritative for serialized shapes.

@@ -11,6 +11,7 @@ Usage:
   repoctl <command> [options]
   repoctl posture inventory OWNER/REPO
   repoctl posture docs OWNER/REPO
+  repoctl posture hooks OWNER/REPO
   repoctl posture mirrors -f repora.yaml
   repoctl plan-readme -f repora.yaml [--artifact]
   repoctl apply-readme -f repora.yaml --plan-file FILE [--dry-run] [--json]
@@ -26,7 +27,7 @@ Commands:
   plan     show planned mirror updates or export an executable artifact
   apply    apply current observations or an exact plan artifact
   sync     alias for apply
-  posture  collect read-only repository/CI, documentation, and mirror posture facts
+  posture  collect read-only repository/CI, documentation, hooks/local-workflow, and mirror posture facts
   plan-readme  review managed README changes or export the exact managed-artifact plan
   apply-readme  dry-run or journaled exact-plan managed README apply
   validate-report  validate a repository assessment report without mutation
@@ -58,13 +59,15 @@ Options for mirror commands:
 
 Options for posture commands:
   OWNER/REPO
-        GitHub repository to inspect with posture inventory or posture docs. Public repositories need no token; private/provider-protected evidence may use GITHUB_TOKEN or GH_TOKEN from the environment.
+        GitHub repository to inspect with posture inventory, posture docs, or posture hooks. Public repositories need no token; private/provider-protected evidence may use GITHUB_TOKEN or GH_TOKEN from the environment.
   posture mirrors -f string
         inspect mirror posture for repositories declared in SCHEMA-0001 YAML (default "repora.yaml")
 
 Posture inventory is GET-only. Provider fields unavailable under current access are emitted as unavailable facts rather than false negatives. It does not evaluate policy, create findings, run scanners, or mutate repository/provider state.
 
 Posture docs is also GET-only. It observes document presence, configured README sections and links, exact content markers, and document-routing trust metadata. A target repository may declare observation targets in .repora/posture-documentation.yaml. The profile selects facts to observe; it does not assign severity or authorize remediation.
+
+Posture hooks is GET-only. It observes common/custom hook configuration, optional .repora/posture-hooks.yaml expectations, required local-check coverage in GitHub Actions, bootstrap/bypass documentation, and bounded static network-load signals. It never installs or executes target-repository hook code, and CI remains the enforcement authority.
 
 Posture mirrors reuses the existing mirror reconciliation cache/status semantics. It may create or refresh Repora's local mirror cache and configured cache remotes, but it does not push, synchronize mirrors, publish releases, or mutate provider settings. It observes declared canonical/mirror identity, default-branch and commit drift, and preserves unavailable provider metadata. Tag and release drift remain explicit unknown facts in v1.
 

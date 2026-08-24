@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/posture-hooks-profile-v1.schema.json",
+  "title": "Repora hooks posture profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version"],
+  "properties": {
+    "kind": {"const": "repora.posture-hooks-profile"},
+    "version": {"const": 1},
+    "manager": {"type": "string"},
+    "hook_paths": {"type": "array", "maxItems": 128, "uniqueItems": true, "items": {"$ref": "#/$defs/repositoryPath"}},
+    "required_checks": {"type": "array", "maxItems": 128, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "bootstrap_docs": {"type": "array", "maxItems": 128, "uniqueItems": true, "items": {"$ref": "#/$defs/repositoryPath"}},
+    "bypass_docs": {"type": "array", "maxItems": 128, "uniqueItems": true, "items": {"$ref": "#/$defs/repositoryPath"}}
+  },
+  "$defs": {
+    "repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//).+$"
+    }
+  }
+}
