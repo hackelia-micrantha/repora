@@ -4,22 +4,17 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 )
 
 func TestPosturePolicySchemasAreWellFormedJSON(t *testing.T) {
-	_, source, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("resolve test source")
-	}
-	root := filepath.Clean(filepath.Join(filepath.Dir(source), "..", ".."))
 	for _, name := range []string{
 		"posture-policy-profile-v1.schema.json",
 		"posture-policy-inputs-v1.schema.json",
 		"posture-report-v1.schema.json",
 	} {
-		data, err := os.ReadFile(filepath.Join(root, "schemas", name))
+		path := filepath.Join("..", "..", "schemas", name)
+		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatalf("read %s: %v", name, err)
 		}
