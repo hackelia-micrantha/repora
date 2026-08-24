@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 
 	"gopkg.in/yaml.v3"
 
@@ -254,8 +255,11 @@ func validateBitbucketPath(value string) error {
 	if len(parts) != 2 {
 		return fmt.Errorf("path must be workspace/repository")
 	}
+	if strings.HasSuffix(parts[1], ".git") {
+		return fmt.Errorf("repository segment must not end in .git")
+	}
 	for _, part := range parts {
-		if strings.TrimSpace(part) != part || strings.ContainsAny(part, `\:@?#`) {
+		if strings.IndexFunc(part, unicode.IsSpace) >= 0 || strings.ContainsAny(part, `\:@?#`) {
 			return fmt.Errorf("path contains an unsafe workspace or repository segment")
 		}
 	}
