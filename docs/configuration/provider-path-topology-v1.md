@@ -23,8 +23,8 @@ repos:
     mirrors:
       - provider: github
         path: hackelia-micrantha/anthesis
-      - provider: gitlab
-        path: micrantha-backup/anthesis
+      - provider: bitbucket
+        path: micrantha/anthesis
     mode: mirror
     policy:
       refs:
@@ -33,7 +33,17 @@ repos:
         destructive: require-force
 ```
 
-The runtime derives HTTPS remotes immediately before Git operations. Authentication remains delegated to system Git and credential helpers.
+The runtime derives credential-free HTTPS remotes immediately before Git operations. Authentication remains delegated to system Git and credential helpers.
+
+## Provider matrix
+
+| Provider | Canonical role | Mirror role | Runtime transport | Path shape |
+| --- | --- | --- | --- | --- |
+| GitLab | supported | supported | HTTPS or SSH | `namespace[/subgroup...]/repository` |
+| GitHub | not supported | supported | HTTPS or SSH | `owner/repository` |
+| Bitbucket Cloud | not supported | supported | HTTPS only | `workspace/repository` |
+
+Bitbucket Server/Data Center and custom provider bases are outside v1.
 
 ## Fields
 
@@ -51,10 +61,11 @@ The authoritative source. The current runtime supports GitLab canonical reposito
 
 ### `mirrors`
 
-One or more GitHub or GitLab targets.
+One or more GitHub, GitLab, or Bitbucket Cloud targets.
 
-- status, exact planning, dry-run, and real mutation support every configured mirror;
+- status, exact planning, dry-run, and real mutation support every configured mirror through the shared reconciliation pipeline;
 - every mirror in a multi-mirror entry must use provider/path form;
+- Bitbucket mirrors always require provider/path form, including when they are the only mirror;
 - duplicate `(provider, path)` targets are rejected;
 - actions are reviewed and executed in configuration order;
 - array position and derived Git aliases are not identity;
@@ -76,7 +87,10 @@ Examples:
 micrantha/anthesis
 micrantha/laboratory/dubnium
 hackelia-micrantha/repora
+micrantha/repora
 ```
+
+Bitbucket Cloud is stricter than GitLab: its path must contain exactly two segments, `workspace/repository`. Query/fragment delimiters, colons, backslashes, leading/trailing slashes, and nested namespace forms fail closed.
 
 ### `policy.refs`
 
@@ -96,9 +110,9 @@ Defaults to `mirror`; no other mode is supported.
 
 ## Legacy URL compatibility
 
-A single-mirror entry may continue to use legacy URLs. Exactly one of `path` or `url` is required per endpoint, and credential-bearing HTTP URLs are rejected.
+A single GitHub/GitLab mirror entry may continue to use legacy URLs. Exactly one of `path` or `url` is required per endpoint, and credential-bearing HTTP URLs are rejected.
 
-Legacy URLs are compatibility transport input, not identity. Multi-mirror entries require provider/path so every target is unambiguous. New exact multi-mirror artifacts and execution evidence never persist transport URLs.
+Legacy URLs are compatibility transport input, not identity. Multi-mirror entries require provider/path so every target is unambiguous. Bitbucket mirrors do not accept legacy URLs. New exact multi-mirror artifacts and execution evidence never persist transport URLs.
 
 ## Execution semantics
 
@@ -112,29 +126,35 @@ Provider/path topology is used consistently across:
 
 Before action zero, Repora verifies current configuration, status, policy, default branches, and all expected OIDs. After preflight, mirror actions execute sequentially in exact artifact order. Runtime failure of one mirror does not prevent later independent targets, and successful earlier targets are not rolled back.
 
+Bitbucket targets use the same comparison, exact-plan, stale-preflight, partial-success, and force-with-lease semantics as other mirrors. There is no provider-specific execution bypass.
+
 ## Migration
 
 1. Add and preserve an explicit `uid`.
 2. Replace endpoint URLs with provider-relative paths.
 3. Add additional mirrors only after every target has unambiguous provider/path identity.
-4. Review `repoctl status` and `repoctl plan --artifact`.
-5. Run `apply --dry-run` before real mutation.
-6. Treat partial apply results as evidence requiring fresh status and planning, not replay or rollback.
+4. For Bitbucket Cloud, add `provider: bitbucket` with `<workspace>/<repository>`; do not embed credentials or use a transport URL.
+5. Review `repoctl status` and `repoctl plan --artifact`.
+6. Run `apply --dry-run` before real mutation.
+7. Treat partial apply results as evidence requiring fresh status and planning, not replay or rollback.
 
 ## Current runtime boundary
 
 Implemented:
 
 - GitLab canonical repositories;
-- one or more GitHub/GitLab mirrors;
+- one or more GitHub/GitLab/Bitbucket Cloud mirrors;
+- Bitbucket Cloud HTTPS transport with external Git credential handling;
 - stable provider/path identity through status, planning, execution, results, and journals;
 - default-branch-only closed ref policy;
 - sequential independent mirror mutation with force-with-lease;
 - runtime HTTPS resolution;
-- bounded single-mirror legacy URL compatibility.
+- bounded GitHub/GitLab single-mirror legacy URL compatibility.
 
 Not implemented:
 
+- Bitbucket canonical repositories;
+- Bitbucket SSH, Server, or Data Center;
 - tags, non-default branches, wildcard refs, or deleted-ref reconciliation;
 - provider provisioning;
 - custom provider bases or user-selectable transport;
