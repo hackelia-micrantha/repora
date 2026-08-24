@@ -61,6 +61,12 @@ func TestResolveBitbucketFailsClosed(t *testing.T) {
 		"workspace/repo:other",
 		"/workspace/repo",
 		"workspace/repo/",
+		"workspace/repo.git",
+		"work space/repo",
+		"workspace/repo name",
+		"work\tspace/repo",
+		"workspace/repo\nname",
+		"work\u00a0space/repo",
 	} {
 		_, err := DefaultResolver(HTTPS).Resolve(config.Endpoint{Provider: "bitbucket", Path: path})
 		if err == nil {
