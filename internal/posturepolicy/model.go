@@ -100,10 +100,10 @@ type Evaluation struct {
 }
 
 type Report struct {
-	Kind       string       `json:"kind"`
-	Version    int          `json:"version"`
-	Repository string       `json:"repository"`
-	ProfileID  string       `json:"profile_id"`
+	Kind        string       `json:"kind"`
+	Version     int          `json:"version"`
+	Repository  string       `json:"repository"`
+	ProfileID   string       `json:"profile_id"`
 	Evaluations []Evaluation `json:"evaluations"`
 }
 
