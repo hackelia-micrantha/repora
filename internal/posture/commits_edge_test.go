@@ -20,6 +20,9 @@ func TestUnavailableCommitDetailDoesNotInventFacts(t *testing.T) {
 	if fact.SignatureVerification.State != StateUnavailable || fact.ChangedLines.State != StateUnavailable || fact.SensitivePathsChanged.State != StateUnavailable {
 		t.Fatalf("unavailable fact = %#v", fact)
 	}
+	if fact.DirectToDefaultBranch.State != StateUnknown || fact.UnreviewedChange.State != StateUnknown {
+		t.Fatalf("out-of-scope review facts = %#v %#v", fact.DirectToDefaultBranch, fact.UnreviewedChange)
+	}
 	if reader.pullRequestCalls != 0 {
 		t.Fatalf("pull request calls = %d, want 0 after unavailable commit detail", reader.pullRequestCalls)
 	}
