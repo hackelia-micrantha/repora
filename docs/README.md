@@ -20,6 +20,7 @@ Use the smallest authoritative source that answers the question.
 | How do hooks/local-workflow posture facts work? | [`posture-hooks.md`](posture-hooks.md) |
 | How does bounded commit-history posture work? | [`posture-commits.md`](posture-commits.md) |
 | How does mirror-management posture work? | [`posture-mirrors.md`](posture-mirrors.md) |
+| How do posture policy evaluation and deterministic reports work? | [`posture-policy.md`](posture-policy.md) |
 | What is the broader repository/CI posture model? | [`posture.md`](posture.md) |
 | Why is there no repository-wide benchmark gate? | [`benchmarks.md`](benchmarks.md) |
 | How is the current implementation structured? | [`architecture/current-system.md`](architecture/current-system.md) |
@@ -68,7 +69,8 @@ The RFC-0001 documentation set and `plans/implementation-plan-v0.1.md` predate s
 - **ADRs** own durable decisions and consequences; they do not act as project plans.
 - **Architecture documents** explain current implementation, authority boundaries, and package ownership.
 - **Schemas** define machine-readable compatibility contracts.
-- **Posture inventories** capture normalized observed/unknown/unavailable repository evidence; repository-owned observation profiles select deterministic facts but do not define severity, findings, or remediation policy. Hooks posture treats repository hook/config data as non-executable observation input and keeps CI authoritative. Commit posture keeps history bounded and excludes identity/productivity analytics. Mirror posture reuses existing reconciliation observations rather than redefining drift semantics.
+- **Posture inventories** capture normalized observed/unknown/unavailable repository evidence; repository-owned observation profiles select deterministic facts but do not define severity, findings, exceptions, or remediation policy. Hooks posture treats repository hook/config data as non-executable observation input and keeps CI authoritative. Commit posture keeps history bounded and excludes identity/productivity analytics. Mirror posture reuses existing reconciliation observations rather than redefining drift semantics.
+- **Posture policy profiles** are external policy data over normalized facts. They own explicit expectations, severity, remediation options, and bounded exceptions; they do not grant provider access or mutation authority. Posture reports preserve source evidence and unknown/unavailable states and do not collapse findings into an opaque numeric score.
 - **Assessment reports** capture point-in-time analysis and evidence; they reference GitHub/repository state rather than replacing it.
 - **README files** provide orientation and current capability summaries, not detailed requirements.
 - **The changelog** records curated user-visible and compatibility changes; generated release notes provide commit and contributor detail.
@@ -82,7 +84,7 @@ Update documentation in the same change when any of these change:
 - public CLI behavior or exit codes;
 - JSON contract shape or version;
 - mutation, stale-plan, partial-failure, or recovery semantics;
-- posture fact/evidence semantics, provider observation boundaries, repository-owned observation profile contracts, hook execution boundaries, commit-history/privacy boundaries, or mirror observation scope;
+- posture fact/evidence semantics, provider observation boundaries, repository-owned observation profile contracts, hook execution boundaries, commit-history/privacy boundaries, mirror observation scope, policy/exception semantics, or report determinism;
 - supported topology, providers, transports, refs, mirrors, or managed artifact types;
 - supported release targets, packaging, installation, or verification behavior;
 - security checks, suppression rules, or release-blocking policy;
