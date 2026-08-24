@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html"
 	"sort"
 	"strings"
 )
@@ -11,14 +12,14 @@ import (
 func RenderMarkdown(report Report) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Repository posture report\n\n")
-	fmt.Fprintf(&b, "- Repository: `%s`\n", report.Repository)
-	fmt.Fprintf(&b, "- Profile: `%s`\n", report.ProfileID)
-	fmt.Fprintf(&b, "- As of: `%s`\n\n", report.AsOf)
+	fmt.Fprintf(&b, "- Repository: %s\n", inlineCode(report.Repository))
+	fmt.Fprintf(&b, "- Profile: %s\n", inlineCode(report.ProfileID))
+	fmt.Fprintf(&b, "- As of: %s\n\n", inlineCode(report.AsOf))
 
 	counts := SummaryBySeverity(report)
 	b.WriteString("## Findings summary\n\n")
 	for _, severity := range []Severity{SeverityCritical, SeverityHigh, SeverityMedium, SeverityLow, SeverityInfo} {
-		fmt.Fprintf(&b, "- %s: %d\n", severity, counts[severity])
+		fmt.Fprintf(&b, "- %s: %d\n", escapeMarkdownText(string(severity)), counts[severity])
 	}
 	b.WriteString("\n")
 
@@ -34,32 +35,32 @@ func RenderMarkdown(report Report) string {
 
 	b.WriteString("## Policy evaluation\n\n")
 	for _, area := range areaNames {
-		fmt.Fprintf(&b, "### %s\n\n", area)
+		fmt.Fprintf(&b, "### %s\n\n", escapeMarkdownText(area))
 		items := areas[area]
 		sort.Slice(items, func(i, j int) bool { return items[i].RuleID < items[j].RuleID })
 		for _, evaluation := range items {
-			fmt.Fprintf(&b, "#### %s — %s\n\n", evaluation.RuleID, evaluation.Title)
-			fmt.Fprintf(&b, "- Status: **%s**\n", evaluation.Status)
-			fmt.Fprintf(&b, "- Severity: `%s`\n", evaluation.Severity)
-			fmt.Fprintf(&b, "- Fact: `%s`\n", evaluation.Fact)
+			fmt.Fprintf(&b, "#### %s — %s\n\n", escapeMarkdownText(evaluation.RuleID), escapeMarkdownText(evaluation.Title))
+			fmt.Fprintf(&b, "- Status: **%s**\n", escapeMarkdownText(string(evaluation.Status)))
+			fmt.Fprintf(&b, "- Severity: %s\n", inlineCode(string(evaluation.Severity)))
+			fmt.Fprintf(&b, "- Fact: %s\n", inlineCode(evaluation.Fact))
 			if len(evaluation.Expected) > 0 {
-				fmt.Fprintf(&b, "- Expected: `%s`\n", compactJSON(evaluation.Expected))
+				fmt.Fprintf(&b, "- Expected: %s\n", inlineCode(compactJSON(evaluation.Expected)))
 			}
 			if len(evaluation.Observed) > 0 {
-				fmt.Fprintf(&b, "- Observed: `%s`\n", compactJSON(evaluation.Observed))
+				fmt.Fprintf(&b, "- Observed: %s\n", inlineCode(compactJSON(evaluation.Observed)))
 			}
 			if evaluation.Exception != nil {
-				fmt.Fprintf(&b, "- Exception: owner `%s`, expires `%s`, reason: %s\n", evaluation.Exception.Owner, evaluation.Exception.Expires, evaluation.Exception.Reason)
+				fmt.Fprintf(&b, "- Exception: owner %s, expires %s, reason: %s\n", inlineCode(evaluation.Exception.Owner), inlineCode(evaluation.Exception.Expires), escapeMarkdownText(evaluation.Exception.Reason))
 			}
 			if evaluation.ExceptionGap != "" {
-				fmt.Fprintf(&b, "- Exception status: **%s**\n", evaluation.ExceptionGap)
+				fmt.Fprintf(&b, "- Exception status: **%s**\n", escapeMarkdownText(evaluation.ExceptionGap))
 			}
 			if len(evaluation.Evidence) > 0 {
 				b.WriteString("- Evidence:\n")
 				for _, evidence := range evaluation.Evidence {
-					fmt.Fprintf(&b, "  - `%s` `%s`", evidence.Source, evidence.Reference)
+					fmt.Fprintf(&b, "  - %s %s", inlineCode(evidence.Source), inlineCode(evidence.Reference))
 					if evidence.Detail != "" {
-						fmt.Fprintf(&b, ": %s", evidence.Detail)
+						fmt.Fprintf(&b, ": %s", escapeMarkdownText(evidence.Detail))
 					}
 					b.WriteString("\n")
 				}
@@ -67,7 +68,7 @@ func RenderMarkdown(report Report) string {
 			if len(evaluation.Remediation) > 0 {
 				b.WriteString("- Remediation options:\n")
 				for _, remediation := range evaluation.Remediation {
-					fmt.Fprintf(&b, "  - %s\n", remediation)
+					fmt.Fprintf(&b, "  - %s\n", escapeMarkdownText(remediation))
 				}
 			}
 			b.WriteString("\n")
@@ -80,7 +81,7 @@ func RenderMarkdown(report Report) string {
 		b.WriteString("None.\n")
 	} else {
 		for _, evaluation := range unsupported {
-			fmt.Fprintf(&b, "- `%s` (%s): `%s` is %s\n", evaluation.RuleID, evaluation.Area, evaluation.Fact, evaluation.Status)
+			fmt.Fprintf(&b, "- %s (%s): %s is %s\n", inlineCode(evaluation.RuleID), escapeMarkdownText(evaluation.Area), inlineCode(evaluation.Fact), escapeMarkdownText(string(evaluation.Status)))
 		}
 	}
 
@@ -93,4 +94,48 @@ func compactJSON(value []byte) string {
 		return string(value)
 	}
 	return out.String()
+}
+
+func inlineCode(value string) string {
+	value = strings.NewReplacer("\r", `\r`, "\n", `\n`, "\t", `\t`).Replace(value)
+	maxRun := 0
+	currentRun := 0
+	for _, r := range value {
+		if r == '`' {
+			currentRun++
+			if currentRun > maxRun {
+				maxRun = currentRun
+			}
+		} else {
+			currentRun = 0
+		}
+	}
+	delimiter := strings.Repeat("`", maxRun+1)
+	return delimiter + " " + value + " " + delimiter
+}
+
+func escapeMarkdownText(value string) string {
+	value = html.EscapeString(value)
+	value = strings.NewReplacer(
+		"\\", `\\`,
+		"\r", `\r`,
+		"\n", `\n`,
+		"\t", `\t`,
+		"`", "\\`",
+		"*", "\\*",
+		"_", "\\_",
+		"{", "\\{",
+		"}", "\\}",
+		"[", "\\[",
+		"]", "\\]",
+		"(", "\\(",
+		")", "\\)",
+		"#", "\\#",
+		"+", "\\+",
+		"-", "\\-",
+		"!", "\\!",
+		"|", "\\|",
+		">", "\\>",
+	).Replace(value)
+	return value
 }
