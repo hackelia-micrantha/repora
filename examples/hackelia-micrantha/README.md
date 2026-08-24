@@ -1,7 +1,7 @@
 # Hackelia Micrantha organization example
 
-`repora.yaml` declares every active repository visible in the
-`hackelia-micrantha` GitHub organization on 2026-08-24.
+`repora.yaml` declares the curated set of 50 repositories intended for Repora
+management from the `hackelia-micrantha` GitHub organization as of 2026-08-24.
 
 ## Before use
 
@@ -35,9 +35,9 @@ locations as GitLab or use legacy transport URLs to bypass provider validation.
 
 ## Scope
 
-The inventory includes public, private, community, legacy, and organization
-metadata repositories. Repora's current default-branch-only model does not
-encode GitHub visibility or default-branch names in this file; those are
-observed at runtime. Review the list before adopting it as production topology,
-especially if repositories have been archived, transferred, or added since the
-inventory date.
+The topology is intentionally curated rather than a generated inventory of the
+entire organization. Repora's current default-branch-only model does not encode
+GitHub visibility or default-branch names in this file; those are observed at
+runtime. Review the list before adopting it as production topology, especially
+if repositories have been archived, transferred, added, or deliberately
+excluded since the inventory date.

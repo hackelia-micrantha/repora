@@ -1,4 +1,4 @@
-# Complete hackelia-micrantha topology example.
+# Curated hackelia-micrantha topology example.
 #
 # Replace "replace-with-gitlab-namespace" before running repoctl. The GitHub
 # mirror paths were inventoried from the organization on 2026-08-24.
@@ -31,22 +31,6 @@ repos:
     mirrors:
       - provider: github
         path: hackelia-micrantha/myosotis
-  - id: stimulus
-    uid: repo.hackelia-micrantha.stimulus
-    canonical:
-      provider: gitlab
-      path: replace-with-gitlab-namespace/stimulus
-    mirrors:
-      - provider: github
-        path: hackelia-micrantha/stimulus
-  - id: micra
-    uid: repo.hackelia-micrantha.micra
-    canonical:
-      provider: gitlab
-      path: replace-with-gitlab-namespace/micra
-    mirrors:
-      - provider: github
-        path: hackelia-micrantha/micra
   - id: calathea
     uid: repo.hackelia-micrantha.calathea
     canonical:
@@ -55,22 +39,6 @@ repos:
     mirrors:
       - provider: github
         path: hackelia-micrantha/calathea
-  - id: fortunes-cli
-    uid: repo.hackelia-micrantha.fortunes-cli
-    canonical:
-      provider: gitlab
-      path: replace-with-gitlab-namespace/fortunes-cli
-    mirrors:
-      - provider: github
-        path: hackelia-micrantha/fortunes-cli
-  - id: actions
-    uid: repo.hackelia-micrantha.actions
-    canonical:
-      provider: gitlab
-      path: replace-with-gitlab-namespace/actions
-    mirrors:
-      - provider: github
-        path: hackelia-micrantha/actions
   - id: calathea-community
     uid: repo.hackelia-micrantha.calathea-community
     canonical:
@@ -103,14 +71,6 @@ repos:
     mirrors:
       - provider: github
         path: hackelia-micrantha/amaryllis
-  - id: scouter-prototype
-    uid: repo.hackelia-micrantha.scouter-prototype
-    canonical:
-      provider: gitlab
-      path: replace-with-gitlab-namespace/scouter-prototype
-    mirrors:
-      - provider: github
-        path: hackelia-micrantha/scouter-prototype
   - id: veil
     uid: repo.hackelia-micrantha.veil
     canonical:
@@ -135,14 +95,6 @@ repos:
     mirrors:
       - provider: github
         path: hackelia-micrantha/phyllotaxis
-  - id: sandbox
-    uid: repo.hackelia-micrantha.sandbox
-    canonical:
-      provider: gitlab
-      path: replace-with-gitlab-namespace/sandbox
-    mirrors:
-      - provider: github
-        path: hackelia-micrantha/sandbox
   - id: bluebell-sdk
     uid: repo.hackelia-micrantha.bluebell-sdk
     canonical:
@@ -151,14 +103,6 @@ repos:
     mirrors:
       - provider: github
         path: hackelia-micrantha/bluebell-sdk
-  - id: scouter-backend
-    uid: repo.hackelia-micrantha.scouter-backend
-    canonical:
-      provider: gitlab
-      path: replace-with-gitlab-namespace/scouter-backend
-    mirrors:
-      - provider: github
-        path: hackelia-micrantha/scouter-backend
   - id: codemux
     uid: repo.hackelia-micrantha.codemux
     canonical:
@@ -199,14 +143,6 @@ repos:
     mirrors:
       - provider: github
         path: hackelia-micrantha/anthesis
-  - id: kredux
-    uid: repo.hackelia-micrantha.kredux
-    canonical:
-      provider: gitlab
-      path: replace-with-gitlab-namespace/kredux
-    mirrors:
-      - provider: github
-        path: hackelia-micrantha/kredux
   - id: invokrum-community
     uid: repo.hackelia-micrantha.invokrum-community
     canonical:
@@ -223,14 +159,6 @@ repos:
     mirrors:
       - provider: github
         path: hackelia-micrantha/testule
-  - id: hackelia-micrantha
-    uid: repo.hackelia-micrantha.hackelia-micrantha
-    canonical:
-      provider: gitlab
-      path: replace-with-gitlab-namespace/hackelia-micrantha
-    mirrors:
-      - provider: github
-        path: hackelia-micrantha/hackelia-micrantha
   - id: yard
     uid: repo.hackelia-micrantha.yard
     canonical:
@@ -263,14 +191,6 @@ repos:
     mirrors:
       - provider: github
         path: hackelia-micrantha/achillea-community
-  - id: scouter-frontend
-    uid: repo.hackelia-micrantha.scouter-frontend
-    canonical:
-      provider: gitlab
-      path: replace-with-gitlab-namespace/scouter-frontend
-    mirrors:
-      - provider: github
-        path: hackelia-micrantha/scouter-frontend
   - id: modolia-community
     uid: repo.hackelia-micrantha.modolia-community
     canonical:
@@ -279,22 +199,6 @@ repos:
     mirrors:
       - provider: github
         path: hackelia-micrantha/modolia-community
-  - id: .github
-    uid: repo.hackelia-micrantha.github
-    canonical:
-      provider: gitlab
-      path: replace-with-gitlab-namespace/.github
-    mirrors:
-      - provider: github
-        path: hackelia-micrantha/.github
-  - id: scouter
-    uid: repo.hackelia-micrantha.scouter
-    canonical:
-      provider: gitlab
-      path: replace-with-gitlab-namespace/scouter
-    mirrors:
-      - provider: github
-        path: hackelia-micrantha/scouter
   - id: mobuild-warden
     uid: repo.hackelia-micrantha.mobuild-warden
     canonical:

@@ -13,8 +13,8 @@ func TestLoadHackeliaMicranthaExample(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	if len(spec.Repos) != 62 {
-		t.Fatalf("repo count = %d, want 62", len(spec.Repos))
+	if len(spec.Repos) != 50 {
+		t.Fatalf("repo count = %d, want 50", len(spec.Repos))
 	}
 
 	for _, repo := range spec.Repos {
