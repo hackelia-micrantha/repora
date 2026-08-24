@@ -237,7 +237,7 @@ func addConverted[T any](entries map[string]FactInput, name string, fact posture
 }
 
 func convertedFact[T any](fact posture.Fact[T]) FactInput {
-	out := FactInput{State: fact.State, Evidence: append([]posture.Evidence(nil), fact.Evidence...)}
+	out := FactInput{State: fact.State, Evidence: cloneAdapterEvidence(fact.Evidence)}
 	if fact.State == posture.StateObserved && fact.Value != nil {
 		raw, err := json.Marshal(*fact.Value)
 		if err == nil {
@@ -249,12 +249,19 @@ func convertedFact[T any](fact posture.Fact[T]) FactInput {
 
 func observedInput(value any, evidence []posture.Evidence) FactInput {
 	raw, _ := json.Marshal(value)
-	return FactInput{State: posture.StateObserved, Value: raw, Evidence: append([]posture.Evidence(nil), evidence...)}
+	return FactInput{State: posture.StateObserved, Value: raw, Evidence: cloneAdapterEvidence(evidence)}
 }
 
 func stateInput(state posture.FactState, value any, evidence []posture.Evidence) FactInput {
 	if state == posture.StateObserved {
 		return observedInput(value, evidence)
 	}
-	return FactInput{State: state, Evidence: append([]posture.Evidence(nil), evidence...)}
+	return FactInput{State: state, Evidence: cloneAdapterEvidence(evidence)}
+}
+
+func cloneAdapterEvidence(evidence []posture.Evidence) []posture.Evidence {
+	if len(evidence) == 0 {
+		return []posture.Evidence{}
+	}
+	return append([]posture.Evidence(nil), evidence...)
 }
