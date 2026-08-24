@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/posture-report-v1.schema.json",
+  "title": "Repora posture report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "repository", "profile_id", "as_of", "evaluations"],
+  "properties": {
+    "kind": {"const": "repora.posture-report"},
+    "version": {"const": 1},
+    "repository": {"type": "string", "minLength": 1},
+    "profile_id": {"type": "string", "minLength": 1},
+    "as_of": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "evaluations": {"type": "array", "items": {"$ref": "#/$defs/evaluation"}}
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "reference"],
+      "properties": {
+        "source": {"type": "string", "minLength": 1},
+        "reference": {"type": "string", "minLength": 1},
+        "detail": {"type": "string"}
+      }
+    },
+    "exception": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "reason", "owner", "expires"],
+      "properties": {
+        "rule_id": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "owner": {"type": "string", "minLength": 1},
+        "expires": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "area", "fact", "severity", "status", "title", "evidence", "remediation"],
+      "properties": {
+        "rule_id": {"type": "string", "minLength": 1},
+        "area": {"type": "string", "minLength": 1},
+        "fact": {"type": "string", "minLength": 1},
+        "severity": {"enum": ["critical", "high", "medium", "low", "informational"]},
+        "status": {"enum": ["pass", "fail", "warning", "excepted", "unknown", "unavailable"]},
+        "title": {"type": "string", "minLength": 1},
+        "expected": {},
+        "observed": {},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
+        "remediation": {"type": "array", "items": {"type": "string"}},
+        "exception": {"$ref": "#/$defs/exception"},
+        "exception_gap": {"type": "string"}
+      }
+    }
+  }
+}
