@@ -30,9 +30,24 @@ Schemas:
 
 ## CLI
 
-Policy evaluation is offline-only:
+The operator workflow is explicitly split into collection, offline convergence, and offline reporting:
 
-```text
+```sh
+repoctl posture inventory OWNER/REPO > inventory.json
+repoctl posture docs OWNER/REPO > docs.json
+repoctl posture hooks OWNER/REPO > hooks.json
+repoctl posture commits OWNER/REPO > commits.json
+repoctl posture mirrors -f repora.yaml > mirrors.json
+
+repoctl posture converge \
+  --inventory inventory.json \
+  --docs docs.json \
+  --hooks hooks.json \
+  --commits commits.json \
+  --mirrors mirrors.json \
+  --repo-uid repo.example \
+  > posture-facts.json
+
 repoctl posture report \
   --profile policy.json \
   --facts posture-facts.json \
@@ -40,11 +55,15 @@ repoctl posture report \
   --format markdown
 ```
 
-Use `--format json` for the versioned `repora.posture-report` v1 artifact.
+Each collector artifact is independently versioned and may be persisted, inspected, or supplied selectively to `posture converge`. A mirror artifact must be paired with `--repo-uid` so convergence selects exactly one configured repository. Duplicate source flags, malformed or unsupported contracts, repository-identity mismatches, and ambiguous GitHub mirror identities fail the whole convergence operation; no partial policy-input artifact is emitted.
+
+`posture converge` is offline-only. It strictly validates every supplied artifact and passes typed data through the existing convergence adapters. It does not call providers, rescan repositories, infer unavailable evidence, or mutate repository state. Its output is deterministic `repora.posture-policy-inputs` v1 JSON suitable for direct use by `posture report`.
+
+Use `--format json` on `posture report` for the versioned `repora.posture-report` v1 artifact.
 
 `--as-of` is required and must use `YYYY-MM-DD`. Exception expiry therefore has no hidden wall-clock dependency: the same profile, facts, and evaluation date produce the same result.
 
-The command does not use `GITHUB_TOKEN`, contact providers, fetch repository content, run scanners, or mutate repository/provider state.
+The report command does not use `GITHUB_TOKEN`, contact providers, fetch repository content, run scanners, or mutate repository/provider state.
 
 ## Policy profile
 
@@ -114,7 +133,7 @@ The Go convergence adapters consume the existing typed posture artifacts directl
 - `AddCommits` — `repora.posture-commits` v1;
 - `AddMirrors` — one UID selected from a validated `repora.posture-mirrors` v1 inventory.
 
-Adapters preserve fact state and evidence. They reject duplicate fact names and preflight all additions before mutating the convergence input. GitHub-derived domains also reject repository-identity mixing. Mirror input must first pass the existing mirror-inventory validation contract.
+Adapters preserve fact state and evidence. They reject duplicate fact names and preflight all additions before mutating the convergence input. GitHub-derived domains also reject repository-identity mixing. Mirror convergence additionally correlates the selected repository's GitHub endpoint with the other supplied repository-scoped artifacts.
 
 Representative fact namespaces are:
 
@@ -150,6 +169,12 @@ Both states are preserved in JSON and collected again in the Markdown report's `
 - exception details and expired-exception state.
 
 Markdown output sorts areas and rules deterministically. The findings summary counts active `fail` and `warning` evaluations by severity. Active exceptions are shown as `excepted`; unknown/unavailable evidence is shown separately rather than hidden from the summary.
+
+## Determinism
+
+Determinism is asserted across the full offline boundary: repeated convergence of the same validated collector artifacts produces byte-identical `repora.posture-policy-inputs` JSON, and evaluating those inputs with the same profile and explicit `--as-of` date produces byte-identical `repora.posture-report` JSON.
+
+Collection itself may observe a changing external repository between runs; deterministic guarantees begin once versioned collector artifacts have been captured.
 
 ## Security and authority boundary
 

@@ -237,7 +237,7 @@ func TestPostureHelpAndUsage(t *testing.T) {
 	code := withStderr(t, &stderr, func() int {
 		return run([]string{"posture", "inventory"})
 	})
-	want := "usage: repoctl posture inventory OWNER/REPO\n       repoctl posture docs OWNER/REPO\n       repoctl posture hooks OWNER/REPO\n       repoctl posture commits OWNER/REPO\n       repoctl posture mirrors -f repora.yaml\n"
+	want := "usage: repoctl posture inventory OWNER/REPO\n       repoctl posture docs OWNER/REPO\n       repoctl posture hooks OWNER/REPO\n       repoctl posture commits OWNER/REPO\n       repoctl posture mirrors -f repora.yaml\n       repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--commits FILE] [--mirrors FILE --repo-uid UID]\n       repoctl posture report --profile POLICY.json --facts FACTS.json --as-of YYYY-MM-DD [--format markdown|json]\n"
 	if code != 1 || stderr.String() != want {
 		t.Fatalf("usage code=%d output=%q want=%q", code, stderr.String(), want)
 	}
