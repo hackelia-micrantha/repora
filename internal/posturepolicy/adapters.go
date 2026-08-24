@@ -3,7 +3,6 @@ package posturepolicy
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"repoctl/internal/posture"
 )
@@ -149,7 +148,27 @@ func AddCommits(inputs *Inputs, inventory posture.CommitInventory) error {
 	return addEntries(inputs, entries)
 }
 
-func AddMirrorRepository(inputs *Inputs, repository posture.MirrorRepositoryFacts) error {
+func AddMirrors(inputs *Inputs, inventory posture.MirrorInventory, repoUID string) error {
+	if err := inventory.Validate(); err != nil {
+		return err
+	}
+	var selected *posture.MirrorRepositoryFacts
+	for idx := range inventory.Repos {
+		if inventory.Repos[idx].UID != repoUID {
+			continue
+		}
+		if selected != nil {
+			return fmt.Errorf("mirror posture contains duplicate repository uid %q", repoUID)
+		}
+		selected = &inventory.Repos[idx]
+	}
+	if selected == nil {
+		return fmt.Errorf("mirror posture repository uid %q was not found", repoUID)
+	}
+	return addMirrorRepository(inputs, *selected)
+}
+
+func addMirrorRepository(inputs *Inputs, repository posture.MirrorRepositoryFacts) error {
 	entries := map[string]FactInput{}
 	entries["mirrors.repo_id"] = observedInput(repository.ID, repository.Evidence)
 	entries["mirrors.repo_uid"] = observedInput(repository.UID, repository.Evidence)
@@ -194,16 +213,20 @@ func addEntries(inputs *Inputs, entries map[string]FactInput) error {
 	if inputs == nil {
 		return fmt.Errorf("posture policy inputs are required")
 	}
-	if inputs.Facts == nil {
-		inputs.Facts = map[string]FactInput{}
-	}
 	for name, fact := range entries {
-		if _, exists := inputs.Facts[name]; exists {
-			return fmt.Errorf("posture policy fact %q already exists", name)
+		if inputs.Facts != nil {
+			if _, exists := inputs.Facts[name]; exists {
+				return fmt.Errorf("posture policy fact %q already exists", name)
+			}
 		}
 		if err := validateFactInput(name, fact); err != nil {
 			return err
 		}
+	}
+	if inputs.Facts == nil {
+		inputs.Facts = map[string]FactInput{}
+	}
+	for name, fact := range entries {
 		inputs.Facts[name] = fact
 	}
 	return nil
@@ -234,8 +257,4 @@ func stateInput(state posture.FactState, value any, evidence []posture.Evidence)
 		return observedInput(value, evidence)
 	}
 	return FactInput{State: state, Evidence: append([]posture.Evidence(nil), evidence...)}
-}
-
-func FactNameForIndex(prefix string, index int) string {
-	return prefix + "." + strconv.Itoa(index)
 }
