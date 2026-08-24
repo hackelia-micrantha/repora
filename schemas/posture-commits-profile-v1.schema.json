@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/posture-commits-profile-v1.schema.json",
+  "title": "Repora bounded commit-history posture profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version"],
+  "properties": {
+    "kind": {"const": "repora.posture-commits-profile"},
+    "version": {"const": 1},
+    "history_limit": {"type": "integer", "minimum": 1, "maximum": 50, "default": 20},
+    "sensitive_paths": {"type": "array", "maxItems": 128, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "file_count_threshold": {"type": "integer", "minimum": 1, "default": 50},
+    "changed_lines_threshold": {"type": "integer", "minimum": 1, "default": 1000},
+    "inspect_pull_requests": {"type": "boolean", "default": true}
+  }
+}
