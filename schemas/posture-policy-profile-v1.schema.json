@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/posture-policy-profile-v1.schema.json",
+  "title": "Repora posture policy profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "id", "rules", "exceptions"],
+  "properties": {
+    "kind": {"const": "repora.posture-policy-profile"},
+    "version": {"const": 1},
+    "id": {"type": "string", "minLength": 1},
+    "rules": {"type": "array", "items": {"$ref": "#/$defs/rule"}},
+    "exceptions": {"type": "array", "items": {"$ref": "#/$defs/exception"}}
+  },
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "area", "fact", "operator", "severity", "title", "remediation"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "area": {"type": "string", "minLength": 1},
+        "fact": {"type": "string", "minLength": 1},
+        "operator": {"enum": ["equals", "at_least", "at_most", "non_empty"]},
+        "expected": {},
+        "severity": {"enum": ["critical", "high", "medium", "low", "informational"]},
+        "title": {"type": "string", "minLength": 1},
+        "remediation": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"operator": {"const": "non_empty"}}},
+          "then": {"not": {"required": ["expected"]}},
+          "else": {"required": ["expected"]}
+        }
+      ]
+    },
+    "exception": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "reason", "owner", "expires"],
+      "properties": {
+        "rule_id": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "owner": {"type": "string", "minLength": 1},
+        "expires": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+      }
+    }
+  }
+}

@@ -16,6 +16,8 @@ Repora records user-visible capability, compatibility, security, and release-pro
 - Read-only hooks/local-workflow posture with common/custom hook-manager signals, bounded repository-declared expectations, required-check/CI coverage evidence, bootstrap/bypass documentation facts, and static network-load signals without hook execution.
 - Read-only bounded commit-history posture with versioned signature, merge-shape, size/file-scope, sensitive-path, and commit/PR-association facts while excluding identity/productivity analytics and unsupported review/direct-push inference.
 - Read-only mirror posture with declared canonical/mirror identities, default-branch-name drift, existing reconciliation state/count evidence, bounded provider metadata facts, and explicit unknown tag/release drift under the default-branch-only v1 scope.
+- Offline posture policy evaluation with versioned policy-profile, normalized-input, and report contracts; typed adapters consume the completed repository/CI, documentation, hooks, commit-history, and mirror fact domains without re-scanning providers.
+- Deterministic Markdown/JSON posture reporting with explicit expected-versus-observed results, severity, remediation options, warning/failure states, source evidence, time-bounded exceptions, expired-exception findings, and visible unknown/unavailable evidence.
 - ADR-0018 and the optional additive Anthesis `pre_apply` policy-integration design; runtime evaluator/transport coupling remains deferred.
 - Standalone Nix package, app, checks, development shell, and formatter outputs for supported Linux/macOS systems.
 
@@ -25,7 +27,8 @@ Repora records user-visible capability, compatibility, security, and release-pro
 - The current Go 1.25 validation/release toolchain is patched to Go 1.25.13 across local tooling and GitHub workflows.
 - Nix validation reuses the same repository build/test/static-analysis targets rather than defining a second quality policy.
 - The formatting gate excludes generated vendored dependency source while continuing to check first-party Go files.
-- Current documentation now treats managed README, assessment, routing, the published `v0.1.0` baseline, standalone Nix packaging, GitHub posture inventory, documentation posture, hooks/local-workflow posture, bounded commit-history posture, and mirror posture as implemented behavior rather than future work.
+- Current documentation now treats managed README, assessment, routing, the published `v0.1.0` baseline, standalone Nix packaging, GitHub posture inventory, documentation posture, hooks/local-workflow posture, bounded commit-history posture, mirror posture, and posture policy/reporting as implemented behavior rather than future work.
+- Posture report evaluation requires an explicit `--as-of YYYY-MM-DD` date so exception expiry is deterministic rather than dependent on the executing machine's wall clock.
 
 ### Security
 
@@ -35,6 +38,7 @@ Repora records user-visible capability, compatibility, security, and release-pro
 - Hooks/local-workflow posture treats repository-owned hook/config/profile/workflow content as bounded data, never installs or executes target-repository hooks, does not follow network-loaded hook references, and keeps CI as the enforcement authority.
 - Commit-history posture keeps provider reads GET-only, caps history/profile scope, omits author/committer identity analytics, and preserves unknown instead of inferring direct pushes, missing review, tag signatures, or release boundaries without proof.
 - Mirror posture reuses the existing fetch-only local reconciliation observation path, never calls push/synchronization/provider-mutation operations, and preserves unavailable provider metadata instead of inferring healthy or drifted state.
+- Posture policy/reporting is offline-only, strictly parses versioned policy/fact inputs, preserves evidence gaps, rejects cross-repository fact mixing and partial adapter mutation, and does not grant provider access, execute repository configuration, run scanners, or create an opaque numeric score.
 - Routing and assessment commands remain read-only with respect to Git/provider state unless a separately reviewed mutation boundary explicitly applies.
 - CI preserves immutable action pins, least-privilege workflow permissions, reachable-vulnerability scanning, CodeQL, full-history secret detection, and dependency-license validation.
 
