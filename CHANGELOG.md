@@ -18,6 +18,7 @@ Repora records user-visible capability, compatibility, security, and release-pro
 - Read-only mirror posture with declared canonical/mirror identities, default-branch-name drift, existing reconciliation state/count evidence, bounded provider metadata facts, and explicit unknown tag/release drift under the default-branch-only v1 scope.
 - Offline posture policy evaluation with versioned policy-profile, normalized-input, and report contracts; typed adapters consume the completed repository/CI, documentation, hooks, commit-history, and mirror fact domains without re-scanning providers.
 - Deterministic Markdown/JSON posture reporting with explicit expected-versus-observed results, severity, remediation options, warning/failure states, source evidence, time-bounded exceptions, expired-exception findings, and visible unknown/unavailable evidence.
+- Bitbucket Cloud mirror transport using provider/path identity and credential-free HTTPS runtime resolution while reusing the existing multi-mirror status/plan/apply pipeline.
 - ADR-0018 and the optional additive Anthesis `pre_apply` policy-integration design; runtime evaluator/transport coupling remains deferred.
 - Standalone Nix package, app, checks, development shell, and formatter outputs for supported Linux/macOS systems.
 
@@ -39,6 +40,7 @@ Repora records user-visible capability, compatibility, security, and release-pro
 - Commit-history posture keeps provider reads GET-only, caps history/profile scope, omits author/committer identity analytics, and preserves unknown instead of inferring direct pushes, missing review, tag signatures, or release boundaries without proof.
 - Mirror posture reuses the existing fetch-only local reconciliation observation path, never calls push/synchronization/provider-mutation operations, and preserves unavailable provider metadata instead of inferring healthy or drifted state.
 - Posture policy/reporting is offline-only, strictly parses versioned policy/fact inputs, preserves evidence gaps, rejects cross-repository fact mixing and partial adapter mutation, and does not grant provider access, execute repository configuration, run scanners, or create an opaque numeric score.
+- Bitbucket mirrors require exact `workspace/repository` provider paths, reject legacy/credential-bearing transport input, keep credentials external to configuration/evidence, and leave unsupported provider-administration posture metadata explicit `unavailable`.
 - Routing and assessment commands remain read-only with respect to Git/provider state unless a separately reviewed mutation boundary explicitly applies.
 - CI preserves immutable action pins, least-privilege workflow permissions, reachable-vulnerability scanning, CodeQL, full-history secret detection, and dependency-license validation.
 
