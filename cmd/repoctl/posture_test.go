@@ -80,12 +80,22 @@ func TestPostureInventoryCommandEmitsVersionedJSONAndUsesEnvironmentToken(t *tes
 		return validPostureInventory(fullName), nil
 	}
 	var stdout bytes.Buffer
-	code := withStdout(t, &stdout, func() int { return run([]string{"posture", "inventory", "acme/project"}) })
-	if code != 0 { t.Fatalf("run returned %d, want 0", code) }
-	if gotRepo != "acme/project" || gotToken != "test-token" { t.Fatalf("collector inputs repo=%q token=%q", gotRepo, gotToken) }
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"posture", "inventory", "acme/project"})
+	})
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	if gotRepo != "acme/project" || gotToken != "test-token" {
+		t.Fatalf("collector inputs repo=%q token=%q", gotRepo, gotToken)
+	}
 	var decoded posture.Inventory
-	if err := json.Unmarshal(stdout.Bytes(), &decoded); err != nil { t.Fatalf("decode output: %v\n%s", err, stdout.String()) }
-	if decoded.Kind != posture.InventoryKind || decoded.Version != posture.InventoryVersion || decoded.Repository.FullName != "acme/project" { t.Fatalf("inventory envelope = %#v", decoded) }
+	if err := json.Unmarshal(stdout.Bytes(), &decoded); err != nil {
+		t.Fatalf("decode output: %v\n%s", err, stdout.String())
+	}
+	if decoded.Kind != posture.InventoryKind || decoded.Version != posture.InventoryVersion || decoded.Repository.FullName != "acme/project" {
+		t.Fatalf("inventory envelope = %#v", decoded)
+	}
 }
 
 func TestPostureDocumentationCommandEmitsVersionedJSONAndUsesEnvironmentToken(t *testing.T) {
@@ -98,12 +108,22 @@ func TestPostureDocumentationCommandEmitsVersionedJSONAndUsesEnvironmentToken(t 
 		return validDocumentationInventory(fullName), nil
 	}
 	var stdout bytes.Buffer
-	code := withStdout(t, &stdout, func() int { return run([]string{"posture", "docs", "acme/project"}) })
-	if code != 0 { t.Fatalf("run returned %d, want 0", code) }
-	if gotRepo != "acme/project" || gotToken != "docs-token" { t.Fatalf("collector inputs repo=%q token=%q", gotRepo, gotToken) }
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"posture", "docs", "acme/project"})
+	})
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	if gotRepo != "acme/project" || gotToken != "docs-token" {
+		t.Fatalf("collector inputs repo=%q token=%q", gotRepo, gotToken)
+	}
 	var decoded posture.DocumentationInventory
-	if err := json.Unmarshal(stdout.Bytes(), &decoded); err != nil { t.Fatalf("decode output: %v\n%s", err, stdout.String()) }
-	if decoded.Kind != posture.DocumentationInventoryKind || decoded.Version != posture.DocumentationInventoryVersion || decoded.Repository.FullName != "acme/project" { t.Fatalf("documentation inventory envelope = %#v", decoded) }
+	if err := json.Unmarshal(stdout.Bytes(), &decoded); err != nil {
+		t.Fatalf("decode output: %v\n%s", err, stdout.String())
+	}
+	if decoded.Kind != posture.DocumentationInventoryKind || decoded.Version != posture.DocumentationInventoryVersion || decoded.Repository.FullName != "acme/project" {
+		t.Fatalf("documentation inventory envelope = %#v", decoded)
+	}
 }
 
 func TestPostureHooksCommandEmitsVersionedJSONAndUsesEnvironmentToken(t *testing.T) {
@@ -116,12 +136,22 @@ func TestPostureHooksCommandEmitsVersionedJSONAndUsesEnvironmentToken(t *testing
 		return validHooksInventory(fullName), nil
 	}
 	var stdout bytes.Buffer
-	code := withStdout(t, &stdout, func() int { return run([]string{"posture", "hooks", "acme/project"}) })
-	if code != 0 { t.Fatalf("run returned %d, want 0", code) }
-	if gotRepo != "acme/project" || gotToken != "hooks-token" { t.Fatalf("collector inputs repo=%q token=%q", gotRepo, gotToken) }
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"posture", "hooks", "acme/project"})
+	})
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	if gotRepo != "acme/project" || gotToken != "hooks-token" {
+		t.Fatalf("collector inputs repo=%q token=%q", gotRepo, gotToken)
+	}
 	var decoded posture.HooksInventory
-	if err := json.Unmarshal(stdout.Bytes(), &decoded); err != nil { t.Fatalf("decode output: %v\n%s", err, stdout.String()) }
-	if decoded.Kind != posture.HooksInventoryKind || decoded.Version != posture.HooksInventoryVersion || decoded.Repository.FullName != "acme/project" { t.Fatalf("hooks inventory envelope = %#v", decoded) }
+	if err := json.Unmarshal(stdout.Bytes(), &decoded); err != nil {
+		t.Fatalf("decode output: %v\n%s", err, stdout.String())
+	}
+	if decoded.Kind != posture.HooksInventoryKind || decoded.Version != posture.HooksInventoryVersion || decoded.Repository.FullName != "acme/project" {
+		t.Fatalf("hooks inventory envelope = %#v", decoded)
+	}
 }
 
 func TestPostureInventoryFallsBackToGHToken(t *testing.T) {
@@ -130,21 +160,36 @@ func TestPostureInventoryFallsBackToGHToken(t *testing.T) {
 	t.Setenv("GITHUB_TOKEN", "")
 	t.Setenv("GH_TOKEN", "fallback-token")
 	var gotToken string
-	collectGitHubPosture = func(_ context.Context, fullName, token string) (posture.Inventory, error) { gotToken = token; return validPostureInventory(fullName), nil }
+	collectGitHubPosture = func(_ context.Context, fullName, token string) (posture.Inventory, error) {
+		gotToken = token
+		return validPostureInventory(fullName), nil
+	}
 	var stdout bytes.Buffer
-	code := withStdout(t, &stdout, func() int { return run([]string{"posture", "inventory", "acme/project"}) })
-	if code != 0 || gotToken != "fallback-token" { t.Fatalf("code=%d token=%q", code, gotToken) }
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"posture", "inventory", "acme/project"})
+	})
+	if code != 0 || gotToken != "fallback-token" {
+		t.Fatalf("code=%d token=%q", code, gotToken)
+	}
 }
 
 func TestPostureHelpAndUsage(t *testing.T) {
 	for _, subcommand := range []string{"inventory", "docs", "hooks"} {
 		var stdout bytes.Buffer
-		code := withStdout(t, &stdout, func() int { return run([]string{"posture", subcommand, "--help"}) })
+		code := withStdout(t, &stdout, func() int {
+			return run([]string{"posture", subcommand, "--help"})
+		})
 		want := "usage: repoctl posture " + subcommand + " OWNER/REPO\n"
-		if code != 0 || stdout.String() != want { t.Fatalf("%s help code=%d output=%q want=%q", subcommand, code, stdout.String(), want) }
+		if code != 0 || stdout.String() != want {
+			t.Fatalf("%s help code=%d output=%q want=%q", subcommand, code, stdout.String(), want)
+		}
 	}
 	var stderr bytes.Buffer
-	code := withStderr(t, &stderr, func() int { return run([]string{"posture", "inventory"}) })
+	code := withStderr(t, &stderr, func() int {
+		return run([]string{"posture", "inventory"})
+	})
 	want := "usage: repoctl posture inventory OWNER/REPO\n       repoctl posture docs OWNER/REPO\n       repoctl posture hooks OWNER/REPO\n       repoctl posture mirrors -f repora.yaml\n"
-	if code != 1 || stderr.String() != want { t.Fatalf("usage code=%d output=%q want=%q", code, stderr.String(), want) }
+	if code != 1 || stderr.String() != want {
+		t.Fatalf("usage code=%d output=%q want=%q", code, stderr.String(), want)
+	}
 }
