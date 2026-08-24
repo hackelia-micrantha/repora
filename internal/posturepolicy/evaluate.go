@@ -70,8 +70,8 @@ func evaluateRule(rule Rule, fact FactInput) (Evaluation, error) {
 		Severity:    rule.Severity,
 		Title:       rule.Title,
 		Expected:    cloneRaw(rule.Expected),
-		Evidence:    append([]posture.Evidence(nil), fact.Evidence...),
-		Remediation: append([]string(nil), rule.Remediation...),
+		Evidence:    append([]posture.Evidence{}, fact.Evidence...),
+		Remediation: append([]string{}, rule.Remediation...),
 	}
 
 	switch fact.State {
