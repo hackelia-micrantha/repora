@@ -239,6 +239,9 @@ func TestLoadRejectsMalformedBitbucketPaths(t *testing.T) {
 		`workspace/payments-api\other`,
 		"workspace/payments-api:other",
 		"workspace/payments-api/",
+		"workspace/payments-api.git",
+		"work space/payments-api",
+		"workspace/payments api",
 	} {
 		t.Run(mirrorPath, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "repora.yaml")
@@ -247,6 +250,18 @@ func TestLoadRejectsMalformedBitbucketPaths(t *testing.T) {
 				t.Fatalf("Load(%q) returned nil error", mirrorPath)
 			}
 		})
+	}
+}
+
+func TestValidateBitbucketPathRejectsEmbeddedUnicodeWhitespace(t *testing.T) {
+	for _, value := range []string{
+		"work\tspace/payments-api",
+		"workspace/payments\napi",
+		"work\u00a0space/payments-api",
+	} {
+		if err := validateBitbucketPath(value); err == nil {
+			t.Fatalf("validateBitbucketPath(%q) returned nil error", value)
+		}
 	}
 }
 
