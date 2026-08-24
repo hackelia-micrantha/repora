@@ -10,7 +10,7 @@ import (
 )
 
 func TestBuildRepositoryArtifactPlansMirrorsInConfigurationOrder(t *testing.T) {
-	repo := multiMirrorRepo()
+	repo := bitbucketMultiMirrorRepo()
 	observed := status.RepositoryResult{
 		ID:  repo.ID,
 		UID: repo.DurableID(),
@@ -38,7 +38,7 @@ func TestBuildRepositoryArtifactPlansMirrorsInConfigurationOrder(t *testing.T) {
 }
 
 func TestBuildRepositoryArtifactUsesTargetIdentityNotObservationOrder(t *testing.T) {
-	repo := multiMirrorRepo()
+	repo := bitbucketMultiMirrorRepo()
 	repo.Mirrors[0], repo.Mirrors[1] = repo.Mirrors[1], repo.Mirrors[0]
 	observed := status.RepositoryResult{
 		ID:  repo.ID,
@@ -60,7 +60,7 @@ func TestBuildRepositoryArtifactUsesTargetIdentityNotObservationOrder(t *testing
 }
 
 func TestBuildRepositoryArtifactRecordsForcedIntentPerMirror(t *testing.T) {
-	repo := multiMirrorRepo()
+	repo := bitbucketMultiMirrorRepo()
 	observed := status.RepositoryResult{
 		ID:  repo.ID,
 		UID: repo.DurableID(),
@@ -80,7 +80,7 @@ func TestBuildRepositoryArtifactRecordsForcedIntentPerMirror(t *testing.T) {
 }
 
 func TestBuildRepositoryArtifactRejectsIncompleteMirrorStatusBeforeRefReads(t *testing.T) {
-	repo := multiMirrorRepo()
+	repo := bitbucketMultiMirrorRepo()
 	observed := status.RepositoryResult{
 		ID:  repo.ID,
 		UID: repo.DurableID(),
@@ -100,7 +100,7 @@ func TestBuildRepositoryArtifactRejectsIncompleteMirrorStatusBeforeRefReads(t *t
 	}
 }
 
-func multiMirrorRepo() config.Repo {
+func bitbucketMultiMirrorRepo() config.Repo {
 	return config.Repo{
 		ID:        "payments-api",
 		UID:       "repo.org.payments-api",
@@ -108,6 +108,19 @@ func multiMirrorRepo() config.Repo {
 		Mirrors: []config.Endpoint{
 			{Provider: "github", Path: "org/payments-api"},
 			{Provider: "bitbucket", Path: "workspace/payments-api"},
+		},
+		Mode: "mirror",
+	}
+}
+
+func multiMirrorRepo() config.Repo {
+	return config.Repo{
+		ID:        "payments-api",
+		UID:       "repo.org.payments-api",
+		Canonical: config.Endpoint{Provider: "gitlab", Path: "org/payments-api"},
+		Mirrors: []config.Endpoint{
+			{Provider: "github", Path: "org/payments-api"},
+			{Provider: "gitlab", Path: "backup/payments-api"},
 		},
 		Mode: "mirror",
 	}
