@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"html"
 	"sort"
 	"strings"
 )
@@ -111,12 +110,14 @@ func inlineCode(value string) string {
 		}
 	}
 	delimiter := strings.Repeat("`", maxRun+1)
-	return delimiter + " " + value + " " + delimiter
+	return delimiter + value + delimiter
 }
 
 func escapeMarkdownText(value string) string {
-	value = html.EscapeString(value)
-	value = strings.NewReplacer(
+	return strings.NewReplacer(
+		"&", "&amp;",
+		"<", "&lt;",
+		">", "&gt;",
 		"\\", `\\`,
 		"\r", `\r`,
 		"\n", `\n`,
@@ -135,7 +136,5 @@ func escapeMarkdownText(value string) string {
 		"-", "\\-",
 		"!", "\\!",
 		"|", "\\|",
-		">", "\\>",
 	).Replace(value)
-	return value
 }
