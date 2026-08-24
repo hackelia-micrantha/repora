@@ -222,10 +222,13 @@ func CollectGitHubHooks(ctx context.Context, reader GitHubReader, fullName strin
 		manager = profile.Manager
 	}
 	candidates = sortedUnique(append(candidates, profile.HookPaths...))
-	if manager == "" {
-		inventory.Manager = Observed("none", treeObs.Evidence)
-	} else {
+	switch {
+	case manager != "":
 		inventory.Manager = Observed(manager, treeObs.Evidence)
+	case tree.Truncated:
+		inventory.Manager = Unknown[string](evidenceWithDetail(treeObs.Evidence, "Git tree is truncated; absence of a hook manager cannot be established"))
+	default:
+		inventory.Manager = Observed("none", treeObs.Evidence)
 	}
 	for _, hookPath := range candidates {
 		entry, ok := entries[hookPath]
@@ -247,16 +250,21 @@ func CollectGitHubHooks(ctx context.Context, reader GitHubReader, fullName strin
 		}
 		inventory.Entrypoints = append(inventory.Entrypoints, HookEntrypointFact{Path: hookPath, Configured: configured, Executable: executable, NetworkLoaded: networkLoaded})
 	}
-	workflowData, workflowState, workflowEvidence, err := collectWorkflowText(ctx, reader, fullName, tree, entries)
-	if err != nil {
-		return HooksInventory{}, err
-	}
-	for _, check := range profile.RequiredChecks {
-		covered := factForState[bool](workflowState, workflowEvidence)
-		if workflowState == StateObserved {
-			covered = Observed(strings.Contains(strings.ToLower(workflowData), strings.ToLower(check)), workflowEvidence)
+	if len(profile.RequiredChecks) > 0 {
+		workflowData, workflowState, workflowEvidence, err := collectWorkflowText(ctx, reader, fullName, tree, entries)
+		if err != nil {
+			return HooksInventory{}, err
 		}
-		inventory.RequiredChecks = append(inventory.RequiredChecks, LocalCheckFact{Name: check, Configured: Observed(true, profileEvidence), CICovered: covered})
+		for _, check := range profile.RequiredChecks {
+			covered := factForState[bool](workflowState, workflowEvidence)
+			matched := strings.Contains(strings.ToLower(workflowData), strings.ToLower(check))
+			if matched {
+				covered = Observed(true, workflowEvidence)
+			} else if workflowState == StateObserved {
+				covered = Observed(false, workflowEvidence)
+			}
+			inventory.RequiredChecks = append(inventory.RequiredChecks, LocalCheckFact{Name: check, Configured: Observed(true, profileEvidence), CICovered: covered})
+		}
 	}
 	inventory.BootstrapPresent = anyPathPresent(profile.BootstrapDocs, entries, tree, treeObs.Evidence)
 	inventory.BypassPresent = anyPathPresent(profile.BypassDocs, entries, tree, treeObs.Evidence)
@@ -382,6 +390,9 @@ func collectWorkflowText(ctx context.Context, reader GitHubReader, fullName stri
 			builder.WriteByte('\n')
 		}
 		evidence = obs.Evidence
+	}
+	if tree.Truncated {
+		return builder.String(), StateUnknown, evidenceWithDetail(evidence, "Git tree is truncated; workflow set may be incomplete"), nil
 	}
 	return builder.String(), StateObserved, evidence, nil
 }
