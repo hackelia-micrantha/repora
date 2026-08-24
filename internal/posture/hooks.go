@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"path"
 	"sort"
 	"strings"
 
@@ -391,10 +390,12 @@ func setHooksUnavailable(i *HooksInventory, evidence Evidence) {
 	i.DefaultBranch = Unavailable[string](evidence)
 	setHooksAfterBranchUnavailable(i, evidence)
 }
+
 func setHooksAfterBranchUnavailable(i *HooksInventory, evidence Evidence) {
 	i.DefaultCommit = Unavailable[string](evidence)
 	setHooksAfterTreeUnavailable(i, evidence)
 }
+
 func setHooksAfterTreeUnavailable(i *HooksInventory, evidence Evidence) {
 	i.ProfileDeclared = Unavailable[bool](evidence)
 	i.Manager = Unavailable[string](evidence)
