@@ -36,8 +36,9 @@ func DefaultResolver(kind Kind) Resolver {
 	return Resolver{
 		Transport: kind,
 		Providers: map[string]Provider{
-			"github": {HTTPSBase: "https://github.com", SSHBase: "git@github.com:"},
-			"gitlab": {HTTPSBase: "https://gitlab.com", SSHBase: "git@gitlab.com:"},
+			"bitbucket": {HTTPSBase: "https://bitbucket.org"},
+			"github":    {HTTPSBase: "https://github.com", SSHBase: "git@github.com:"},
+			"gitlab":    {HTTPSBase: "https://gitlab.com", SSHBase: "git@gitlab.com:"},
 		},
 	}
 }
@@ -54,6 +55,11 @@ func (r Resolver) Resolve(endpoint config.Endpoint) (ResolvedRemote, error) {
 	}
 	if err := validatePath(path); err != nil {
 		return ResolvedRemote{}, fmt.Errorf("resolve %s endpoint path %q: %w", provider, path, err)
+	}
+	if provider == "bitbucket" {
+		if err := validateBitbucketPath(path); err != nil {
+			return ResolvedRemote{}, fmt.Errorf("resolve bitbucket endpoint path %q: %w", path, err)
+		}
 	}
 
 	definition, ok := r.Providers[provider]
@@ -102,6 +108,19 @@ func validatePath(path string) error {
 	}
 	if len(strings.Split(path, "/")) < 2 {
 		return fmt.Errorf("must include an owner or namespace")
+	}
+	return nil
+}
+
+func validateBitbucketPath(path string) error {
+	parts := strings.Split(path, "/")
+	if len(parts) != 2 {
+		return fmt.Errorf("must be workspace/repository")
+	}
+	for _, part := range parts {
+		if strings.TrimSpace(part) != part || strings.ContainsAny(part, `\:@?#`) {
+			return fmt.Errorf("contains an unsafe workspace or repository segment")
+		}
 	}
 	return nil
 }
