@@ -23,15 +23,13 @@ func TestEvaluateCoversPassFailExceptionUnknownAndUnavailable(t *testing.T) {
 		},
 		Exceptions: []Exception{{RuleID: "reviews", Reason: "bootstrap repository", Owner: "platform", Expires: "2026-09-01"}},
 	}
-	inputs := Inputs{
-		Repository: "hackelia-micrantha/repora",
-		Facts: map[string]FactInput{
-			"repository.default_branch_protected": observed(true, "branch-protection"),
-			"repository.required_reviews":         observed(0, "branch-protection"),
-			"repository.security_md_present":      observed(false, "tree"),
-			"mirrors.reconciliation_state":        {State: posture.StateUnavailable, Evidence: []posture.Evidence{{Source: "mirror", Reference: "origin"}}},
-			"repository.required_status_checks":   {State: posture.StateUnknown, Evidence: []posture.Evidence{{Source: "github", Reference: "branch-protection"}}},
-		},
+	inputs := NewInputs("hackelia-micrantha/repora")
+	inputs.Facts = map[string]FactInput{
+		"repository.default_branch_protected": observed(true, "branch-protection"),
+		"repository.required_reviews":         observed(0, "branch-protection"),
+		"repository.security_md_present":      observed(false, "tree"),
+		"mirrors.reconciliation_state":        {State: posture.StateUnavailable, Evidence: []posture.Evidence{{Source: "mirror", Reference: "origin"}}},
+		"repository.required_status_checks":   {State: posture.StateUnknown, Evidence: []posture.Evidence{{Source: "github", Reference: "branch-protection"}}},
 	}
 
 	report, err := Evaluate(profile, inputs, time.Date(2026, 8, 23, 0, 0, 0, 0, time.UTC))
@@ -65,7 +63,9 @@ func TestExpiredExceptionRemainsFinding(t *testing.T) {
 		Rules:      []Rule{{ID: "protected", Area: "repository", Fact: "protected", Operator: OperatorEquals, Expected: json.RawMessage(`true`), Severity: SeverityHigh, Title: "Protected", Remediation: []string{}}},
 		Exceptions: []Exception{{RuleID: "protected", Reason: "migration", Owner: "platform", Expires: "2026-08-01"}},
 	}
-	report, err := Evaluate(profile, Inputs{Repository: "o/r", Facts: map[string]FactInput{"protected": observed(false, "branch")}}, time.Date(2026, 8, 23, 0, 0, 0, 0, time.UTC))
+	inputs := NewInputs("o/r")
+	inputs.Facts["protected"] = observed(false, "branch")
+	report, err := Evaluate(profile, inputs, time.Date(2026, 8, 23, 0, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,10 +84,11 @@ func TestRenderMarkdownIsDeterministicAndVisible(t *testing.T) {
 		},
 		Exceptions: []Exception{},
 	}
-	inputs := Inputs{Repository: "o/r", Facts: map[string]FactInput{
+	inputs := NewInputs("o/r")
+	inputs.Facts = map[string]FactInput{
 		"z": {State: posture.StateUnavailable, Evidence: []posture.Evidence{}},
 		"a": observed(false, "tree"),
-	}}
+	}
 	report, err := Evaluate(profile, inputs, time.Unix(0, 0).UTC())
 	if err != nil {
 		t.Fatal(err)
@@ -115,6 +116,20 @@ func TestProfileRequiresCompleteExceptions(t *testing.T) {
 	}
 	if err := profile.Validate(); err == nil {
 		t.Fatal("expected incomplete exception to fail validation")
+	}
+}
+
+func TestEvaluateRejectsUnversionedInputs(t *testing.T) {
+	profile := Profile{
+		Kind:       ProfileKind,
+		Version:    ProfileVersion,
+		ID:         "baseline",
+		Rules:      []Rule{},
+		Exceptions: []Exception{},
+	}
+	_, err := Evaluate(profile, Inputs{Repository: "o/r", Facts: map[string]FactInput{}}, time.Unix(0, 0).UTC())
+	if err == nil {
+		t.Fatal("expected unversioned normalized inputs to fail")
 	}
 }
 
