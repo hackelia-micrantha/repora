@@ -109,6 +109,7 @@ type Report struct {
 	Version     int          `json:"version"`
 	Repository  string       `json:"repository"`
 	ProfileID   string       `json:"profile_id"`
+	AsOf        string       `json:"as_of"`
 	Evaluations []Evaluation `json:"evaluations"`
 }
 
