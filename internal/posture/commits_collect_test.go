@@ -6,18 +6,21 @@ import (
 )
 
 type fakeCommitReader struct {
-	summaries        []GitHubCommitSummary
-	truncated        bool
-	commitsObs       ReadObservation
-	details          map[string]GitHubCommitDetail
-	detailObs        map[string]ReadObservation
-	pullRequests     map[string]int
-	pullRequestObs   map[string]ReadObservation
-	commitCalls      int
-	pullRequestCalls int
+	summaries           []GitHubCommitSummary
+	truncated           bool
+	commitsObs          ReadObservation
+	details             map[string]GitHubCommitDetail
+	detailObs           map[string]ReadObservation
+	pullRequests        map[string]int
+	pullRequestComplete map[string]bool
+	pullRequestObs      map[string]ReadObservation
+	commitCalls         int
+	pullRequestCalls    int
+	commitSelector      string
 }
 
-func (f *fakeCommitReader) Commits(context.Context, string, string, int) ([]GitHubCommitSummary, bool, ReadObservation, error) {
+func (f *fakeCommitReader) Commits(_ context.Context, _ string, selector string, _ int) ([]GitHubCommitSummary, bool, ReadObservation, error) {
+	f.commitSelector = selector
 	return append([]GitHubCommitSummary(nil), f.summaries...), f.truncated, f.commitsObs, nil
 }
 
@@ -26,9 +29,13 @@ func (f *fakeCommitReader) Commit(_ context.Context, _ string, sha string) (GitH
 	return f.details[sha], f.detailObs[sha], nil
 }
 
-func (f *fakeCommitReader) CommitPullRequests(_ context.Context, _ string, sha string) (int, ReadObservation, error) {
+func (f *fakeCommitReader) CommitPullRequests(_ context.Context, _ string, sha string) (int, bool, ReadObservation, error) {
 	f.pullRequestCalls++
-	return f.pullRequests[sha], f.pullRequestObs[sha], nil
+	complete, ok := f.pullRequestComplete[sha]
+	if !ok {
+		complete = true
+	}
+	return f.pullRequests[sha], complete, f.pullRequestObs[sha], nil
 }
 
 func TestCollectGitHubCommitsNormalizesBoundedFacts(t *testing.T) {
@@ -57,7 +64,7 @@ inspect_pull_requests: true
 	commitReader := &fakeCommitReader{
 		summaries:  []GitHubCommitSummary{{SHA: "a"}, {SHA: "b"}},
 		truncated:  true,
-		commitsObs: available("github.commits", "acme/project:main"),
+		commitsObs: available("github.commits", "acme/project:head"),
 		details: map[string]GitHubCommitDetail{
 			"a": {SHA: "a", ParentCount: 1, Verified: true, Additions: 80, Deletions: 30, Files: []string{"README.md", "SECURITY.md", ".github/workflows/ci.yml"}, FilesComplete: true},
 			"b": {SHA: "b", ParentCount: 2, VerifyReason: "unsigned", Additions: 2, Deletions: 1, Files: []string{"docs/a.md"}, FilesComplete: true},
@@ -79,6 +86,9 @@ inspect_pull_requests: true
 	}
 	if err := inventory.Validate(); err != nil {
 		t.Fatalf("validate: %v", err)
+	}
+	if commitReader.commitSelector != "head" {
+		t.Fatalf("history selector = %q, want observed head commit", commitReader.commitSelector)
 	}
 	if inventory.HistoryTruncated.Value == nil || !*inventory.HistoryTruncated.Value {
 		t.Fatalf("history truncated = %#v", inventory.HistoryTruncated)
@@ -155,5 +165,24 @@ func TestCommitPositiveSensitiveMatchSurvivesIncompleteFileList(t *testing.T) {
 	}
 	if fact.SensitivePathsChanged.State != StateObserved || fact.SensitivePathsChanged.Value == nil || len(*fact.SensitivePathsChanged.Value) != 1 {
 		t.Fatalf("sensitive paths = %#v", fact.SensitivePathsChanged)
+	}
+}
+
+func TestIncompletePullRequestAssociationCountIsUnknown(t *testing.T) {
+	reader := &fakeCommitReader{
+		details: map[string]GitHubCommitDetail{
+			"a": {SHA: "a", VerifyReason: "unsigned", FilesComplete: true},
+		},
+		detailObs:           map[string]ReadObservation{"a": available("github.commit", "a")},
+		pullRequests:        map[string]int{"a": 100},
+		pullRequestComplete: map[string]bool{"a": false},
+		pullRequestObs:      map[string]ReadObservation{"a": available("github.commit_pulls", "a")},
+	}
+	fact, err := collectCommitFact(context.Background(), reader, "acme/project", defaultCommitProfile(), GitHubCommitSummary{SHA: "a"})
+	if err != nil {
+		t.Fatalf("collect fact: %v", err)
+	}
+	if fact.AssociatedPullRequests.State != StateUnknown || fact.AssociatedPullRequests.Value != nil {
+		t.Fatalf("associated prs = %#v", fact.AssociatedPullRequests)
 	}
 }
