@@ -68,7 +68,15 @@ func TestResolveBitbucketFailsClosed(t *testing.T) {
 		}
 	}
 
-	_, err := DefaultResolver(SSH).Resolve(config.Endpoint{Provider: "bitbucket", Path: "workspace/repo"})
+	_, err := DefaultResolver(HTTPS).Resolve(config.Endpoint{
+		Provider: "bitbucket",
+		URL:      "https://bitbucket.org/workspace/repo.git",
+	})
+	if err == nil || !strings.Contains(err.Error(), "provider/path identity is required") {
+		t.Fatalf("legacy URL error = %v, want provider/path-only rejection", err)
+	}
+
+	_, err = DefaultResolver(SSH).Resolve(config.Endpoint{Provider: "bitbucket", Path: "workspace/repo"})
 	if err == nil || !strings.Contains(err.Error(), "no ssh base") {
 		t.Fatalf("ssh error = %v, want unsupported SSH transport", err)
 	}
