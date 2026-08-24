@@ -1,130 +1,76 @@
-# Ordered Implementation Path
+# Ordered implementation path
+
+Status: Current
 
 ## Purpose
 
-This roadmap records the dependency order for Repora's current backlog after durable repository identity (`uid`), mirror workflow semantics, the first runtime transport resolver slice, and provider/path topology documentation landed.
+This roadmap orders the shortest safe path from the published v0.1 mirror-controller baseline to the next independently verified pre-alpha release. Detailed acceptance criteria live in GitHub issues; `docs/plans/current.md` is the active execution authority.
 
-Feature issues remain authoritative for detailed requirements and acceptance criteria. This document prevents implementation from bypassing architectural or safety prerequisites.
+## Completed baselines
 
-## Product boundary
+- **Published v0.1:** deterministic default-branch mirror status, exact planning, stale-safe apply, destructive authorization, execution evidence, release archives, and checksums.
+- **Current main:** managed README plan/apply, document routing, repository assessments, standalone Nix packaging, GitHub repository/CI posture, documentation posture, hooks posture, bounded commit-history posture, mirror posture, offline policy/reporting, and Bitbucket Cloud mirror transport.
+- **Assurance:** explicit unit, integration, contract, CLI E2E, deep/race, static-analysis, security, cross-platform build, Nix, and release-package boundaries.
 
-The first meaningful Repora release is a local-first Git mirror controller that:
-
-- resolves declarative repository topology
-- observes source and target refs
-- creates a deterministic, versioned plan
-- evaluates explicit synchronization policy
-- rejects stale execution
-- applies authorized mutations with leases
-- writes durable evidence
-
-Broader artifact management, document routing, assessment, and hosted-control-plane work follows this substrate.
+Merged current-main capability is not published capability until a release is tagged and independently verified.
 
 ## Dependency path
 
-```text
-DONE #21 durable uid identity
-  -> DONE #29 mirror workflow semantics
-  -> DONE #16 runtime transport resolver slice
-  -> DONE #19 provider/path topology documentation
-  -> #22 topology/observation/planning/execution separation
-  -> #3 versioned JSON contracts
-  -> #8 serialized plan and unified diff execution boundary
-  -> #1 filesystem execution journal
-  -> #4 ref-policy RFC
-  -> #2 ref-policy validation and enforcement
-  -> #13 multi-mirror status
-  -> #15 multi-mirror apply
-  -> #30 optional Anthesis policy integration
-  -> #10 security and supply-chain CI
-  -> #5 distributable binaries
-  -> #11 v0.1 release hardening
-```
+### P1 — Reconcile project truth (#139)
 
-Issue #16 remains open for the broader configurable-base and transport-selection work. Its prerequisite runtime resolver boundary is complete, and #19 documents the currently implemented provider/path behavior without claiming those remaining features.
+Update current documentation and the live backlog so they describe merged behavior, published behavior, the active milestone, and explicit deferrals consistently.
 
-## Priority bands
+Exit condition: current plan, roadmap, architecture, README, and GitHub issues agree.
 
-### P0 — Semantic and documentation truth
+### P1 — Representative operator acceptance (#137)
 
-- DONE #29 mirror workflow semantics
-- DONE #19 provider/path topology documentation
-- keep README claims aligned with implemented behavior
-- maintain this ordered roadmap
-- ensure document routing includes the actual Go source roots
+Exercise the integrated read-only and dry-run workflows against representative Hackelia-Micrantha repositories, including the posture convergence path and supported provider topology.
 
-Exit condition: source ownership, classifications, destructive-change defaults, stale-plan semantics, and evidence requirements are explicit.
+Depends on: #139.
 
-### P1 — Topology foundation
+Exit condition: exact-commit operator evidence exists, deterministic contracts reproduce, unavailable evidence remains honest, and release-blocking defects are resolved or tracked.
 
-- DONE #16 runtime transport resolver slice
-- DONE #19 provider/path topology documentation
-- remaining #16 configurable provider bases and transport selection
+### P1 — Publish the next pre-alpha baseline (#138)
 
-Exit condition: provider/path is authoritative, runtime URLs are derived, legacy URL compatibility is bounded, and credentials cannot enter serialized topology.
+Select the version, curate the changelog, complete release readiness, publish through the immutable tag workflow, and independently verify downloaded assets.
 
-### P2 — One decision path
+Depends on: #139 and #137.
 
-- #22 planner/executor separation
-- #3 JSON contracts
-- #8 serialized plan artifact
+Exit condition: the published release contains the declared capability set, all release gates pass, checksums verify independently, and the installed binary reports the exact tag and commit.
 
-Exit condition: dry-run and apply consume the same versioned plan and apply does not reconstruct intent.
+### P2 — Maintenance
 
-### P3 — Evidence and policy
+- refresh or supersede conflicted dependency PR #129 against current `main`;
+- decide whether native macOS/Windows runtime smoke coverage has enough release value to justify its operational cost;
+- address bounded operator defects discovered by #137.
 
-- #1 execution journal
-- #4 ref-policy RFC
-- #2 ref-policy enforcement
+Maintenance work must not displace the P1 dependency path unless it becomes release-blocking.
 
-Exit condition: every attempted mutation has durable evidence and anything beyond the conservative default branch policy fails closed.
+## Explicit deferrals
 
-### P4 — Scale and external policy
-
-- #13 multi-mirror status
-- #15 multi-mirror apply
-- #30 Anthesis integration
-
-Exit condition: mirrors are evaluated independently, partial success is explicit, and optional external policy decisions are deterministic and enforceable.
-
-### P5 — Release readiness
-
-- #10 security CI
-- #5 release binaries
-- #11 remaining v0.1 hardening
-
-Exit condition: tagged cross-platform binaries, checksums, smoke tests, documented compatibility, low-noise security checks, and a release checklist exist.
-
-## Deferred tracks
-
-These are valid product directions but are not on the core mirror-controller critical path:
-
-- managed repository artifacts (#7, #12)
-- advanced document routing (#9, #14, #17, #18, #20, #23)
-- repository assessment and evidence reports (#24)
-
-They should reuse the versioned plan, policy, execution, and evidence model rather than introducing separate mutation paths.
+- tags, non-default branches, wildcard refspecs, deleted-ref reconciliation, and concurrent mirror mutation;
+- automatic rollback or cross-repository/cross-remote transactions;
+- provider provisioning, provider-setting remediation, and automatic pull-request remediation;
+- Anthesis runtime transport, authentication, evaluator deployment, and approval workflows;
+- arbitrary managed files or automatic managed-artifact mirror propagation;
+- GitLab/Bitbucket provider-administration posture adapters without a concrete operator need;
+- scanner execution inside posture policy or opaque repository scoring;
+- hosted orchestration, package-manager channels, containers, signing, and full provenance attestation.
 
 ## Cross-cutting requirements
 
-Every implementation slice must preserve:
+Every slice must preserve:
 
-- durable identity through `uid`
-- deterministic output for identical semantic inputs
-- explicit and bounded mutation scope
-- fail-closed destructive behavior
-- no secrets or credential-bearing URLs in artifacts
-- per-mirror error isolation
-- compatibility tests for public machine-readable output
-- documented current limitations
+- durable identity through `uid` and `provider:path`;
+- deterministic output for identical semantic inputs;
+- explicit and bounded mutation authority;
+- fail-closed destructive and stale-state behavior;
+- no credentials in configuration, plans, reports, journals, or diagnostics;
+- honest partial failure and unavailable evidence;
+- versioned compatibility contracts;
+- risk-based test-pyramid and static-analysis coverage;
+- documentation changes in the same slice as affected behavior.
 
 ## Maintenance rule
 
-Update this document when:
-
-- a dependency is completed or superseded
-- an issue is split or reordered
-- a new release gate is introduced
-- implementation reveals a safety prerequisite
-
-Do not mark an item complete merely because design exists; completion requires the issue's acceptance criteria and merged implementation where applicable.
+Update this document when the active dependency order, milestone, release gate, or explicit deferral changes. Do not use it as a historical completion log; merged pull requests, closed issues, changelog entries, and releases preserve that history.
