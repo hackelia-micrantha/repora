@@ -97,6 +97,6 @@ Provider credentials remain delegated to Git/credential helpers for fetches and 
 
 ## Relationship to other posture work
 
-Issue #120 owns mirror-management facts. The later policy/reporting layer in #121 should consume `repora.posture-mirrors` v1 rather than re-reading repository topology or re-running its own divergence algorithm.
+`repora.posture-mirrors` v1 is the authoritative mirror-management fact contract. The offline policy/reporting layer consumes it rather than re-reading repository topology or re-running its own divergence algorithm.
 
-Hooks/local-workflow facts (#123) and bounded commit/process facts (#122) remain separate domains.
+Hooks/local-workflow and bounded commit/process facts remain separate observation domains.
