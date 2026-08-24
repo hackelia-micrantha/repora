@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"sort"
 	"time"
 
@@ -109,30 +108,27 @@ func isMismatch(status ResultStatus) bool {
 func matches(rule Rule, observed json.RawMessage) (bool, error) {
 	switch rule.Operator {
 	case OperatorEquals:
-		var left, right any
-		if err := json.Unmarshal(observed, &left); err != nil {
+		left, err := decodeJSONValue(observed)
+		if err != nil {
 			return false, fmt.Errorf("decode observed value: %w", err)
 		}
-		if err := json.Unmarshal(rule.Expected, &right); err != nil {
+		right, err := decodeJSONValue(rule.Expected)
+		if err != nil {
 			return false, fmt.Errorf("decode expected value: %w", err)
 		}
-		return reflect.DeepEqual(left, right), nil
+		return equalJSONValue(left, right), nil
 	case OperatorAtLeast, OperatorAtMost:
-		observedNumber, err := decodeNumber(observed)
+		comparison, err := compareJSONNumbers(observed, rule.Expected)
 		if err != nil {
-			return false, fmt.Errorf("observed value: %w", err)
-		}
-		expectedNumber, err := decodeNumber(rule.Expected)
-		if err != nil {
-			return false, fmt.Errorf("expected value: %w", err)
+			return false, err
 		}
 		if rule.Operator == OperatorAtLeast {
-			return observedNumber >= expectedNumber, nil
+			return comparison >= 0, nil
 		}
-		return observedNumber <= expectedNumber, nil
+		return comparison <= 0, nil
 	case OperatorNonEmpty:
-		var value any
-		if err := json.Unmarshal(observed, &value); err != nil {
+		value, err := decodeJSONValue(observed)
+		if err != nil {
 			return false, fmt.Errorf("decode observed value: %w", err)
 		}
 		switch current := value.(type) {
@@ -150,18 +146,83 @@ func matches(rule Rule, observed json.RawMessage) (bool, error) {
 	}
 }
 
-func decodeNumber(raw json.RawMessage) (float64, error) {
+func decodeJSONValue(raw json.RawMessage) (any, error) {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
 	var value any
 	if err := decoder.Decode(&value); err != nil {
-		return 0, err
+		return nil, err
 	}
-	number, ok := value.(json.Number)
+	return value, nil
+}
+
+func equalJSONValue(left, right any) bool {
+	switch l := left.(type) {
+	case json.Number:
+		r, ok := right.(json.Number)
+		if !ok {
+			return false
+		}
+		comparison, err := compareNumberStrings(l.String(), r.String())
+		return err == nil && comparison == 0
+	case []any:
+		r, ok := right.([]any)
+		if !ok || len(l) != len(r) {
+			return false
+		}
+		for idx := range l {
+			if !equalJSONValue(l[idx], r[idx]) {
+				return false
+			}
+		}
+		return true
+	case map[string]any:
+		r, ok := right.(map[string]any)
+		if !ok || len(l) != len(r) {
+			return false
+		}
+		for key, value := range l {
+			other, exists := r[key]
+			if !exists || !equalJSONValue(value, other) {
+				return false
+			}
+		}
+		return true
+	case string:
+		r, ok := right.(string)
+		return ok && l == r
+	case bool:
+		r, ok := right.(bool)
+		return ok && l == r
+	case nil:
+		return right == nil
+	default:
+		return false
+	}
+}
+
+func compareJSONNumbers(observed, expected json.RawMessage) (int, error) {
+	left, err := decodeJSONValue(observed)
+	if err != nil {
+		return 0, fmt.Errorf("observed value: %w", err)
+	}
+	right, err := decodeJSONValue(expected)
+	if err != nil {
+		return 0, fmt.Errorf("expected value: %w", err)
+	}
+	leftNumber, ok := left.(json.Number)
 	if !ok {
-		return 0, fmt.Errorf("must be numeric")
+		return 0, fmt.Errorf("observed value: must be numeric")
 	}
-	return number.Float64()
+	rightNumber, ok := right.(json.Number)
+	if !ok {
+		return 0, fmt.Errorf("expected value: must be numeric")
+	}
+	comparison, err := compareNumberStrings(leftNumber.String(), rightNumber.String())
+	if err != nil {
+		return 0, fmt.Errorf("compare numeric values: %w", err)
+	}
+	return comparison, nil
 }
 
 func cloneRaw(value json.RawMessage) json.RawMessage {
