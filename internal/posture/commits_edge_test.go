@@ -30,8 +30,8 @@ func TestUnavailablePullRequestEvidenceDoesNotImplyUnreviewed(t *testing.T) {
 		details: map[string]GitHubCommitDetail{
 			"a": {SHA: "a", VerifyReason: "unsigned", FilesComplete: true},
 		},
-		detailObs: map[string]ReadObservation{"a": available("github.commit", "a")},
-		pullRequests: map[string]int{"a": 0},
+		detailObs:      map[string]ReadObservation{"a": available("github.commit", "a")},
+		pullRequests:   map[string]int{"a": 0},
 		pullRequestObs: map[string]ReadObservation{"a": unavailable("github.commit_pulls", "a")},
 	}
 	fact, err := collectCommitFact(context.Background(), reader, "acme/project", defaultCommitProfile(), GitHubCommitSummary{SHA: "a"})
