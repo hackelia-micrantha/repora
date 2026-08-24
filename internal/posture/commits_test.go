@@ -2,18 +2,19 @@ package posture
 
 import (
 	"context"
+	"strings"
 	"testing"
 )
 
 type fakeCommitReader struct {
-	summaries       []GitHubCommitSummary
-	truncated       bool
-	commitsObs      ReadObservation
-	details         map[string]GitHubCommitDetail
-	detailObs       map[string]ReadObservation
-	pullRequests    map[string]int
-	pullRequestObs  map[string]ReadObservation
-	commitCalls     int
+	summaries        []GitHubCommitSummary
+	truncated        bool
+	commitsObs       ReadObservation
+	details          map[string]GitHubCommitDetail
+	detailObs        map[string]ReadObservation
+	pullRequests     map[string]int
+	pullRequestObs   map[string]ReadObservation
+	commitCalls      int
 	pullRequestCalls int
 }
 
@@ -160,10 +161,10 @@ func TestCommitPositiveSensitiveMatchSurvivesIncompleteFileList(t *testing.T) {
 
 func TestUnavailableCommitDetailDoesNotInventFacts(t *testing.T) {
 	reader := &fakeCommitReader{
-		details: map[string]GitHubCommitDetail{},
-		detailObs: map[string]ReadObservation{"a": unavailable("github.commit", "a")},
-		pullRequests: map[string]int{},
-		pullRequestObs: map[string]ReadObservation{},
+		details:        map[string]GitHubCommitDetail{},
+		detailObs:       map[string]ReadObservation{"a": unavailable("github.commit", "a")},
+		pullRequests:    map[string]int{},
+		pullRequestObs:  map[string]ReadObservation{},
 	}
 	fact, err := collectCommitFact(context.Background(), reader, "acme/project", defaultCommitProfile(), GitHubCommitSummary{SHA: "a"})
 	if err != nil {
