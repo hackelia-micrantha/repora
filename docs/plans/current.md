@@ -4,7 +4,7 @@ Status: Active
 
 ## Current objective
 
-Repora's released mirror controller and first post-v0.1 managed-artifact, routing, assessment, policy-design, standalone packaging, repository/CI posture, documentation posture, and mirror-posture foundations are complete. The current objective is to extend the normalized posture fact model across local-workflow and commit/process domains before adding policy evaluation or reporting.
+Repora's released mirror controller and first post-v0.1 managed-artifact, routing, assessment, policy-design, standalone packaging, repository/CI posture, documentation posture, mirror-posture, and local-workflow posture foundations are complete. The current objective is to extend the normalized posture fact model into bounded commit/process evidence before adding policy evaluation or reporting.
 
 ## Completed foundation
 
@@ -28,28 +28,22 @@ Repora's released mirror controller and first post-v0.1 managed-artifact, routin
 | GitHub posture inventory v1 | Complete | GET-only normalized repository/CI facts preserve observed, unknown, and unavailable evidence; no mutation-capable provider boundary is exposed. |
 | Documentation posture v1 | Complete | Profile-driven document/README/link/content-marker facts reuse the posture evidence model and preserve routing trust tiers without prose scoring or remediation authority. |
 | Mirror posture v1 | Complete | Declared canonical/mirror identities, default-branch names, existing reconciliation drift, and bounded provider metadata facts reuse topology/status semantics without provider mutation or expanded ref scope. |
+| Hooks/local-workflow posture v1 | Complete | Common/custom hook signals, declared local checks, CI-coverage evidence, bootstrap/bypass documentation, and static network-load signals are normalized without installing or executing repository hook code. |
 
 ## Active sequence
 
-### 1. Add local workflow/hook facts (#123)
-
-Add bounded local workflow evidence without installing or executing hook code.
-
-Exit condition:
-
-- configured hook/workflow signals are normalized into the shared posture fact model;
-- presence/configuration is distinguished from authoritative CI enforcement;
-- collection does not install, execute, or trust repository hook code;
-- missing and unavailable evidence remain explicit;
-- tests cover configured, absent, malformed, and unsupported cases.
-
-### 2. Add bounded commit/process facts (#122)
+### 1. Add bounded commit/process facts (#122)
 
 Add repository/process-risk evidence without productivity scoring, identity profiling, or intent inference.
 
-This slice may proceed independently where its dependencies permit and must not bypass the shared evidence representation.
+Exit condition:
 
-### 3. Converge facts into explainable policy/reporting (#121)
+- bounded commit/process observations reuse the shared posture fact/evidence model;
+- collection avoids identity profiling, productivity scoring, or inferred developer intent;
+- missing and unavailable evidence remain explicit;
+- tests cover relevant history/process evidence boundaries and failure cases.
+
+### 2. Converge facts into explainable policy/reporting (#121)
 
 Only after the source fact contracts are proven should Repora evaluate them into deterministic posture findings and Markdown reports.
 
@@ -62,7 +56,7 @@ Exit condition:
 - policy/reporting consumes normalized facts and does not rescan providers itself;
 - no provider mutation is introduced.
 
-### 4. Reassess runtime policy integration only on concrete demand
+### 3. Reassess runtime policy integration only on concrete demand
 
 ADR-0018 defines the optional Anthesis `pre_apply` seam, but design completion does not imply runtime implementation priority.
 
@@ -96,6 +90,7 @@ Deferred tracks must reuse current identity, plan, policy, execution, result, ev
 - Do not imply cross-remote atomicity, rollback, provider remediation, or approval semantics that are not implemented.
 - Packaging may expose capability; it must not silently grant mutation authority.
 - CI/Nix/posture must inspect or reuse canonical validation rather than redefine it independently.
+- Hooks posture may inspect repository-owned configuration only as bounded data; it must never install, source, execute, or bootstrap target-repository hook code.
 
 ## Definition of done
 
