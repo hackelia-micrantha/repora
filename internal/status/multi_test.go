@@ -56,7 +56,7 @@ func TestCheckAllSharesCanonicalAndObservesMirrorsInOrder(t *testing.T) {
 		Canonical: config.Endpoint{Provider: "gitlab", Path: "org/payments-api"},
 		Mirrors: []config.Endpoint{
 			{Provider: "github", Path: "org/payments-api"},
-			{Provider: "gitlab", Path: "backup/payments-api"},
+			{Provider: "bitbucket", Path: "workspace/payments-api"},
 		},
 	}
 
@@ -70,7 +70,7 @@ func TestCheckAllSharesCanonicalAndObservesMirrorsInOrder(t *testing.T) {
 	if got.Mirrors[0].Target != "github:org/payments-api" || got.Mirrors[0].State != StateEqual {
 		t.Fatalf("first mirror = %#v", got.Mirrors[0])
 	}
-	if got.Mirrors[1].Target != "gitlab:backup/payments-api" || got.Mirrors[1].State != StateBehind || got.Mirrors[1].Behind != 3 {
+	if got.Mirrors[1].Target != "bitbucket:workspace/payments-api" || got.Mirrors[1].State != StateBehind || got.Mirrors[1].Behind != 3 {
 		t.Fatalf("second mirror = %#v", got.Mirrors[1])
 	}
 	if strings.Join(git.configured, ",") != "canonical,mirror-0,mirror-1" {
@@ -93,7 +93,7 @@ func TestCheckAllPreservesMirrorFailureAndLaterSuccess(t *testing.T) {
 		Canonical: config.Endpoint{Provider: "gitlab", Path: "org/payments-api"},
 		Mirrors: []config.Endpoint{
 			{Provider: "github", Path: "org/payments-api"},
-			{Provider: "gitlab", Path: "backup/payments-api"},
+			{Provider: "bitbucket", Path: "workspace/payments-api"},
 		},
 	}
 
@@ -104,8 +104,8 @@ func TestCheckAllPreservesMirrorFailureAndLaterSuccess(t *testing.T) {
 	if len(got.Mirrors) != 2 || got.Mirrors[0].State != StateError || !strings.Contains(got.Mirrors[0].Error, "remote unavailable") {
 		t.Fatalf("first mirror = %#v", got.Mirrors[0])
 	}
-	if got.Mirrors[1].State != StateAhead || got.Mirrors[1].Ahead != 2 {
-		t.Fatalf("later mirror = %#v, want preserved success", got.Mirrors[1])
+	if got.Mirrors[1].Target != "bitbucket:workspace/payments-api" || got.Mirrors[1].State != StateAhead || got.Mirrors[1].Ahead != 2 {
+		t.Fatalf("later mirror = %#v, want preserved Bitbucket success", got.Mirrors[1])
 	}
 }
 
