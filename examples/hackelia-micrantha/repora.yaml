@@ -1,0 +1,505 @@
+# Complete hackelia-micrantha topology example.
+#
+# Replace "replace-with-gitlab-namespace" before running repoctl. The GitHub
+# mirror paths were inventoried from the organization on 2026-08-24.
+#
+# mode and policy are omitted intentionally. repoctl normalizes them to:
+#   mode: mirror
+#   policy.refs: {version: 1, scope: default-branch-only, destructive: require-force}
+repos:
+  - id: achillea
+    uid: repo.hackelia-micrantha.achillea
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/achillea
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/achillea
+  - id: invokrum
+    uid: repo.hackelia-micrantha.invokrum
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/invokrum
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/invokrum
+  - id: myosotis
+    uid: repo.hackelia-micrantha.myosotis
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/myosotis
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/myosotis
+  - id: stimulus
+    uid: repo.hackelia-micrantha.stimulus
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/stimulus
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/stimulus
+  - id: micra
+    uid: repo.hackelia-micrantha.micra
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/micra
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/micra
+  - id: calathea
+    uid: repo.hackelia-micrantha.calathea
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/calathea
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/calathea
+  - id: fortunes-cli
+    uid: repo.hackelia-micrantha.fortunes-cli
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/fortunes-cli
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/fortunes-cli
+  - id: actions
+    uid: repo.hackelia-micrantha.actions
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/actions
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/actions
+  - id: calathea-community
+    uid: repo.hackelia-micrantha.calathea-community
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/calathea-community
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/calathea-community
+  - id: keylix
+    uid: repo.hackelia-micrantha.keylix
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/keylix
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/keylix
+  - id: garden
+    uid: repo.hackelia-micrantha.garden
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/garden
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/garden
+  - id: amaryllis
+    uid: repo.hackelia-micrantha.amaryllis
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/amaryllis
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/amaryllis
+  - id: scouter-prototype
+    uid: repo.hackelia-micrantha.scouter-prototype
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/scouter-prototype
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/scouter-prototype
+  - id: veil
+    uid: repo.hackelia-micrantha.veil
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/veil
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/veil
+  - id: outermesh-book
+    uid: repo.hackelia-micrantha.outermesh-book
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/outermesh-book
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/outermesh-book
+  - id: phyllotaxis
+    uid: repo.hackelia-micrantha.phyllotaxis
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/phyllotaxis
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/phyllotaxis
+  - id: sandbox
+    uid: repo.hackelia-micrantha.sandbox
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/sandbox
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/sandbox
+  - id: bluebell-sdk
+    uid: repo.hackelia-micrantha.bluebell-sdk
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/bluebell-sdk
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/bluebell-sdk
+  - id: scouter-backend
+    uid: repo.hackelia-micrantha.scouter-backend
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/scouter-backend
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/scouter-backend
+  - id: codemux
+    uid: repo.hackelia-micrantha.codemux
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/codemux
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/codemux
+  - id: dubnium-community
+    uid: repo.hackelia-micrantha.dubnium-community
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/dubnium-community
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/dubnium-community
+  - id: digitalis
+    uid: repo.hackelia-micrantha.digitalis
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/digitalis
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/digitalis
+  - id: pura
+    uid: repo.hackelia-micrantha.pura
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/pura
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/pura
+  - id: anthesis
+    uid: repo.hackelia-micrantha.anthesis
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/anthesis
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/anthesis
+  - id: kredux
+    uid: repo.hackelia-micrantha.kredux
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/kredux
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/kredux
+  - id: invokrum-community
+    uid: repo.hackelia-micrantha.invokrum-community
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/invokrum-community
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/invokrum-community
+  - id: testule
+    uid: repo.hackelia-micrantha.testule
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/testule
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/testule
+  - id: hackelia-micrantha
+    uid: repo.hackelia-micrantha.hackelia-micrantha
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/hackelia-micrantha
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/hackelia-micrantha
+  - id: yard
+    uid: repo.hackelia-micrantha.yard
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/yard
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/yard
+  - id: garden-library
+    uid: repo.hackelia-micrantha.garden-library
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/garden-library
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/garden-library
+  - id: envuscator-community
+    uid: repo.hackelia-micrantha.envuscator-community
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/envuscator-community
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/envuscator-community
+  - id: achillea-community
+    uid: repo.hackelia-micrantha.achillea-community
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/achillea-community
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/achillea-community
+  - id: scouter-frontend
+    uid: repo.hackelia-micrantha.scouter-frontend
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/scouter-frontend
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/scouter-frontend
+  - id: modolia-community
+    uid: repo.hackelia-micrantha.modolia-community
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/modolia-community
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/modolia-community
+  - id: .github
+    uid: repo.hackelia-micrantha.github
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/.github
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/.github
+  - id: scouter
+    uid: repo.hackelia-micrantha.scouter
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/scouter
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/scouter
+  - id: mobuild-warden
+    uid: repo.hackelia-micrantha.mobuild-warden
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/mobuild-warden
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/mobuild-warden
+  - id: outermesh-web
+    uid: repo.hackelia-micrantha.outermesh-web
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/outermesh-web
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/outermesh-web
+  - id: keylix-client
+    uid: repo.hackelia-micrantha.keylix-client
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/keylix-client
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/keylix-client
+  - id: mobuild-envuscator
+    uid: repo.hackelia-micrantha.mobuild-envuscator
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/mobuild-envuscator
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/mobuild-envuscator
+  - id: fortunes-service
+    uid: repo.hackelia-micrantha.fortunes-service
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/fortunes-service
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/fortunes-service
+  - id: digitalis-community
+    uid: repo.hackelia-micrantha.digitalis-community
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/digitalis-community
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/digitalis-community
+  - id: anthesis-community
+    uid: repo.hackelia-micrantha.anthesis-community
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/anthesis-community
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/anthesis-community
+  - id: mobuild-project
+    uid: repo.hackelia-micrantha.mobuild-project
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/mobuild-project
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/mobuild-project
+  - id: myosotis-community
+    uid: repo.hackelia-micrantha.myosotis-community
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/myosotis-community
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/myosotis-community
+  - id: garden-sdk
+    uid: repo.hackelia-micrantha.garden-sdk
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/garden-sdk
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/garden-sdk
+  - id: download
+    uid: repo.hackelia-micrantha.download
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/download
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/download
+  - id: bluebell
+    uid: repo.hackelia-micrantha.bluebell
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/bluebell
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/bluebell
+  - id: keylix-community
+    uid: repo.hackelia-micrantha.keylix-community
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/keylix-community
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/keylix-community
+  - id: lab-service
+    uid: repo.hackelia-micrantha.lab-service
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/lab-service
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/lab-service
+  - id: modolia
+    uid: repo.hackelia-micrantha.modolia
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/modolia
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/modolia
+  - id: hyperion
+    uid: repo.hackelia-micrantha.hyperion
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/hyperion
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/hyperion
+  - id: fortunes
+    uid: repo.hackelia-micrantha.fortunes
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/fortunes
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/fortunes
+  - id: mobuild
+    uid: repo.hackelia-micrantha.mobuild
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/mobuild
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/mobuild
+  - id: hyperion-community
+    uid: repo.hackelia-micrantha.hyperion-community
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/hyperion-community
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/hyperion-community
+  - id: morifolium
+    uid: repo.hackelia-micrantha.morifolium
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/morifolium
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/morifolium
+  - id: garden-nursery
+    uid: repo.hackelia-micrantha.garden-nursery
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/garden-nursery
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/garden-nursery
+  - id: web
+    uid: repo.hackelia-micrantha.web
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/web
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/web
+  - id: outermesh
+    uid: repo.hackelia-micrantha.outermesh
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/outermesh
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/outermesh
+  - id: envuscator-web
+    uid: repo.hackelia-micrantha.envuscator-web
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/envuscator-web
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/envuscator-web
+  - id: sandcastle
+    uid: repo.hackelia-micrantha.sandcastle
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/sandcastle
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/sandcastle
+  - id: repora
+    uid: repo.hackelia-micrantha.repora
+    canonical:
+      provider: gitlab
+      path: replace-with-gitlab-namespace/repora
+    mirrors:
+      - provider: github
+        path: hackelia-micrantha/repora
