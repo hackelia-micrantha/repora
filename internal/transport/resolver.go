@@ -49,6 +49,9 @@ func (r Resolver) Resolve(endpoint config.Endpoint) (ResolvedRemote, error) {
 	path := strings.Trim(rawPath, "/")
 
 	if path == "" {
+		if provider == "bitbucket" && strings.TrimSpace(endpoint.URL) != "" {
+			return ResolvedRemote{}, fmt.Errorf("resolve bitbucket endpoint: provider/path identity is required")
+		}
 		return r.resolveLegacyURL(provider, endpoint.URL)
 	}
 	if strings.TrimSpace(endpoint.URL) != "" {
