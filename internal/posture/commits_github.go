@@ -6,7 +6,7 @@ import (
 	"net/url"
 )
 
-func (r *HTTPGitHubReader) Commits(ctx context.Context, fullName, branch string, limit int) ([]GitHubCommitSummary, bool, ReadObservation, error) {
+func (r *HTTPGitHubReader) Commits(ctx context.Context, fullName, selector string, limit int) ([]GitHubCommitSummary, bool, ReadObservation, error) {
 	owner, repo, err := splitGitHubFullName(fullName)
 	if err != nil {
 		return nil, false, ReadObservation{}, err
@@ -15,11 +15,11 @@ func (r *HTTPGitHubReader) Commits(ctx context.Context, fullName, branch string,
 		return nil, false, ReadObservation{}, fmt.Errorf("commit history limit must be between 1 and %d", maxCommitLimit)
 	}
 	requestLimit := limit + 1
-	apiPath := fmt.Sprintf("/repos/%s/%s/commits?sha=%s&per_page=%d", url.PathEscape(owner), url.PathEscape(repo), url.QueryEscape(branch), requestLimit)
+	apiPath := fmt.Sprintf("/repos/%s/%s/commits?sha=%s&per_page=%d", url.PathEscape(owner), url.PathEscape(repo), url.QueryEscape(selector), requestLimit)
 	var response []struct {
 		SHA string `json:"sha"`
 	}
-	obs, err := r.getJSON(ctx, apiPath, "github.commits", fmt.Sprintf("%s:%s", fullName, branch), &response)
+	obs, err := r.getJSON(ctx, apiPath, "github.commits", fmt.Sprintf("%s:%s", fullName, selector), &response)
 	if err != nil || !obs.Available {
 		return nil, false, obs, err
 	}
@@ -87,18 +87,19 @@ func (r *HTTPGitHubReader) Commit(ctx context.Context, fullName, sha string) (Gi
 	}, obs, nil
 }
 
-func (r *HTTPGitHubReader) CommitPullRequests(ctx context.Context, fullName, sha string) (int, ReadObservation, error) {
+func (r *HTTPGitHubReader) CommitPullRequests(ctx context.Context, fullName, sha string) (int, bool, ReadObservation, error) {
 	owner, repo, err := splitGitHubFullName(fullName)
 	if err != nil {
-		return 0, ReadObservation{}, err
+		return 0, false, ReadObservation{}, err
 	}
-	apiPath := fmt.Sprintf("/repos/%s/%s/commits/%s/pulls?per_page=100", url.PathEscape(owner), url.PathEscape(repo), url.PathEscape(sha))
+	const pageSize = 100
+	apiPath := fmt.Sprintf("/repos/%s/%s/commits/%s/pulls?per_page=%d", url.PathEscape(owner), url.PathEscape(repo), url.PathEscape(sha), pageSize)
 	var response []struct {
 		Number int `json:"number"`
 	}
 	obs, err := r.getJSON(ctx, apiPath, "github.commit_pulls", fmt.Sprintf("%s:%s", fullName, sha), &response)
 	if err != nil || !obs.Available {
-		return 0, obs, err
+		return 0, false, obs, err
 	}
-	return len(response), obs, nil
+	return len(response), len(response) < pageSize, obs, nil
 }
