@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/posture-hooks-v1.schema.json",
+  "title": "Repora hooks posture inventory v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "repository", "default_branch", "default_commit", "profile_declared", "manager", "entrypoints", "required_checks", "bootstrap_instructions_present", "bypass_documentation_present", "evidence"],
+  "properties": {
+    "kind": {"const": "repora.posture-hooks"},
+    "version": {"const": 1},
+    "repository": {"$ref": "#/$defs/repository"},
+    "default_branch": {"$ref": "#/$defs/factString"},
+    "default_commit": {"$ref": "#/$defs/factString"},
+    "profile_declared": {"$ref": "#/$defs/factBool"},
+    "manager": {"$ref": "#/$defs/factString"},
+    "entrypoints": {"type": "array", "items": {"$ref": "#/$defs/entrypoint"}},
+    "required_checks": {"type": "array", "items": {"$ref": "#/$defs/check"}},
+    "bootstrap_instructions_present": {"$ref": "#/$defs/factBool"},
+    "bypass_documentation_present": {"$ref": "#/$defs/factBool"},
+    "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}
+  },
+  "$defs": {
+    "evidence": {"type": "object", "additionalProperties": false, "required": ["source", "reference"], "properties": {"source": {"type": "string", "minLength": 1}, "reference": {"type": "string", "minLength": 1}, "detail": {"type": "string"}}},
+    "factString": {"oneOf": [
+      {"type": "object", "additionalProperties": false, "required": ["state", "value", "evidence"], "properties": {"state": {"const": "observed"}, "value": {"type": "string"}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}},
+      {"type": "object", "additionalProperties": false, "required": ["state", "evidence"], "properties": {"state": {"enum": ["unknown", "unavailable"]}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}}
+    ]},
+    "factBool": {"oneOf": [
+      {"type": "object", "additionalProperties": false, "required": ["state", "value", "evidence"], "properties": {"state": {"const": "observed"}, "value": {"type": "boolean"}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}},
+      {"type": "object", "additionalProperties": false, "required": ["state", "evidence"], "properties": {"state": {"enum": ["unknown", "unavailable"]}, "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}}}
+    ]},
+    "repository": {"type": "object", "additionalProperties": false, "required": ["provider", "full_name"], "properties": {"provider": {"const": "github"}, "full_name": {"type": "string", "minLength": 3}}},
+    "entrypoint": {"type": "object", "additionalProperties": false, "required": ["path", "configured", "executable", "network_loaded"], "properties": {"path": {"type": "string", "minLength": 1}, "configured": {"$ref": "#/$defs/factBool"}, "executable": {"$ref": "#/$defs/factBool"}, "network_loaded": {"$ref": "#/$defs/factBool"}}},
+    "check": {"type": "object", "additionalProperties": false, "required": ["name", "configured", "ci_covered"], "properties": {"name": {"type": "string", "minLength": 1}, "configured": {"$ref": "#/$defs/factBool"}, "ci_covered": {"$ref": "#/$defs/factBool"}}}
+  }
+}
