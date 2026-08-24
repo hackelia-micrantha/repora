@@ -70,6 +70,27 @@ func validHooksInventory(fullName string) posture.HooksInventory {
 	}
 }
 
+func validCommitInventory(fullName string) posture.CommitInventory {
+	return posture.CommitInventory{
+		Kind:                       posture.CommitInventoryKind,
+		Version:                    posture.CommitInventoryVersion,
+		Repository:                 posture.RepositoryIdentity{Provider: "github", FullName: fullName},
+		DefaultBranch:              posture.Observed("main"),
+		DefaultCommit:              posture.Observed("abc1234"),
+		ProfileDeclared:            posture.Observed(false),
+		HistoryLimit:               posture.Observed(20),
+		HistoryTruncated:           posture.Observed(false),
+		FileCountThreshold:         posture.Observed(50),
+		ChangedLinesThreshold:      posture.Observed(1000),
+		SensitivePathPatterns:      posture.Observed([]string{}),
+		Commits:                    []posture.CommitHistoryFact{},
+		SignedTagCount:             posture.Unknown[int](),
+		UnsignedTagCount:           posture.Unknown[int](),
+		ReleaseBoundaryChangeCount: posture.Unknown[int](),
+		Evidence:                   []posture.Evidence{},
+	}
+}
+
 func TestPostureInventoryCommandEmitsVersionedJSONAndUsesEnvironmentToken(t *testing.T) {
 	old := collectGitHubPosture
 	t.Cleanup(func() { collectGitHubPosture = old })
@@ -154,6 +175,34 @@ func TestPostureHooksCommandEmitsVersionedJSONAndUsesEnvironmentToken(t *testing
 	}
 }
 
+func TestPostureCommitsCommandEmitsVersionedJSONAndUsesEnvironmentToken(t *testing.T) {
+	old := collectGitHubCommitPosture
+	t.Cleanup(func() { collectGitHubCommitPosture = old })
+	t.Setenv("GITHUB_TOKEN", "commits-token")
+	var gotRepo, gotToken string
+	collectGitHubCommitPosture = func(_ context.Context, fullName, token string) (posture.CommitInventory, error) {
+		gotRepo, gotToken = fullName, token
+		return validCommitInventory(fullName), nil
+	}
+	var stdout bytes.Buffer
+	code := withStdout(t, &stdout, func() int {
+		return run([]string{"posture", "commits", "acme/project"})
+	})
+	if code != 0 {
+		t.Fatalf("run returned %d, want 0", code)
+	}
+	if gotRepo != "acme/project" || gotToken != "commits-token" {
+		t.Fatalf("collector inputs repo=%q token=%q", gotRepo, gotToken)
+	}
+	var decoded posture.CommitInventory
+	if err := json.Unmarshal(stdout.Bytes(), &decoded); err != nil {
+		t.Fatalf("decode output: %v\n%s", err, stdout.String())
+	}
+	if decoded.Kind != posture.CommitInventoryKind || decoded.Version != posture.CommitInventoryVersion || decoded.Repository.FullName != "acme/project" {
+		t.Fatalf("commit inventory envelope = %#v", decoded)
+	}
+}
+
 func TestPostureInventoryFallsBackToGHToken(t *testing.T) {
 	old := collectGitHubPosture
 	t.Cleanup(func() { collectGitHubPosture = old })
@@ -174,7 +223,7 @@ func TestPostureInventoryFallsBackToGHToken(t *testing.T) {
 }
 
 func TestPostureHelpAndUsage(t *testing.T) {
-	for _, subcommand := range []string{"inventory", "docs", "hooks"} {
+	for _, subcommand := range []string{"inventory", "docs", "hooks", "commits"} {
 		var stdout bytes.Buffer
 		code := withStdout(t, &stdout, func() int {
 			return run([]string{"posture", subcommand, "--help"})
@@ -188,7 +237,7 @@ func TestPostureHelpAndUsage(t *testing.T) {
 	code := withStderr(t, &stderr, func() int {
 		return run([]string{"posture", "inventory"})
 	})
-	want := "usage: repoctl posture inventory OWNER/REPO\n       repoctl posture docs OWNER/REPO\n       repoctl posture hooks OWNER/REPO\n       repoctl posture mirrors -f repora.yaml\n"
+	want := "usage: repoctl posture inventory OWNER/REPO\n       repoctl posture docs OWNER/REPO\n       repoctl posture hooks OWNER/REPO\n       repoctl posture commits OWNER/REPO\n       repoctl posture mirrors -f repora.yaml\n"
 	if code != 1 || stderr.String() != want {
 		t.Fatalf("usage code=%d output=%q want=%q", code, stderr.String(), want)
 	}
