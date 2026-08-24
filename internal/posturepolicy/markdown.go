@@ -10,7 +10,8 @@ func RenderMarkdown(report Report) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Repository posture report\n\n")
 	fmt.Fprintf(&b, "- Repository: `%s`\n", report.Repository)
-	fmt.Fprintf(&b, "- Profile: `%s`\n\n", report.ProfileID)
+	fmt.Fprintf(&b, "- Profile: `%s`\n", report.ProfileID)
+	fmt.Fprintf(&b, "- As of: `%s`\n\n", report.AsOf)
 
 	counts := SummaryBySeverity(report)
 	b.WriteString("## Findings summary\n\n")
