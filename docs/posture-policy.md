@@ -55,7 +55,7 @@ repoctl posture report \
   --format markdown
 ```
 
-Each collector artifact is independently versioned and may be persisted, inspected, piped, or supplied selectively to `posture converge`. A mirror artifact must be paired with `--repo-uid` so convergence selects exactly one configured repository. Duplicate source flags, malformed or unsupported contracts, repository-identity mismatches, and ambiguous GitHub mirror identities fail the whole convergence operation; no partial policy-input artifact is emitted.
+Each collector artifact is independently versioned and may be persisted, inspected, or supplied selectively to `posture converge`. A mirror artifact must be paired with `--repo-uid` so convergence selects exactly one configured repository. Duplicate source flags, malformed or unsupported contracts, repository-identity mismatches, and ambiguous GitHub mirror identities fail the whole convergence operation; no partial policy-input artifact is emitted.
 
 `posture converge` is offline-only. It strictly validates every supplied artifact and passes typed data through the existing convergence adapters. It does not call providers, rescan repositories, infer unavailable evidence, or mutate repository state. Its output is deterministic `repora.posture-policy-inputs` v1 JSON suitable for direct use by `posture report`.
 
