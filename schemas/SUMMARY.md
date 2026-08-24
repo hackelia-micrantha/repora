@@ -4,7 +4,7 @@ Status: Current
 
 ## Purpose
 
-This subtree contains versioned machine-readable compatibility contracts for Repora CLI output, reconciliation plans, execution records, document routing, context receipts, repository assessment artifacts, managed repository artifact planning/execution evidence, normalized repository posture inventory, deterministic documentation posture observations, mirror posture observations, hooks/local-workflow posture observations, and bounded commit-history posture observations.
+This subtree contains versioned machine-readable compatibility contracts for Repora CLI output, reconciliation plans, execution records, document routing, context receipts, repository assessment artifacts, managed repository artifact planning/execution evidence, normalized repository posture inventories, deterministic posture observations, posture policy inputs/profiles, and posture reports.
 
 ## Canonical sources
 
@@ -26,6 +26,9 @@ Use the schema matching the exact artifact kind and version being produced or co
 - `posture-hooks-profile-v1.schema.json`
 - `posture-commits-v1.schema.json`
 - `posture-commits-profile-v1.schema.json`
+- `posture-policy-profile-v1.schema.json`
+- `posture-policy-inputs-v1.schema.json`
+- `posture-report-v1.schema.json`
 - `document-router.schema.json`
 - `context-receipt-v1.schema.json`
 - `repository-assessment-v1.schema.json`
@@ -34,11 +37,11 @@ Use the schema matching the exact artifact kind and version being produced or co
 - `evidence-v1.schema.json`
 - `scorecard-v1.schema.json`
 
-Migration guidance for public CLI contracts lives under [`../docs/cli/`](../docs/cli/). Repository/CI posture fact-state and collection semantics live in [`../docs/posture-inventory.md`](../docs/posture-inventory.md); documentation posture/profile semantics live in [`../docs/posture-documentation.md`](../docs/posture-documentation.md); mirror posture semantics live in [`../docs/posture-mirrors.md`](../docs/posture-mirrors.md); hooks/local-workflow and profile semantics live in [`../docs/posture-hooks.md`](../docs/posture-hooks.md); bounded commit-history and profile semantics live in [`../docs/posture-commits.md`](../docs/posture-commits.md). Assessment semantics and evidence-strength guidance live in [`../docs/assessments.md`](../docs/assessments.md). Managed artifact semantics live in [`../docs/architecture/managed-artifacts.md`](../docs/architecture/managed-artifacts.md) and ADR-0017.
+Migration guidance for public CLI contracts lives under [`../docs/cli/`](../docs/cli/). Repository/CI posture fact-state and collection semantics live in [`../docs/posture-inventory.md`](../docs/posture-inventory.md); documentation posture/profile semantics live in [`../docs/posture-documentation.md`](../docs/posture-documentation.md); mirror posture semantics live in [`../docs/posture-mirrors.md`](../docs/posture-mirrors.md); hooks/local-workflow and profile semantics live in [`../docs/posture-hooks.md`](../docs/posture-hooks.md); bounded commit-history and profile semantics live in [`../docs/posture-commits.md`](../docs/posture-commits.md); policy evaluation, normalized convergence inputs, exception semantics, and deterministic report behavior live in [`../docs/posture-policy.md`](../docs/posture-policy.md). Assessment semantics and evidence-strength guidance live in [`../docs/assessments.md`](../docs/assessments.md). Managed artifact semantics live in [`../docs/architecture/managed-artifacts.md`](../docs/architecture/managed-artifacts.md) and ADR-0017.
 
 ## Ownership boundaries
 
-Schemas define serialized structure and compatibility. They do not define the full operational semantics of planning, execution, routing, recovery, posture interpretation, assessment interpretation, or managed artifact mutation; use the corresponding architecture, posture, routing, assessment, or decision documents for those behaviors.
+Schemas define serialized structure and compatibility. They do not define the full operational semantics of planning, execution, routing, recovery, posture interpretation, policy authority, assessment interpretation, or managed artifact mutation; use the corresponding architecture, posture, routing, assessment, or decision documents for those behaviors.
 
 ## Expand when
 
@@ -46,4 +49,4 @@ Load the exact schema whenever validating fields, required properties, enums, co
 
 ## Exclusions and stale areas
 
-Do not assume a higher version is interchangeable with an older consumer. Historical schemas remain valid evidence for their own version but are not substitutes for the requested contract version. Posture inventories are observed evidence, not findings or risk scores. Documentation observation profiles choose deterministic facts to collect; they do not define severity, suppress policy, or grant remediation authority. Mirror posture v1 remains default-branch scoped: tag and release drift are explicit unknown facts rather than inferred results. Hooks posture profiles select bounded observation expectations only: local hooks are early feedback, CI remains authoritative, and no hook code is installed or executed. Commit posture profiles select bounded history, sensitive paths, and deterministic thresholds only; they do not define severity, infer developer intent, or authorize productivity/identity analytics. Assessment scorecards are scoped evidence summaries, not objective whole-project grades unless the report explicitly supports that scope. Managed artifact plan, execution-record, and apply-result schemas define review/evidence contracts; mutation safety is governed by the managed-artifact architecture and exact-plan preflight/lease rules.
+Do not assume a higher version is interchangeable with an older consumer. Historical schemas remain valid evidence for their own version but are not substitutes for the requested contract version. Posture inventories are observed evidence, not findings or risk scores. Documentation observation profiles choose deterministic facts to collect; they do not define severity, suppress policy, or grant remediation authority. Mirror posture v1 remains default-branch scoped: tag and release drift are explicit unknown facts rather than inferred results. Hooks posture profiles select bounded observation expectations only: local hooks are early feedback, CI remains authoritative, and no hook code is installed or executed. Commit posture profiles select bounded history, sensitive paths, and deterministic thresholds only; they do not define severity, infer developer intent, or authorize productivity/identity analytics. Posture policy profiles define explicit expectations, severity, remediation, and time-bounded exceptions over normalized facts only; they are not loaded from target repositories automatically and do not grant provider access or mutation authority. Posture reports preserve unknown/unavailable evidence and decomposable findings instead of creating an opaque numeric score. Assessment scorecards are scoped evidence summaries, not objective whole-project grades unless the report explicitly supports that scope. Managed artifact plan, execution-record, and apply-result schemas define review/evidence contracts; mutation safety is governed by the managed-artifact architecture and exact-plan preflight/lease rules.
