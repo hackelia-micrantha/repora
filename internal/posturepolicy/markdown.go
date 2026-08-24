@@ -1,6 +1,8 @@
 package posturepolicy
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -86,5 +88,9 @@ func RenderMarkdown(report Report) string {
 }
 
 func compactJSON(value []byte) string {
-	return strings.Join(strings.Fields(string(value)), " ")
+	var out bytes.Buffer
+	if err := json.Compact(&out, value); err != nil {
+		return string(value)
+	}
+	return out.String()
 }
