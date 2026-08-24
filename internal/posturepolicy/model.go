@@ -14,6 +14,8 @@ import (
 const (
 	ProfileKind    = "repora.posture-policy-profile"
 	ProfileVersion = 1
+	InputsKind     = "repora.posture-policy-inputs"
+	InputsVersion  = 1
 	ReportKind     = "repora.posture-report"
 	ReportVersion  = 1
 )
@@ -38,29 +40,29 @@ const (
 )
 
 type Profile struct {
-	Kind       string      `json:"kind" yaml:"kind"`
-	Version    int         `json:"version" yaml:"version"`
-	ID         string      `json:"id" yaml:"id"`
-	Rules      []Rule      `json:"rules" yaml:"rules"`
-	Exceptions []Exception `json:"exceptions" yaml:"exceptions"`
+	Kind       string      `json:"kind"`
+	Version    int         `json:"version"`
+	ID         string      `json:"id"`
+	Rules      []Rule      `json:"rules"`
+	Exceptions []Exception `json:"exceptions"`
 }
 
 type Rule struct {
-	ID          string          `json:"id" yaml:"id"`
-	Area        string          `json:"area" yaml:"area"`
-	Fact        string          `json:"fact" yaml:"fact"`
-	Operator    Operator        `json:"operator" yaml:"operator"`
-	Expected    json.RawMessage `json:"expected,omitempty" yaml:"expected,omitempty"`
-	Severity    Severity        `json:"severity" yaml:"severity"`
-	Title       string          `json:"title" yaml:"title"`
-	Remediation []string        `json:"remediation" yaml:"remediation"`
+	ID          string          `json:"id"`
+	Area        string          `json:"area"`
+	Fact        string          `json:"fact"`
+	Operator    Operator        `json:"operator"`
+	Expected    json.RawMessage `json:"expected,omitempty"`
+	Severity    Severity        `json:"severity"`
+	Title       string          `json:"title"`
+	Remediation []string        `json:"remediation"`
 }
 
 type Exception struct {
-	RuleID  string `json:"rule_id" yaml:"rule_id"`
-	Reason  string `json:"reason" yaml:"reason"`
-	Owner   string `json:"owner" yaml:"owner"`
-	Expires string `json:"expires" yaml:"expires"`
+	RuleID  string `json:"rule_id"`
+	Reason  string `json:"reason"`
+	Owner   string `json:"owner"`
+	Expires string `json:"expires"`
 }
 
 type FactInput struct {
@@ -70,6 +72,8 @@ type FactInput struct {
 }
 
 type Inputs struct {
+	Kind       string               `json:"kind"`
+	Version    int                  `json:"version"`
 	Repository string               `json:"repository"`
 	Facts      map[string]FactInput `json:"facts"`
 }
@@ -79,6 +83,7 @@ type ResultStatus string
 const (
 	StatusPass        ResultStatus = "pass"
 	StatusFail        ResultStatus = "fail"
+	StatusWarning     ResultStatus = "warning"
 	StatusExcepted    ResultStatus = "excepted"
 	StatusUnknown     ResultStatus = "unknown"
 	StatusUnavailable ResultStatus = "unavailable"
@@ -127,10 +132,15 @@ func (p Profile) Validate() error {
 		}
 		seen[rule.ID] = struct{}{}
 	}
+	seenExceptions := map[string]struct{}{}
 	for i, exception := range p.Exceptions {
 		if _, exists := seen[exception.RuleID]; !exists {
 			return fmt.Errorf("exception[%d] references unknown rule %q", i, exception.RuleID)
 		}
+		if _, exists := seenExceptions[exception.RuleID]; exists {
+			return fmt.Errorf("duplicate exception for rule %q", exception.RuleID)
+		}
+		seenExceptions[exception.RuleID] = struct{}{}
 		if strings.TrimSpace(exception.Reason) == "" || strings.TrimSpace(exception.Owner) == "" || strings.TrimSpace(exception.Expires) == "" {
 			return fmt.Errorf("exception[%d] requires reason, owner, and expiry", i)
 		}
@@ -150,6 +160,9 @@ func (r Rule) validate() error {
 		if len(r.Expected) == 0 {
 			return fmt.Errorf("operator %q requires expected value", r.Operator)
 		}
+		if !json.Valid(r.Expected) {
+			return fmt.Errorf("operator %q expected value must be valid JSON", r.Operator)
+		}
 	case OperatorNonEmpty:
 		if len(r.Expected) != 0 {
 			return fmt.Errorf("operator %q must not define expected value", r.Operator)
@@ -164,6 +177,11 @@ func (r Rule) validate() error {
 	}
 	if r.Remediation == nil {
 		return fmt.Errorf("remediation array is required")
+	}
+	for i, remediation := range r.Remediation {
+		if strings.TrimSpace(remediation) == "" {
+			return fmt.Errorf("remediation[%d] must not be empty", i)
+		}
 	}
 	return nil
 }
