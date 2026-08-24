@@ -188,5 +188,4 @@ func printPostureUsage(w *os.File) {
 	fmt.Fprintln(w, "       repoctl posture hooks OWNER/REPO")
 	fmt.Fprintln(w, "       repoctl posture commits OWNER/REPO")
 	fmt.Fprintln(w, "       repoctl posture mirrors -f repora.yaml")
-	fmt.Fprintln(w, "       repoctl posture report --profile POLICY.json --facts FACTS.json --as-of YYYY-MM-DD [--format markdown|json]")
 }
