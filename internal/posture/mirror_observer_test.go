@@ -64,17 +64,21 @@ func TestDefaultMirrorProviderReaderLeavesOmittedPermissionsUnknown(t *testing.T
 }
 
 func TestDefaultMirrorProviderReaderMarksUnsupportedProviderUnavailable(t *testing.T) {
-	facts, observation, err := (DefaultMirrorProviderReader{}).Repository(
-		context.Background(),
-		config.Endpoint{Provider: "gitlab", Path: "acme/example"},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if observation.Available || facts != (MirrorProviderRepository{}) {
-		t.Fatalf("facts=%#v observation=%#v", facts, observation)
-	}
-	if observation.Evidence.Source != "provider.unsupported" {
-		t.Fatalf("evidence = %#v", observation.Evidence)
+	for _, provider := range []string{"gitlab", "bitbucket"} {
+		t.Run(provider, func(t *testing.T) {
+			facts, observation, err := (DefaultMirrorProviderReader{}).Repository(
+				context.Background(),
+				config.Endpoint{Provider: provider, Path: "acme/example"},
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if observation.Available || facts != (MirrorProviderRepository{}) {
+				t.Fatalf("facts=%#v observation=%#v", facts, observation)
+			}
+			if observation.Evidence.Source != "provider.unsupported" {
+				t.Fatalf("evidence = %#v", observation.Evidence)
+			}
+		})
 	}
 }

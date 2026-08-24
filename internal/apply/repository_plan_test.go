@@ -10,12 +10,12 @@ import (
 )
 
 func TestBuildRepositoryArtifactPlansMirrorsInConfigurationOrder(t *testing.T) {
-	repo := multiMirrorRepo()
+	repo := bitbucketMultiMirrorRepo()
 	observed := status.RepositoryResult{
 		ID:  repo.ID,
 		UID: repo.DurableID(),
 		Mirrors: []status.MirrorResult{
-			{Target: "gitlab:backup/payments-api", Provider: "gitlab", Path: "backup/payments-api", State: status.StateBehind, Behind: 2},
+			{Target: "bitbucket:workspace/payments-api", Provider: "bitbucket", Path: "workspace/payments-api", State: status.StateBehind, Behind: 2},
 			{Target: "github:org/payments-api", Provider: "github", Path: "org/payments-api", State: status.StateEqual},
 		},
 	}
@@ -29,7 +29,7 @@ func TestBuildRepositoryArtifactPlansMirrorsInConfigurationOrder(t *testing.T) {
 		t.Fatalf("artifact = %#v, want one v2 action", artifact)
 	}
 	action := artifact.Repositories[0].Actions[0]
-	if action.Target.Provider != "gitlab" || action.Target.Path != "backup/payments-api" || action.Target.Remote != "mirror-1" {
+	if action.Target.Provider != "bitbucket" || action.Target.Path != "workspace/payments-api" || action.Target.Remote != "mirror-1" {
 		t.Fatalf("target = %#v, want configured second mirror", action.Target)
 	}
 	if strings.Join(git.resolveRemoteHeadBranchCalls, ",") != "canonical,mirror-1" {
@@ -38,14 +38,14 @@ func TestBuildRepositoryArtifactPlansMirrorsInConfigurationOrder(t *testing.T) {
 }
 
 func TestBuildRepositoryArtifactUsesTargetIdentityNotObservationOrder(t *testing.T) {
-	repo := multiMirrorRepo()
+	repo := bitbucketMultiMirrorRepo()
 	repo.Mirrors[0], repo.Mirrors[1] = repo.Mirrors[1], repo.Mirrors[0]
 	observed := status.RepositoryResult{
 		ID:  repo.ID,
 		UID: repo.DurableID(),
 		Mirrors: []status.MirrorResult{
 			{Target: "github:org/payments-api", Provider: "github", Path: "org/payments-api", State: status.StateBehind, Behind: 1},
-			{Target: "gitlab:backup/payments-api", Provider: "gitlab", Path: "backup/payments-api", State: status.StateEqual},
+			{Target: "bitbucket:workspace/payments-api", Provider: "bitbucket", Path: "workspace/payments-api", State: status.StateEqual},
 		},
 	}
 
@@ -60,13 +60,13 @@ func TestBuildRepositoryArtifactUsesTargetIdentityNotObservationOrder(t *testing
 }
 
 func TestBuildRepositoryArtifactRecordsForcedIntentPerMirror(t *testing.T) {
-	repo := multiMirrorRepo()
+	repo := bitbucketMultiMirrorRepo()
 	observed := status.RepositoryResult{
 		ID:  repo.ID,
 		UID: repo.DurableID(),
 		Mirrors: []status.MirrorResult{
 			{Target: "github:org/payments-api", Provider: "github", Path: "org/payments-api", State: status.StateAhead, Ahead: 1},
-			{Target: "gitlab:backup/payments-api", Provider: "gitlab", Path: "backup/payments-api", State: status.StateDiverged, Ahead: 1, Behind: 2},
+			{Target: "bitbucket:workspace/payments-api", Provider: "bitbucket", Path: "workspace/payments-api", State: status.StateDiverged, Ahead: 1, Behind: 2},
 		},
 	}
 
@@ -80,13 +80,13 @@ func TestBuildRepositoryArtifactRecordsForcedIntentPerMirror(t *testing.T) {
 }
 
 func TestBuildRepositoryArtifactRejectsIncompleteMirrorStatusBeforeRefReads(t *testing.T) {
-	repo := multiMirrorRepo()
+	repo := bitbucketMultiMirrorRepo()
 	observed := status.RepositoryResult{
 		ID:  repo.ID,
 		UID: repo.DurableID(),
 		Mirrors: []status.MirrorResult{
 			{Target: "github:org/payments-api", Provider: "github", Path: "org/payments-api", State: status.StateError, Error: "fetch mirror: unavailable"},
-			{Target: "gitlab:backup/payments-api", Provider: "gitlab", Path: "backup/payments-api", State: status.StateEqual},
+			{Target: "bitbucket:workspace/payments-api", Provider: "bitbucket", Path: "workspace/payments-api", State: status.StateEqual},
 		},
 	}
 	git := &fakeGit{}
@@ -97,6 +97,19 @@ func TestBuildRepositoryArtifactRejectsIncompleteMirrorStatusBeforeRefReads(t *t
 	}
 	if len(git.resolveRemoteHeadBranchCalls) != 1 || len(git.resolveRevisionCalls) != 0 {
 		t.Fatalf("git calls = heads %#v refs %#v, want no ref reads after status rejection", git.resolveRemoteHeadBranchCalls, git.resolveRevisionCalls)
+	}
+}
+
+func bitbucketMultiMirrorRepo() config.Repo {
+	return config.Repo{
+		ID:        "payments-api",
+		UID:       "repo.org.payments-api",
+		Canonical: config.Endpoint{Provider: "gitlab", Path: "org/payments-api"},
+		Mirrors: []config.Endpoint{
+			{Provider: "github", Path: "org/payments-api"},
+			{Provider: "bitbucket", Path: "workspace/payments-api"},
+		},
+		Mode: "mirror",
 	}
 }
 

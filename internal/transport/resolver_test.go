@@ -29,6 +29,65 @@ func TestResolveProviderPath(t *testing.T) {
 	}
 }
 
+func TestResolveBitbucketCloudMirror(t *testing.T) {
+	t.Parallel()
+
+	resolved, err := DefaultResolver(HTTPS).Resolve(config.Endpoint{
+		Provider: "bitbucket",
+		Path:     "micrantha/anthesis",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Provider != "bitbucket" || resolved.Path != "micrantha/anthesis" {
+		t.Fatalf("identity = %#v", resolved)
+	}
+	if resolved.URL != "https://bitbucket.org/micrantha/anthesis.git" {
+		t.Fatalf("https url = %q", resolved.URL)
+	}
+	if strings.Contains(resolved.URL, "@") {
+		t.Fatalf("resolved URL contains credentials: %q", resolved.URL)
+	}
+}
+
+func TestResolveBitbucketFailsClosed(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		"workspace/group/repo",
+		"workspace/repo?token=secret",
+		"workspace/repo#fragment",
+		`workspace/repo\other`,
+		"workspace/repo:other",
+		"/workspace/repo",
+		"workspace/repo/",
+		"workspace/repo.git",
+		"work space/repo",
+		"workspace/repo name",
+		"work\tspace/repo",
+		"workspace/repo\nname",
+		"work\u00a0space/repo",
+	} {
+		_, err := DefaultResolver(HTTPS).Resolve(config.Endpoint{Provider: "bitbucket", Path: path})
+		if err == nil {
+			t.Fatalf("Resolve(%q) returned nil error", path)
+		}
+	}
+
+	_, err := DefaultResolver(HTTPS).Resolve(config.Endpoint{
+		Provider: "bitbucket",
+		URL:      "https://bitbucket.org/workspace/repo.git",
+	})
+	if err == nil || !strings.Contains(err.Error(), "provider/path identity is required") {
+		t.Fatalf("legacy URL error = %v, want provider/path-only rejection", err)
+	}
+
+	_, err = DefaultResolver(SSH).Resolve(config.Endpoint{Provider: "bitbucket", Path: "workspace/repo"})
+	if err == nil || !strings.Contains(err.Error(), "no ssh base") {
+		t.Fatalf("ssh error = %v, want unsupported SSH transport", err)
+	}
+}
+
 func TestResolveFailsClosed(t *testing.T) {
 	t.Parallel()
 

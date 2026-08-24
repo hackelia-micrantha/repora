@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"unicode"
 
 	"repoctl/internal/config"
 )
@@ -36,17 +37,22 @@ func DefaultResolver(kind Kind) Resolver {
 	return Resolver{
 		Transport: kind,
 		Providers: map[string]Provider{
-			"github": {HTTPSBase: "https://github.com", SSHBase: "git@github.com:"},
-			"gitlab": {HTTPSBase: "https://gitlab.com", SSHBase: "git@gitlab.com:"},
+			"bitbucket": {HTTPSBase: "https://bitbucket.org"},
+			"github":    {HTTPSBase: "https://github.com", SSHBase: "git@github.com:"},
+			"gitlab":    {HTTPSBase: "https://gitlab.com", SSHBase: "git@gitlab.com:"},
 		},
 	}
 }
 
 func (r Resolver) Resolve(endpoint config.Endpoint) (ResolvedRemote, error) {
 	provider := strings.TrimSpace(endpoint.Provider)
-	path := strings.Trim(strings.TrimSpace(endpoint.Path), "/")
+	rawPath := strings.TrimSpace(endpoint.Path)
+	path := strings.Trim(rawPath, "/")
 
 	if path == "" {
+		if provider == "bitbucket" && strings.TrimSpace(endpoint.URL) != "" {
+			return ResolvedRemote{}, fmt.Errorf("resolve bitbucket endpoint: provider/path identity is required")
+		}
 		return r.resolveLegacyURL(provider, endpoint.URL)
 	}
 	if strings.TrimSpace(endpoint.URL) != "" {
@@ -54,6 +60,11 @@ func (r Resolver) Resolve(endpoint config.Endpoint) (ResolvedRemote, error) {
 	}
 	if err := validatePath(path); err != nil {
 		return ResolvedRemote{}, fmt.Errorf("resolve %s endpoint path %q: %w", provider, path, err)
+	}
+	if provider == "bitbucket" {
+		if err := validateBitbucketPath(rawPath); err != nil {
+			return ResolvedRemote{}, fmt.Errorf("resolve bitbucket endpoint path %q: %w", rawPath, err)
+		}
 	}
 
 	definition, ok := r.Providers[provider]
@@ -102,6 +113,26 @@ func validatePath(path string) error {
 	}
 	if len(strings.Split(path, "/")) < 2 {
 		return fmt.Errorf("must include an owner or namespace")
+	}
+	return nil
+}
+
+func validateBitbucketPath(path string) error {
+	trimmed := strings.TrimSpace(path)
+	if trimmed != strings.Trim(trimmed, "/") {
+		return fmt.Errorf("must not have leading or trailing slashes")
+	}
+	parts := strings.Split(trimmed, "/")
+	if len(parts) != 2 {
+		return fmt.Errorf("must be workspace/repository")
+	}
+	if strings.HasSuffix(parts[1], ".git") {
+		return fmt.Errorf("repository segment must not end in .git")
+	}
+	for _, part := range parts {
+		if strings.IndexFunc(part, unicode.IsSpace) >= 0 || strings.ContainsAny(part, `\:@?#`) {
+			return fmt.Errorf("contains an unsafe workspace or repository segment")
+		}
 	}
 	return nil
 }
