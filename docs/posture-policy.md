@@ -170,6 +170,6 @@ Any future provider remediation remains a separate reviewed mutation capability.
 
 ## Relationship to repository assessments
 
-The existing `repora.repository-assessment` contract remains useful for broader point-in-time analysis and evidence-backed assessment workflows. It also requires a scorecard, however, so #121 does not force posture policy into that shape.
+The existing `repora.repository-assessment` contract remains useful for broader point-in-time analysis and evidence-backed assessment workflows. It also requires a scorecard, so the posture policy implementation deliberately preserves a separate no-opaque-score shape.
 
 Posture policy reuses the same architectural preference for explicit findings and evidence while preserving its own no-opaque-score and normalized-fact boundaries. A future projection into an assessment artifact can be added without making assessment scoring a prerequisite for posture evaluation.
