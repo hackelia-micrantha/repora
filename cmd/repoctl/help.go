@@ -14,6 +14,7 @@ Usage:
   repoctl posture hooks OWNER/REPO
   repoctl posture commits OWNER/REPO
   repoctl posture mirrors -f repora.yaml
+  repoctl posture report --profile POLICY.json --facts FACTS.json --as-of YYYY-MM-DD [--format markdown|json]
   repoctl plan-readme -f repora.yaml [--artifact]
   repoctl apply-readme -f repora.yaml --plan-file FILE [--dry-run] [--json]
   repoctl validate-report FILE
@@ -28,7 +29,7 @@ Commands:
   plan     show planned mirror updates or export an executable artifact
   apply    apply current observations or an exact plan artifact
   sync     alias for apply
-  posture  collect read-only repository/CI, documentation, hooks/local-workflow, commit-history, and mirror posture facts
+  posture  collect read-only posture facts or evaluate normalized facts into deterministic reports
   plan-readme  review managed README changes or export the exact managed-artifact plan
   apply-readme  dry-run or journaled exact-plan managed README apply
   validate-report  validate a repository assessment report without mutation
@@ -63,6 +64,14 @@ Options for posture commands:
         GitHub repository to inspect with posture inventory, posture docs, posture hooks, or posture commits. Public repositories need no token; private/provider-protected evidence may use GITHUB_TOKEN or GH_TOKEN from the environment.
   posture mirrors -f string
         inspect mirror posture for repositories declared in SCHEMA-0001 YAML (default "repora.yaml")
+  posture report --profile string
+        strict repora.posture-policy-profile v1 JSON; policy is external to repository-controlled observation profiles
+  posture report --facts string
+        strict repora.posture-policy-inputs v1 JSON containing normalized facts only
+  posture report --as-of string
+        explicit YYYY-MM-DD evaluation date used for deterministic exception-expiry handling
+  posture report --format string
+        markdown (default) or json
 
 Posture inventory is GET-only. Provider fields unavailable under current access are emitted as unavailable facts rather than false negatives. It does not evaluate policy, create findings, run scanners, or mutate repository/provider state.
 
@@ -73,6 +82,8 @@ Posture hooks is GET-only. It observes common/custom hook configuration, optiona
 Posture commits is GET-only. It observes an explicitly bounded default-branch history window, commit signature verification state, merge shape, change size/file scope, configured sensitive-path matches, and optional commit-to-PR association. Repository-owned thresholds are observation parameters only; direct-push/unreviewed status, tag signatures, and release boundaries remain unknown unless evidence can prove them. It performs no productivity scoring, identity profiling, blame, intent inference, or history mutation.
 
 Posture mirrors reuses the existing mirror reconciliation cache/status semantics. It may create or refresh Repora's local mirror cache and configured cache remotes, but it does not push, synchronize mirrors, publish releases, or mutate provider settings. It observes declared canonical/mirror identity, default-branch and commit drift, and preserves unavailable provider metadata. Tag and release drift remain explicit unknown facts in v1.
+
+Posture report is offline-only. It consumes normalized fact inputs and an external policy profile, preserves unknown/unavailable evidence, evaluates explicit expected-vs-observed rules and exceptions, and emits deterministic Markdown or JSON. It does not contact providers, re-scan repositories, mutate state, or calculate an opaque numeric score.
 
 Options for plan-readme:
   -f string
