@@ -10,7 +10,7 @@
 
 **Repora** manages repository state through explicit topology, observation, policy, exact planning, stale-safe execution, honest partial results, and durable evidence.
 
-**repoctl** is the current Go CLI. Its primary runtime is a local-first Git mirror controller: each repository has one GitLab canonical and one or more GitHub/GitLab mirrors. Repora also has a separate bounded managed-README plan/apply domain, local repository-assessment commands, deterministic document-routing contracts, GitHub repository/CI, documentation, and hooks/local-workflow posture collectors, and mirror-posture observation built on declared topology plus existing reconciliation evidence.
+**repoctl** is the current Go CLI. Its primary runtime is a local-first Git mirror controller: each repository has one GitLab canonical and one or more GitHub, GitLab, or Bitbucket Cloud mirrors. Repora also has a separate bounded managed-README plan/apply domain, local repository-assessment commands, deterministic document-routing contracts, GitHub repository/CI, documentation, and hooks/local-workflow posture collectors, and mirror-posture observation built on declared topology plus existing reconciliation evidence.
 
 Repora remains pre-alpha. The broader repository-control-plane model is product direction, not a claim that provider provisioning, hosted orchestration, automatic posture remediation, or arbitrary repository mutation exists today.
 
@@ -36,7 +36,7 @@ The choice is pragmatic rather than ideological. Repora delegates Git protocol a
 
 - strict YAML validation and durable `uid` identity;
 - provider-relative canonical and mirror topology;
-- one or more GitHub/GitLab mirrors with stable `provider:path` identity;
+- one or more GitHub, GitLab, or Bitbucket Cloud mirrors with stable `provider:path` identity;
 - bounded single-mirror legacy URL compatibility;
 - runtime HTTPS resolution and system Git authentication;
 - independent per-mirror `EQUAL`, `BEHIND`, `AHEAD`, `DIVERGED`, and `ERROR` status;
@@ -136,7 +136,7 @@ See [Mirror posture v1](docs/posture-mirrors.md).
 ## Current limitations
 
 - GitLab canonical repositories only;
-- built-in GitHub/GitLab HTTPS transport bases only;
+- built-in GitHub, GitLab, and Bitbucket Cloud HTTPS transport bases only;
 - default branch only;
 - mirrors execute sequentially inside one repository;
 - no tags, wildcard refs, deleted-ref reconciliation, or complete ref inventory;
@@ -347,9 +347,9 @@ ADR-0018 defines an optional future Anthesis `pre_apply` authorization seam. Run
 
 ## Roadmap
 
-The `v0.1.0` mirror-controller release is published and independently verified. The first post-release managed-README, routing, assessment, standalone Nix packaging, GitHub repository/CI posture, documentation posture, mirror posture, and hooks/local-workflow posture foundations are implemented.
+The `v0.1.0` mirror-controller release is published and independently verified. Current `main` additionally implements managed README mutation, routing and assessment foundations, standalone Nix packaging, GitHub repository/CI, documentation, hooks, bounded commit-history, and mirror posture, offline posture policy/reporting, and Bitbucket Cloud mirror transport. These post-v0.1 capabilities remain unreleased until the next release completes.
 
-The next posture slice is bounded commit/process evidence (#122), followed by policy evaluation/reporting convergence (#121). Provider mutation, Anthesis runtime coupling, expanded ref scope, concurrent mirror mutation, signing, full provenance, and hosted control-plane behavior remain explicitly deferred.
+The active sequence is project-truth reconciliation ([#139](https://github.com/hackelia-micrantha/repora/issues/139)), representative operator acceptance ([#137](https://github.com/hackelia-micrantha/repora/issues/137)), and publication of the next pre-alpha capability baseline ([#138](https://github.com/hackelia-micrantha/repora/issues/138)). Provider mutation, Anthesis runtime coupling, expanded ref scope, concurrent mirror mutation, signing, full provenance, and hosted control-plane behavior remain explicitly deferred.
 
 The authoritative order is maintained in [`docs/plans/current.md`](docs/plans/current.md) and GitHub issues.
 
