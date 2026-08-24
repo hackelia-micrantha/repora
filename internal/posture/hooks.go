@@ -23,13 +23,13 @@ const (
 )
 
 type HooksProfile struct {
-	Kind          string   `json:"kind" yaml:"kind"`
-	Version       int      `json:"version" yaml:"version"`
-	Manager       string   `json:"manager" yaml:"manager"`
-	HookPaths     []string `json:"hook_paths" yaml:"hook_paths"`
+	Kind           string   `json:"kind" yaml:"kind"`
+	Version        int      `json:"version" yaml:"version"`
+	Manager        string   `json:"manager" yaml:"manager"`
+	HookPaths      []string `json:"hook_paths" yaml:"hook_paths"`
 	RequiredChecks []string `json:"required_checks" yaml:"required_checks"`
-	BootstrapDocs []string `json:"bootstrap_docs" yaml:"bootstrap_docs"`
-	BypassDocs    []string `json:"bypass_docs" yaml:"bypass_docs"`
+	BootstrapDocs  []string `json:"bootstrap_docs" yaml:"bootstrap_docs"`
+	BypassDocs     []string `json:"bypass_docs" yaml:"bypass_docs"`
 }
 
 type HookEntrypointFact struct {
@@ -40,7 +40,7 @@ type HookEntrypointFact struct {
 }
 
 type LocalCheckFact struct {
-	Name      string     `json:"name"`
+	Name       string     `json:"name"`
 	Configured Fact[bool] `json:"configured"`
 	CICovered  Fact[bool] `json:"ci_covered"`
 }
@@ -108,11 +108,7 @@ func (p HooksProfile) Validate() error {
 }
 
 func newHooksInventory(fullName string) HooksInventory {
-	return HooksInventory{
-		Kind: HooksInventoryKind, Version: HooksInventoryVersion,
-		Repository: RepositoryIdentity{Provider: "github", FullName: fullName},
-		Entrypoints: []HookEntrypointFact{}, RequiredChecks: []LocalCheckFact{}, Evidence: []Evidence{},
-	}
+	return HooksInventory{Kind: HooksInventoryKind, Version: HooksInventoryVersion, Repository: RepositoryIdentity{Provider: "github", FullName: fullName}, Entrypoints: []HookEntrypointFact{}, RequiredChecks: []LocalCheckFact{}, Evidence: []Evidence{}}
 }
 
 func (i HooksInventory) Validate() error {
@@ -122,72 +118,116 @@ func (i HooksInventory) Validate() error {
 	if i.Repository.Provider != "github" {
 		return fmt.Errorf("hooks inventory provider must be github")
 	}
-	if _, _, err := splitGitHubFullName(i.Repository.FullName); err != nil { return err }
-	for name, err := range map[string]error{
-		"default_branch": validateFact("default_branch", i.DefaultBranch),
-		"default_commit": validateFact("default_commit", i.DefaultCommit),
-		"profile_declared": validateFact("profile_declared", i.ProfileDeclared),
-		"manager": validateFact("manager", i.Manager),
-		"bootstrap_instructions_present": validateFact("bootstrap_instructions_present", i.BootstrapPresent),
-		"bypass_documentation_present": validateFact("bypass_documentation_present", i.BypassPresent),
-	} { if err != nil { return fmt.Errorf("%s: %w", name, err) } }
-	if i.Entrypoints == nil || i.RequiredChecks == nil || i.Evidence == nil { return fmt.Errorf("hooks inventory arrays are required") }
+	if _, _, err := splitGitHubFullName(i.Repository.FullName); err != nil {
+		return err
+	}
+	checks := []error{validateFact("default_branch", i.DefaultBranch), validateFact("default_commit", i.DefaultCommit), validateFact("profile_declared", i.ProfileDeclared), validateFact("manager", i.Manager), validateFact("bootstrap_instructions_present", i.BootstrapPresent), validateFact("bypass_documentation_present", i.BypassPresent)}
+	for _, err := range checks {
+		if err != nil {
+			return err
+		}
+	}
+	if i.Entrypoints == nil || i.RequiredChecks == nil || i.Evidence == nil {
+		return fmt.Errorf("hooks inventory arrays are required")
+	}
 	for idx, hook := range i.Entrypoints {
-		if err := validateDocumentationPath(hook.Path); err != nil { return fmt.Errorf("entrypoint[%d]: %w", idx, err) }
-		if err := validateFact("configured", hook.Configured); err != nil { return err }
-		if err := validateFact("executable", hook.Executable); err != nil { return err }
-		if err := validateFact("network_loaded", hook.NetworkLoaded); err != nil { return err }
+		if err := validateDocumentationPath(hook.Path); err != nil {
+			return fmt.Errorf("entrypoint[%d]: %w", idx, err)
+		}
+		if err := validateFact("configured", hook.Configured); err != nil {
+			return err
+		}
+		if err := validateFact("executable", hook.Executable); err != nil {
+			return err
+		}
+		if err := validateFact("network_loaded", hook.NetworkLoaded); err != nil {
+			return err
+		}
 	}
 	for idx, check := range i.RequiredChecks {
-		if strings.TrimSpace(check.Name) == "" { return fmt.Errorf("required_checks[%d] name is required", idx) }
-		if err := validateFact("configured", check.Configured); err != nil { return err }
-		if err := validateFact("ci_covered", check.CICovered); err != nil { return err }
+		if strings.TrimSpace(check.Name) == "" {
+			return fmt.Errorf("required_checks[%d] name is required", idx)
+		}
+		if err := validateFact("configured", check.Configured); err != nil {
+			return err
+		}
+		if err := validateFact("ci_covered", check.CICovered); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func (i HooksInventory) Marshal() ([]byte, error) {
-	if err := i.Validate(); err != nil { return nil, err }
+	if err := i.Validate(); err != nil {
+		return nil, err
+	}
 	data, err := json.MarshalIndent(i, "", "  ")
-	if err != nil { return nil, fmt.Errorf("encode hooks posture inventory: %w", err) }
+	if err != nil {
+		return nil, fmt.Errorf("encode hooks posture inventory: %w", err)
+	}
 	return append(data, '\n'), nil
 }
 
 func CollectGitHubHooks(ctx context.Context, reader GitHubReader, fullName string) (HooksInventory, error) {
-	if _, _, err := splitGitHubFullName(fullName); err != nil { return HooksInventory{}, err }
+	if _, _, err := splitGitHubFullName(fullName); err != nil {
+		return HooksInventory{}, err
+	}
 	inventory := newHooksInventory(fullName)
 	repo, repoObs, err := reader.Repository(ctx, fullName)
-	if err != nil { return HooksInventory{}, err }
+	if err != nil {
+		return HooksInventory{}, err
+	}
 	inventory.Evidence = append(inventory.Evidence, repoObs.Evidence)
-	if !repoObs.Available { setHooksUnavailable(&inventory, repoObs.Evidence); return inventory, inventory.Validate() }
+	if !repoObs.Available {
+		setHooksUnavailable(&inventory, repoObs.Evidence)
+		return inventory, inventory.Validate()
+	}
 	inventory.DefaultBranch = Observed(repo.DefaultBranch, repoObs.Evidence)
 	branch, branchObs, err := reader.Branch(ctx, fullName, repo.DefaultBranch)
-	if err != nil { return HooksInventory{}, err }
+	if err != nil {
+		return HooksInventory{}, err
+	}
 	inventory.Evidence = append(inventory.Evidence, branchObs.Evidence)
-	if !branchObs.Available { setHooksAfterBranchUnavailable(&inventory, branchObs.Evidence); return inventory, inventory.Validate() }
+	if !branchObs.Available {
+		setHooksAfterBranchUnavailable(&inventory, branchObs.Evidence)
+		return inventory, inventory.Validate()
+	}
 	inventory.DefaultCommit = Observed(branch.CommitSHA, branchObs.Evidence)
 	tree, treeObs, err := reader.Tree(ctx, fullName, branch.TreeSHA)
-	if err != nil { return HooksInventory{}, err }
+	if err != nil {
+		return HooksInventory{}, err
+	}
 	inventory.Evidence = append(inventory.Evidence, treeObs.Evidence)
-	if !treeObs.Available { setHooksAfterTreeUnavailable(&inventory, treeObs.Evidence); return inventory, inventory.Validate() }
+	if !treeObs.Available {
+		setHooksAfterTreeUnavailable(&inventory, treeObs.Evidence)
+		return inventory, inventory.Validate()
+	}
 	entries := map[string]GitHubTreeEntry{}
-	for _, entry := range tree.Entries { entries[entry.Path] = entry }
-
+	for _, entry := range tree.Entries {
+		entries[entry.Path] = entry
+	}
 	profile, profileState, profileEvidence, err := loadHooksProfile(ctx, reader, fullName, tree, entries, treeObs.Evidence)
-	if err != nil { return HooksInventory{}, err }
+	if err != nil {
+		return HooksInventory{}, err
+	}
 	inventory.ProfileDeclared = presenceFact(entries, tree, hooksProfilePath, treeObs.Evidence)
-	if profileState == StateUnknown || profileState == StateUnavailable {
+	if profileState != StateObserved {
 		inventory.Manager = factForState[string](profileState, profileEvidence)
 		inventory.BootstrapPresent = factForState[bool](profileState, profileEvidence)
 		inventory.BypassPresent = factForState[bool](profileState, profileEvidence)
 		return inventory, inventory.Validate()
 	}
-
 	manager, candidates := detectHookManager(entries)
-	if profile.Manager != "" { manager = profile.Manager }
-	candidates = append(candidates, profile.HookPaths...)
-	candidates = sortedUnique(candidates)
-	if manager == "" { inventory.Manager = Observed("none", treeObs.Evidence) } else { inventory.Manager = Observed(manager, treeObs.Evidence) }
+	if profile.Manager != "" {
+		manager = profile.Manager
+	}
+	candidates = sortedUnique(append(candidates, profile.HookPaths...))
+	if manager == "" {
+		inventory.Manager = Observed("none", treeObs.Evidence)
+	} else {
+		inventory.Manager = Observed(manager, treeObs.Evidence)
+	}
 	for _, hookPath := range candidates {
 		entry, ok := entries[hookPath]
 		configured := presenceFact(entries, tree, hookPath, treeObs.Evidence)
@@ -195,19 +235,28 @@ func CollectGitHubHooks(ctx context.Context, reader GitHubReader, fullName strin
 		networkLoaded := Unknown[bool](treeObs.Evidence)
 		if ok && entry.Type == "blob" {
 			data, obs, err := reader.Blob(ctx, fullName, entry.SHA)
-			if err != nil { return HooksInventory{}, err }
-			if !obs.Available { networkLoaded = Unavailable[bool](obs.Evidence) } else if len(data) > maxHooksBytes {
+			if err != nil {
+				return HooksInventory{}, err
+			}
+			if !obs.Available {
+				networkLoaded = Unavailable[bool](obs.Evidence)
+			} else if len(data) > maxHooksBytes {
 				networkLoaded = Unknown[bool](evidenceWithDetail(obs.Evidence, "hook content exceeds bounded static-inspection limit"))
-			} else { networkLoaded = Observed(containsNetworkLoader(data), obs.Evidence) }
+			} else {
+				networkLoaded = Observed(containsNetworkLoader(data), obs.Evidence)
+			}
 		}
 		inventory.Entrypoints = append(inventory.Entrypoints, HookEntrypointFact{Path: hookPath, Configured: configured, Executable: executable, NetworkLoaded: networkLoaded})
 	}
-
 	workflowData, workflowState, workflowEvidence, err := collectWorkflowText(ctx, reader, fullName, tree, entries)
-	if err != nil { return HooksInventory{}, err }
+	if err != nil {
+		return HooksInventory{}, err
+	}
 	for _, check := range profile.RequiredChecks {
 		covered := factForState[bool](workflowState, workflowEvidence)
-		if workflowState == StateObserved { covered = Observed(strings.Contains(strings.ToLower(workflowData), strings.ToLower(check)), workflowEvidence) }
+		if workflowState == StateObserved {
+			covered = Observed(strings.Contains(strings.ToLower(workflowData), strings.ToLower(check)), workflowEvidence)
+		}
 		inventory.RequiredChecks = append(inventory.RequiredChecks, LocalCheckFact{Name: check, Configured: Observed(true, profileEvidence), CICovered: covered})
 	}
 	inventory.BootstrapPresent = anyPathPresent(profile.BootstrapDocs, entries, tree, treeObs.Evidence)
@@ -218,31 +267,59 @@ func CollectGitHubHooks(ctx context.Context, reader GitHubReader, fullName strin
 func loadHooksProfile(ctx context.Context, reader GitHubReader, fullName string, tree GitHubTree, entries map[string]GitHubTreeEntry, treeEvidence Evidence) (HooksProfile, FactState, Evidence, error) {
 	entry, ok := entries[hooksProfilePath]
 	if !ok {
-		if tree.Truncated { evidence := evidenceWithDetail(treeEvidence, "Git tree is truncated; hooks profile presence is unknown"); return HooksProfile{}, StateUnknown, evidence, nil }
+		if tree.Truncated {
+			evidence := evidenceWithDetail(treeEvidence, "Git tree is truncated; hooks profile presence is unknown")
+			return HooksProfile{}, StateUnknown, evidence, nil
+		}
 		return HooksProfile{}, StateObserved, Evidence{Source: "repora.builtin", Reference: "hooks-profile:baseline"}, nil
 	}
-	if entry.Type != "blob" { evidence := evidenceWithDetail(treeEvidence, "hooks profile exists but is not a blob"); return HooksProfile{}, StateUnknown, evidence, nil }
+	if entry.Type != "blob" {
+		evidence := evidenceWithDetail(treeEvidence, "hooks profile exists but is not a blob")
+		return HooksProfile{}, StateUnknown, evidence, nil
+	}
 	data, obs, err := reader.Blob(ctx, fullName, entry.SHA)
-	if err != nil { return HooksProfile{}, "", Evidence{}, err }
-	if !obs.Available { return HooksProfile{}, StateUnavailable, obs.Evidence, nil }
+	if err != nil {
+		return HooksProfile{}, "", Evidence{}, err
+	}
+	if !obs.Available {
+		return HooksProfile{}, StateUnavailable, obs.Evidence, nil
+	}
 	profile, err := ParseHooksProfile(data)
-	if err != nil { return HooksProfile{}, StateUnknown, evidenceWithDetail(obs.Evidence, "declared hooks profile is malformed or unsupported"), nil }
+	if err != nil {
+		return HooksProfile{}, StateUnknown, evidenceWithDetail(obs.Evidence, "declared hooks profile is malformed or unsupported"), nil
+	}
 	return profile, StateObserved, obs.Evidence, nil
 }
 
 func detectHookManager(entries map[string]GitHubTreeEntry) (string, []string) {
-	if _, ok := entries[".pre-commit-config.yaml"]; ok { return "pre-commit", []string{".pre-commit-config.yaml"} }
-	if _, ok := entries["lefthook.yml"]; ok { return "lefthook", []string{"lefthook.yml"} }
-	if _, ok := entries["lefthook.yaml"]; ok { return "lefthook", []string{"lefthook.yaml"} }
+	if _, ok := entries[".pre-commit-config.yaml"]; ok {
+		return "pre-commit", []string{".pre-commit-config.yaml"}
+	}
+	if _, ok := entries["lefthook.yml"]; ok {
+		return "lefthook", []string{"lefthook.yml"}
+	}
+	if _, ok := entries["lefthook.yaml"]; ok {
+		return "lefthook", []string{"lefthook.yaml"}
+	}
 	var husky []string
 	var custom []string
-	for p, e := range entries {
-		if e.Type != "blob" { continue }
-		if strings.HasPrefix(p, ".husky/") && path.Base(p) != "_" { husky = append(husky, p) }
-		if strings.HasPrefix(p, ".githooks/") { custom = append(custom, p) }
+	for p, entry := range entries {
+		if entry.Type != "blob" {
+			continue
+		}
+		if strings.HasPrefix(p, ".husky/") && !strings.HasPrefix(p, ".husky/_/") {
+			husky = append(husky, p)
+		}
+		if strings.HasPrefix(p, ".githooks/") {
+			custom = append(custom, p)
+		}
 	}
-	if len(husky) > 0 { return "husky", sortedUnique(husky) }
-	if len(custom) > 0 { return "custom", sortedUnique(custom) }
+	if len(husky) > 0 {
+		return "husky", sortedUnique(husky)
+	}
+	if len(custom) > 0 {
+		return "custom", sortedUnique(custom)
+	}
 	return "", []string{}
 }
 
@@ -252,45 +329,75 @@ func containsNetworkLoader(data []byte) bool {
 }
 
 func presenceFact(entries map[string]GitHubTreeEntry, tree GitHubTree, target string, evidence Evidence) Fact[bool] {
-	_, ok := entries[target]
-	if ok { return Observed(true, evidence) }
-	if tree.Truncated { return Unknown[bool](evidenceWithDetail(evidence, "Git tree is truncated; path absence cannot be established")) }
+	if _, ok := entries[target]; ok {
+		return Observed(true, evidence)
+	}
+	if tree.Truncated {
+		return Unknown[bool](evidenceWithDetail(evidence, "Git tree is truncated; path absence cannot be established"))
+	}
 	return Observed(false, evidence)
 }
 
 func anyPathPresent(paths []string, entries map[string]GitHubTreeEntry, tree GitHubTree, evidence Evidence) Fact[bool] {
-	if len(paths) == 0 { return Unknown[bool](evidenceWithDetail(evidence, "no documentation expectation declared")) }
-	for _, p := range paths { if _, ok := entries[p]; ok { return Observed(true, evidence) } }
-	if tree.Truncated { return Unknown[bool](evidenceWithDetail(evidence, "Git tree is truncated; documentation absence cannot be established")) }
+	if len(paths) == 0 {
+		return Unknown[bool](evidenceWithDetail(evidence, "no documentation expectation declared"))
+	}
+	for _, p := range paths {
+		if _, ok := entries[p]; ok {
+			return Observed(true, evidence)
+		}
+	}
+	if tree.Truncated {
+		return Unknown[bool](evidenceWithDetail(evidence, "Git tree is truncated; documentation absence cannot be established"))
+	}
 	return Observed(false, evidence)
 }
 
 func collectWorkflowText(ctx context.Context, reader GitHubReader, fullName string, tree GitHubTree, entries map[string]GitHubTreeEntry) (string, FactState, Evidence, error) {
 	paths := []string{}
-	for p, entry := range entries { if entry.Type == "blob" && strings.HasPrefix(p, ".github/workflows/") && (strings.HasSuffix(p, ".yml") || strings.HasSuffix(p, ".yaml")) { paths = append(paths, p) } }
+	for p, entry := range entries {
+		if entry.Type == "blob" && strings.HasPrefix(p, ".github/workflows/") && (strings.HasSuffix(p, ".yml") || strings.HasSuffix(p, ".yaml")) {
+			paths = append(paths, p)
+		}
+	}
 	sort.Strings(paths)
 	if len(paths) == 0 {
-		if tree.Truncated { ev := Evidence{Source:"github.git_tree", Reference:fullName, Detail:"tree truncated; workflow coverage unknown"}; return "", StateUnknown, ev, nil }
-		return "", StateObserved, Evidence{Source:"github.git_tree", Reference:fullName, Detail:"no GitHub Actions workflows observed"}, nil
+		if tree.Truncated {
+			ev := Evidence{Source: "github.git_tree", Reference: fullName, Detail: "tree truncated; workflow coverage unknown"}
+			return "", StateUnknown, ev, nil
+		}
+		return "", StateObserved, Evidence{Source: "github.git_tree", Reference: fullName, Detail: "no GitHub Actions workflows observed"}, nil
 	}
 	var builder strings.Builder
 	var evidence Evidence
 	for _, p := range paths {
 		data, obs, err := reader.Blob(ctx, fullName, entries[p].SHA)
-		if err != nil { return "", "", Evidence{}, err }
-		if !obs.Available { return "", StateUnavailable, obs.Evidence, nil }
-		if len(data) <= maxHooksBytes { builder.Write(data); builder.WriteByte('\n') }
+		if err != nil {
+			return "", "", Evidence{}, err
+		}
+		if !obs.Available {
+			return "", StateUnavailable, obs.Evidence, nil
+		}
+		if len(data) <= maxHooksBytes {
+			builder.Write(data)
+			builder.WriteByte('\n')
+		}
 		evidence = obs.Evidence
 	}
 	return builder.String(), StateObserved, evidence, nil
 }
 
 func setHooksUnavailable(i *HooksInventory, evidence Evidence) {
-	i.DefaultBranch = Unavailable[string](evidence); setHooksAfterBranchUnavailable(i, evidence)
+	i.DefaultBranch = Unavailable[string](evidence)
+	setHooksAfterBranchUnavailable(i, evidence)
 }
 func setHooksAfterBranchUnavailable(i *HooksInventory, evidence Evidence) {
-	i.DefaultCommit = Unavailable[string](evidence); setHooksAfterTreeUnavailable(i, evidence)
+	i.DefaultCommit = Unavailable[string](evidence)
+	setHooksAfterTreeUnavailable(i, evidence)
 }
 func setHooksAfterTreeUnavailable(i *HooksInventory, evidence Evidence) {
-	i.ProfileDeclared = Unavailable[bool](evidence); i.Manager = Unavailable[string](evidence); i.BootstrapPresent = Unavailable[bool](evidence); i.BypassPresent = Unavailable[bool](evidence)
+	i.ProfileDeclared = Unavailable[bool](evidence)
+	i.Manager = Unavailable[string](evidence)
+	i.BootstrapPresent = Unavailable[bool](evidence)
+	i.BypassPresent = Unavailable[bool](evidence)
 }
