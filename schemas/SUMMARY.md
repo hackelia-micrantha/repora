@@ -23,6 +23,7 @@ Use the schema matching the exact artifact kind and version being produced or co
 - `posture-documentation-profile-v1.schema.json`
 - `posture-mirrors-v1.schema.json`
 - `posture-hooks-v1.schema.json`
+- `posture-hooks-profile-v1.schema.json`
 - `document-router.schema.json`
 - `context-receipt-v1.schema.json`
 - `repository-assessment-v1.schema.json`
@@ -31,7 +32,7 @@ Use the schema matching the exact artifact kind and version being produced or co
 - `evidence-v1.schema.json`
 - `scorecard-v1.schema.json`
 
-Migration guidance for public CLI contracts lives under [`../docs/cli/`](../docs/cli/). Repository/CI posture fact-state and collection semantics live in [`../docs/posture-inventory.md`](../docs/posture-inventory.md); documentation posture/profile semantics live in [`../docs/posture-documentation.md`](../docs/posture-documentation.md); mirror posture semantics live in [`../docs/posture-mirrors.md`](../docs/posture-mirrors.md); hooks/local-workflow semantics live in [`../docs/posture-hooks.md`](../docs/posture-hooks.md). Assessment semantics and evidence-strength guidance live in [`../docs/assessments.md`](../docs/assessments.md). Managed artifact semantics live in [`../docs/architecture/managed-artifacts.md`](../docs/architecture/managed-artifacts.md) and ADR-0017.
+Migration guidance for public CLI contracts lives under [`../docs/cli/`](../docs/cli/). Repository/CI posture fact-state and collection semantics live in [`../docs/posture-inventory.md`](../docs/posture-inventory.md); documentation posture/profile semantics live in [`../docs/posture-documentation.md`](../docs/posture-documentation.md); mirror posture semantics live in [`../docs/posture-mirrors.md`](../docs/posture-mirrors.md); hooks/local-workflow and profile semantics live in [`../docs/posture-hooks.md`](../docs/posture-hooks.md). Assessment semantics and evidence-strength guidance live in [`../docs/assessments.md`](../docs/assessments.md). Managed artifact semantics live in [`../docs/architecture/managed-artifacts.md`](../docs/architecture/managed-artifacts.md) and ADR-0017.
 
 ## Ownership boundaries
 
