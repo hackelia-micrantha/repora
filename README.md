@@ -10,7 +10,7 @@
 
 **Repora** manages repository state through explicit topology, observation, policy, exact planning, stale-safe execution, honest partial results, and durable evidence.
 
-**repoctl** is the current Go CLI. Its primary runtime is a local-first Git mirror controller: each repository has one GitLab canonical and one or more GitHub, GitLab, or Bitbucket Cloud mirrors. Repora also has a separate bounded managed-README plan/apply domain, local repository-assessment commands, deterministic document-routing contracts, GitHub repository/CI, documentation, and hooks/local-workflow posture collectors, and mirror-posture observation built on declared topology plus existing reconciliation evidence.
+**repoctl** is the current Go CLI. Its primary runtime is a local-first Git mirror controller: each repository has one GitLab canonical and one or more GitHub, GitLab, or Bitbucket Cloud mirrors. Repora also has a separate bounded managed-README plan/apply domain, local repository-assessment commands, deterministic document-routing contracts, repository/CI, documentation, hooks/local-workflow, bounded commit-history, and mirror posture collectors, plus an offline convergence and posture-policy/reporting path.
 
 Repora remains pre-alpha. The broader repository-control-plane model is product direction, not a claim that provider provisioning, hosted orchestration, automatic posture remediation, or arbitrary repository mutation exists today.
 
@@ -113,6 +113,14 @@ See [Documentation posture v1](docs/posture-documentation.md).
 
 See [Hooks/local-workflow posture v1](docs/posture-hooks.md).
 
+### Bounded commit-history posture
+
+- versioned `repora.posture-commits` v1 evidence contract;
+- `repoctl posture commits OWNER/REPO` GET-only collection over an explicitly bounded default-branch history window;
+- signature verification state, merge shape, change size/file scope, configured sensitive-path matches, and optional commit-to-PR association facts;
+- direct-push, missing-review, tag-signature, and release-boundary conclusions remain unknown when current evidence cannot prove them;
+- author/committer identity analytics, productivity scoring, blame, and inferred intent are excluded.
+
 ### Mirror posture
 
 - versioned `repora.posture-mirrors` v1 fact contract derived from normal `repora.yaml` topology;
@@ -125,6 +133,18 @@ See [Hooks/local-workflow posture v1](docs/posture-hooks.md).
 - local mirror-cache refresh may occur for observation, but posture does not push, synchronize mirrors, publish releases, or mutate provider settings.
 
 See [Mirror posture v1](docs/posture-mirrors.md).
+
+### Offline posture convergence, policy, and reporting
+
+- `repoctl posture converge` strictly consumes captured versioned collector artifacts and emits `repora.posture-policy-inputs` v1 JSON;
+- malformed/unsupported artifacts, duplicate sources, ambiguous mirror identity, and cross-repository fact mixing fail atomically;
+- convergence preserves observed/unknown/unavailable state and evidence without provider re-scan;
+- `repoctl posture report` consumes normalized facts plus an external `repora.posture-policy-profile` v1;
+- evaluation uses explicit severity, remediation, exceptions, and required `--as-of YYYY-MM-DD` input;
+- Markdown and JSON reports are deterministic for the same captured artifacts, policy, and `as-of` date;
+- the offline policy/report layer has no provider access, scanner execution, remediation, or mutation authority.
+
+See [Posture policy and deterministic reports](docs/posture-policy.md).
 
 ### Build, release, and assurance
 
@@ -144,7 +164,7 @@ See [Mirror posture v1](docs/posture-mirrors.md).
 - no cross-remote transaction or automatic rollback;
 - no runtime Anthesis policy evaluator, transport, authentication, or approval workflow;
 - managed artifacts support root `README.md` only;
-- posture provider APIs are GitHub-first; GitLab/Bitbucket provider-administration posture adapters, policy evaluation, reports, and remediation are not implemented;
+- posture provider APIs are GitHub-first; GitLab/Bitbucket provider-administration posture adapters and automatic posture remediation are not implemented;
 - mirror posture does not yet observe tag/release drift and does not perform synchronization;
 - documentation posture is deterministic/file-backed only; it does not perform prose linting, semantic review, LLM analysis, or automatic rewrites;
 - hooks posture uses static bounded text evidence only and does not execute hooks or prove semantic equivalence between local checks and CI;
@@ -155,7 +175,9 @@ See [Mirror posture v1](docs/posture-mirrors.md).
 
 ### Release archives
 
-`v0.1.0` is published through GitHub Releases. Version tags publish archives for Linux amd64, macOS amd64/arm64, and Windows amd64. Each release includes `checksums.txt`; packaged binaries report the embedded tag and source commit through `repoctl --version`.
+`v0.1.0` is the currently published release through GitHub Releases. Version tags publish archives for Linux amd64, macOS amd64/arm64, and Windows amd64. Each release includes `checksums.txt`; packaged binaries report the embedded tag and source commit through `repoctl --version`.
+
+The `v0.2.0` capability set described in this branch is a release candidate until the immutable tag is published and independently verified.
 
 See [release installation and verification](docs/release.md) for target support, checksum commands, local reproduction, and rollback guidance.
 
@@ -260,20 +282,38 @@ repoctl apply-readme -f repora.yaml --plan-file readme-plan.json --json
 
 Managed README apply does not accept `--force`. Stale exact plans exit `2`; invalid plans and operational failures exit `1`.
 
-### Posture inventory
+### Posture collection, convergence, and reporting
 
 ```bash
 repoctl posture inventory OWNER/REPO > posture.json
 repoctl posture docs OWNER/REPO > documentation-posture.json
 repoctl posture hooks OWNER/REPO > hooks-posture.json
+repoctl posture commits OWNER/REPO > commit-posture.json
 repoctl posture mirrors -f repora.yaml > mirror-posture.json
+
+repoctl posture converge \
+  --inventory posture.json \
+  --docs documentation-posture.json \
+  --hooks hooks-posture.json \
+  --commits commit-posture.json \
+  --mirrors mirror-posture.json \
+  --repo-uid repo.example \
+  > posture-facts.json
+
+repoctl posture report \
+  --profile policy.json \
+  --facts posture-facts.json \
+  --as-of 2026-08-24 \
+  --format markdown
 ```
 
-`posture inventory`, `posture docs`, and `posture hooks` use GET-only GitHub provider reads. Public repositories need no token; private or protected provider evidence may use `GITHUB_TOKEN` or `GH_TOKEN`.
+`posture inventory`, `posture docs`, `posture hooks`, and `posture commits` use GET-only GitHub provider reads. Public repositories need no token; private or protected provider evidence may use `GITHUB_TOKEN` or `GH_TOKEN`.
 
-`posture hooks` never installs or executes target-repository hooks. It emits local-workflow evidence for later policy evaluation; CI remains the enforcement authority.
+`posture hooks` never installs or executes target-repository hooks. CI remains the enforcement authority.
 
 `posture mirrors` loads the normal Repora topology, refreshes local mirror-cache observation using existing status semantics, and may also use GET-only GitHub metadata reads. It emits facts, not findings, and does not push or synchronize repositories.
+
+`posture converge` and `posture report` are offline-only. They do not contact providers, rescan repositories, execute scanners, or mutate repository/provider state.
 
 ### Assessments
 
@@ -295,6 +335,7 @@ These commands operate on local assessment artifacts and do not perform Git or p
 - [Documentation posture v1](docs/posture-documentation.md)
 - [Hooks/local-workflow posture v1](docs/posture-hooks.md)
 - [Mirror posture v1](docs/posture-mirrors.md)
+- [Posture policy and deterministic reports](docs/posture-policy.md)
 - [Repository/CI posture model](docs/posture.md)
 - [Failure and recovery semantics](docs/architecture/failure-semantics.md)
 - [Exact reconciliation artifact](docs/architecture/reconciliation-plan-artifact.md)
@@ -336,8 +377,9 @@ Current controls include:
 - fail-closed intent persistence;
 - path-bound per-target result evidence;
 - managed README fixed-path authority, contained local templates, exact-plan preflight, and exact-base leased pushes;
-- repository/CI, documentation, and hooks posture provider reads are GET-only, with environment-only optional tokens and explicit unavailable evidence;
+- repository/CI, documentation, hooks, and commit posture provider reads are GET-only, with environment-only optional tokens and explicit unavailable evidence;
 - mirror posture reuses fetch-only local cache observation and GET-only provider metadata reads, with no push/synchronization/provider-mutation path;
+- posture convergence/reporting is offline-only and preserves evidence gaps without provider or mutation authority;
 - documentation and hooks profiles/configuration are treated as bounded data and are never executed; profile configuration cannot grant severity, remediation, or mutation authority;
 - target-repository hook code is never installed, sourced, or executed by posture collection;
 - sanitized diagnostics and safe relative journal references;
@@ -345,13 +387,13 @@ Current controls include:
 - tag-only release publication with least-privilege workflow permissions;
 - reachable-vulnerability, CodeQL, secret, dependency-license, static-analysis, test-pyramid, and workflow-policy gates.
 
-ADR-0018 defines an optional future Anthesis `pre_apply` authorization seam. Runtime policy evaluation remains disabled/deferred and cannot currently alter Repora execution.
+ADR-0018 defines an optional future Anthesis `pre_apply` authorization seam. Runtime authorization-policy integration remains disabled/deferred and cannot currently alter Repora execution.
 
 ## Roadmap
 
-The `v0.1.0` mirror-controller release is published and independently verified. Current `main` additionally implements managed README mutation, routing and assessment foundations, standalone Nix packaging, GitHub repository/CI, documentation, hooks, bounded commit-history, and mirror posture, offline posture policy/reporting, and Bitbucket Cloud mirror transport. These post-v0.1 capabilities remain unreleased until the next release completes.
+The `v0.1.0` mirror-controller release is published and independently verified. The `v0.2.0` release candidate adds managed README mutation, routing and assessment foundations, standalone Nix packaging, GitHub repository/CI, documentation, hooks, bounded commit-history, and mirror posture, offline posture convergence/policy/reporting, and Bitbucket Cloud mirror transport.
 
-The active sequence is project-truth reconciliation ([#139](https://github.com/hackelia-micrantha/repora/issues/139)), representative operator acceptance ([#137](https://github.com/hackelia-micrantha/repora/issues/137)), and publication of the next pre-alpha capability baseline ([#138](https://github.com/hackelia-micrantha/repora/issues/138)). Provider mutation, Anthesis runtime coupling, expanded ref scope, concurrent mirror mutation, signing, full provenance, and hosted control-plane behavior remain explicitly deferred.
+Project-truth reconciliation (#139) and representative operator acceptance (#137) are complete. Publication of the next pre-alpha capability baseline (#138) is the active release gate. Provider mutation, Anthesis runtime coupling, expanded ref scope, concurrent mirror mutation, signing, full provenance, and hosted control-plane behavior remain explicitly deferred.
 
 The authoritative order is maintained in [`docs/plans/current.md`](docs/plans/current.md) and GitHub issues.
 
@@ -367,7 +409,7 @@ See [LICENSE](LICENSE).
 
 ## Project status
 
-Pre-alpha and actively evolving. `v0.1.0` establishes the released mirror-controller baseline; post-v0.1 capabilities may continue to evolve through explicit versioned contracts until a later stability milestone.
+Pre-alpha and actively evolving. `v0.1.0` remains the currently published release until `v0.2.0` is tagged and independently verified; the release candidate preserves explicit versioned contracts and deferred authority boundaries.
 
 External contributions are currently closed while the core model stabilizes. Concrete use cases and failure reports are welcome.
 
