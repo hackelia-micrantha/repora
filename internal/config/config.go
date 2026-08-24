@@ -125,7 +125,15 @@ func validate(spec Spec) error {
 				return err
 			}
 			if !isSupportedMirrorProvider(mirror.Provider) {
-				return fmt.Errorf("unsupported mirror provider %q for repo %q: supported providers are github and gitlab", mirror.Provider, repo.ID)
+				return fmt.Errorf("unsupported mirror provider %q for repo %q: supported providers are github, gitlab, and bitbucket", mirror.Provider, repo.ID)
+			}
+			if mirror.Provider == "bitbucket" {
+				if strings.TrimSpace(mirror.Path) == "" {
+					return fmt.Errorf("bitbucket mirror for repo %q requires provider/path identity", repo.ID)
+				}
+				if err := validateBitbucketPath(mirror.Path); err != nil {
+					return fmt.Errorf("invalid bitbucket mirror path for repo %q: %w", repo.ID, err)
+				}
 			}
 			if len(repo.Mirrors) > 1 && strings.TrimSpace(mirror.Path) == "" {
 				return fmt.Errorf("repo %q requires provider/path mirrors when more than one mirror is configured", repo.ID)
@@ -237,6 +245,23 @@ func validateEndpoint(endpoint Endpoint, role, repoID string) error {
 	return nil
 }
 
+func validateBitbucketPath(value string) error {
+	trimmed := strings.TrimSpace(value)
+	if trimmed != strings.Trim(trimmed, "/") {
+		return fmt.Errorf("path must not have leading or trailing slashes")
+	}
+	parts := strings.Split(trimmed, "/")
+	if len(parts) != 2 {
+		return fmt.Errorf("path must be workspace/repository")
+	}
+	for _, part := range parts {
+		if strings.TrimSpace(part) != part || strings.ContainsAny(part, `\:@?#`) {
+			return fmt.Errorf("path contains an unsafe workspace or repository segment")
+		}
+	}
+	return nil
+}
+
 func containsURLCredentials(raw string) bool {
 	if strings.HasPrefix(raw, "git@") {
 		return false
@@ -246,5 +271,5 @@ func containsURLCredentials(raw string) bool {
 }
 
 func isSupportedMirrorProvider(provider string) bool {
-	return provider == "github" || provider == "gitlab"
+	return provider == "github" || provider == "gitlab" || provider == "bitbucket"
 }
