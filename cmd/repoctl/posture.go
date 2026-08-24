@@ -23,6 +23,11 @@ var collectGitHubHooksPosture = func(ctx context.Context, fullName, token string
 	return posture.CollectGitHubHooks(ctx, posture.NewHTTPGitHubReader(token), fullName)
 }
 
+var collectGitHubCommitPosture = func(ctx context.Context, fullName, token string) (posture.CommitInventory, error) {
+	reader := posture.NewHTTPGitHubReader(token)
+	return posture.CollectGitHubCommits(ctx, reader, reader, fullName)
+}
+
 var collectMirrorPosture = func(ctx context.Context, spec config.Spec, token string) (posture.MirrorInventory, error) {
 	return posture.CollectMirrorPosture(ctx, spec, posture.GitMirrorLocalObserver{}, posture.DefaultMirrorProviderReader{
 		GitHub: posture.NewHTTPGitHubReader(token),
@@ -39,7 +44,7 @@ func runPosture(args []string) int {
 	}
 	if len(args) == 2 && (args[1] == "-h" || args[1] == "--help") {
 		switch args[0] {
-		case "inventory", "docs", "hooks":
+		case "inventory", "docs", "hooks", "commits":
 			fmt.Fprintf(os.Stdout, "usage: repoctl posture %s OWNER/REPO\n", args[0])
 			return 0
 		}
@@ -50,7 +55,11 @@ func runPosture(args []string) int {
 	}
 
 	token := githubPostureToken()
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	timeout := 45 * time.Second
+	if args[0] == "commits" {
+		timeout = 90 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	switch args[0] {
@@ -99,6 +108,22 @@ func runPosture(args []string) int {
 		}
 		if _, err := os.Stdout.Write(data); err != nil {
 			fmt.Fprintf(os.Stderr, "repoctl: write hooks posture inventory: %v\n", err)
+			return 1
+		}
+		return 0
+	case "commits":
+		inventory, err := collectGitHubCommitPosture(ctx, args[1], token)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: posture commits: %v\n", err)
+			return 1
+		}
+		data, err := inventory.Marshal()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: posture commits: %v\n", err)
+			return 1
+		}
+		if _, err := os.Stdout.Write(data); err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: write commit posture inventory: %v\n", err)
 			return 1
 		}
 		return 0
@@ -158,5 +183,6 @@ func printPostureUsage(w *os.File) {
 	fmt.Fprintln(w, "usage: repoctl posture inventory OWNER/REPO")
 	fmt.Fprintln(w, "       repoctl posture docs OWNER/REPO")
 	fmt.Fprintln(w, "       repoctl posture hooks OWNER/REPO")
+	fmt.Fprintln(w, "       repoctl posture commits OWNER/REPO")
 	fmt.Fprintln(w, "       repoctl posture mirrors -f repora.yaml")
 }
