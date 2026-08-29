@@ -18,7 +18,7 @@ A capability being merged on `main` is not by itself a release decision. The rel
 
 ## 2. Validation and security
 
-- [ ] Required CI is green on the exact release commit or an explicitly recorded source-tree-identical reviewed candidate.
+- [ ] Required CI is green on the exact release commit.
 - [ ] The scheduled or manually dispatched deep-validation workflow is green on the release commit or has a documented equivalent run.
 - [ ] `govulncheck` reports no reachable known vulnerability.
 - [ ] CodeQL has no unresolved release-blocking high-confidence finding.
