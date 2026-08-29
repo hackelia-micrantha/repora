@@ -1,0 +1,88 @@
+name: create-release-tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: New immutable release tag, for example v0.2.0
+        required: true
+        type: string
+      commit:
+        description: Exact current main commit SHA; leave empty to use current main
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: create-release-tag
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Validate and create release tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate release target
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_COMMIT: ${{ inputs.commit }}
+        run: |
+          VERSION="$INPUT_VERSION"
+          REQUESTED_COMMIT="$INPUT_COMMIT"
+
+          if [[ ! "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "release tag must match vMAJOR.MINOR.PATCH" >&2
+            exit 1
+          fi
+
+          git fetch --no-tags origin main
+          MAIN_SHA="$(git rev-parse origin/main)"
+
+          if [[ -n "$REQUESTED_COMMIT" ]]; then
+            TARGET_SHA="$(git rev-parse --verify "${REQUESTED_COMMIT}^{commit}")"
+          else
+            TARGET_SHA="$MAIN_SHA"
+          fi
+
+          if [[ "$TARGET_SHA" != "$MAIN_SHA" ]]; then
+            echo "release target must equal current origin/main: $MAIN_SHA" >&2
+            exit 1
+          fi
+
+          CHANGELOG_VERSION="${VERSION#v}"
+          if ! grep -Eq "^## \[${CHANGELOG_VERSION}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md; then
+            echo "CHANGELOG.md does not contain a dated ${CHANGELOG_VERSION} release heading" >&2
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "tag already exists and will not be moved: $VERSION" >&2
+            exit 1
+          fi
+
+          {
+            echo "VERSION=$VERSION"
+            echo "TARGET_SHA=$TARGET_SHA"
+          } >> "$GITHUB_ENV"
+
+      - name: Create immutable release tag
+        run: |
+          git tag "$VERSION" "$TARGET_SHA"
+          git push origin "refs/tags/$VERSION"
+
+      - name: Dispatch release publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release.yml --ref main -f publish_tag="$VERSION"
