@@ -7,7 +7,7 @@ Use this checklist for Repora GitHub Releases until the distribution model chang
 ## 1. Scope and authority
 
 - [ ] The release commit is on `main`.
-- [ ] The intended tag is a new immutable semantic version matching `v*`.
+- [ ] The intended tag is a new immutable semantic version matching `vMAJOR.MINOR.PATCH`.
 - [ ] The release scope is stated explicitly, including which Unreleased capabilities become supported release surface.
 - [ ] No unresolved P0 issue exists.
 - [ ] Any unresolved P1 issue is explicitly accepted as non-blocking with rationale in the release issue.
@@ -18,7 +18,7 @@ A capability being merged on `main` is not by itself a release decision. The rel
 
 ## 2. Validation and security
 
-- [ ] Required CI is green on the exact release commit.
+- [ ] Required CI is green on the exact release commit or an explicitly recorded source-tree-identical reviewed candidate.
 - [ ] The scheduled or manually dispatched deep-validation workflow is green on the release commit or has a documented equivalent run.
 - [ ] `govulncheck` reports no reachable known vulnerability.
 - [ ] CodeQL has no unresolved release-blocking high-confidence finding.
@@ -28,6 +28,7 @@ A capability being merged on `main` is not by itself a release decision. The rel
 - [ ] Applicable unit, integration, contract, and CLI E2E boundaries pass.
 - [ ] Workflow policy confirms immutable action pins, explicit permissions, timeouts, and no unsafe `pull_request_target` execution.
 - [ ] Release publication retains job-scoped `contents: write`; pull-request validation remains read-only.
+- [ ] Automated tag creation retains job-scoped `contents: write` and `actions: write`; other jobs remain read-only by default.
 - [ ] If Nix packaging changed, `nix flake check` and the packaged app smoke boundary pass on the reviewed revision.
 
 Security suppressions require a repository-visible explanation identifying the tool, finding, evidence, scope, owner, and review trigger. Do not suppress a finding only to make CI green.
@@ -65,12 +66,23 @@ make release-verify
 
 ## 5. Publication
 
-- [ ] Create the protected tag from the reviewed release commit.
-- [ ] Confirm the tag-triggered release workflow starts.
-- [ ] Confirm the workflow rejects tags not reachable from `main`.
-- [ ] Confirm all package verification completes before publication.
-- [ ] Confirm the GitHub Release contains four archives and `checksums.txt` unless a reviewed distribution decision changes the target set.
-- [ ] Do not move or reuse a published version tag.
+Preferred operator path:
+
+1. Open Actions → **create-release-tag** → **Run workflow**.
+2. Enter the new `vMAJOR.MINOR.PATCH` version.
+3. Enter the exact reviewed current-main commit when the release issue records one; otherwise leave `commit` empty to use current `main`.
+4. Run the workflow once.
+
+The tag workflow must fail if the version is malformed, the target differs from current `origin/main`, the changelog heading is missing, or the tag already exists. It must never force-update a tag. After successful tag creation it explicitly dispatches `release.yml`; do not depend on the tag push itself to recursively trigger another workflow when `GITHUB_TOKEN` created the tag.
+
+- [ ] The automated tag workflow creates the expected immutable tag at the reviewed release commit.
+- [ ] The explicitly dispatched release workflow starts for that exact existing tag.
+- [ ] The release workflow rejects a tag whose checked-out commit is not reachable from `main`.
+- [ ] All package verification completes before publication.
+- [ ] The GitHub Release contains four archives and `checksums.txt` unless a reviewed distribution decision changes the target set.
+- [ ] The tag is not moved or reused if publication fails.
+
+A manually created external `v*` tag push remains a supported fallback and triggers the same release publication job. Never substitute a branch ref for a release tag.
 
 ## 6. Independent post-publication verification
 
@@ -91,7 +103,7 @@ If publication is wrong or verification fails:
 - stop recommending the affected release;
 - mark the release as a prerelease or document the defect prominently when appropriate;
 - fix through a new reviewed commit and patch version;
-- preserve failed workflow and verification evidence;
+- preserve failed workflow and verification evidence; and
 - never replay an old Repora reconciliation or managed-artifact plan as part of release recovery.
 
 ## Exit condition
