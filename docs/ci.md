@@ -168,9 +168,11 @@ Dependabot checks GitHub Actions and Go modules weekly in separate groups. Minor
 
 ## Release validation
 
-`.github/workflows/release.yml` runs package validation on pull requests that change the release boundary and publishes only from trusted `v*` tag pushes.
+`.github/workflows/release.yml` runs package validation on pull requests that change the release boundary. Publication requires an existing semantic-version tag and can start either from a normal external `v*` tag push or from an explicit `workflow_dispatch` carrying `publish_tag`.
 
-Pull-request validation builds the release packages twice and compares checksum manifests before running package verification. The publication job grants `contents: write` only to the tag-only job and rejects a tag commit that is not reachable from `main`.
+`.github/workflows/release-tag.yml` is the preferred operator entrypoint. Its single privileged job has job-scoped `contents: write` and `actions: write`, validates that the requested new tag targets current `main`, refuses existing tags and missing changelog headings, creates the tag without force, then explicitly dispatches `release.yml`. That explicit dispatch is necessary because a tag push generated with the repository `GITHUB_TOKEN` does not itself recursively start another workflow.
+
+Pull-request validation builds the release packages twice and compares checksum manifests before running package verification. The publication job grants `contents: write` only to the publication boundary, re-resolves the checked-out tag commit, requires the matching changelog heading, rejects a tag commit that is not reachable from `main`, and verifies packages before calling GitHub Release publication.
 
 The complete release process and independent downloaded-asset verification are documented in [`release-checklist.md`](release-checklist.md).
 
