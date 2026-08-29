@@ -67,18 +67,29 @@ repoctl v0.1.0 (<commit>)
 
 ## Release construction
 
-A trusted `v*` tag push starts `.github/workflows/release.yml`. The workflow:
+The preferred release action is the manually dispatched `.github/workflows/release-tag.yml` workflow. It accepts a new `vMAJOR.MINOR.PATCH` value and an optional exact commit SHA, then fails closed unless:
+
+- the requested version is a plain semantic-version tag;
+- the target equals current `origin/main`;
+- `CHANGELOG.md` contains a dated heading for that version; and
+- the tag does not already exist.
+
+The workflow creates a lightweight immutable tag without force and explicitly dispatches `.github/workflows/release.yml` with that existing tag. The explicit dispatch is required because events generated with the repository `GITHUB_TOKEN` do not normally trigger another workflow from a resulting tag push. No PAT or additional release secret is required.
+
+An externally created trusted `v*` tag push remains supported and also starts `.github/workflows/release.yml`. The release workflow can therefore publish either from a normal tag-push event or from the explicit dispatch created by the tag workflow. In both cases it:
 
 1. checks out the tagged source with full history;
-2. refuses publication unless the tag commit is an ancestor of `main`;
+2. validates the semantic-version tag and refuses publication unless the checked-out tag commit is an ancestor of `main`;
 3. uses the repository's pinned Go toolchain;
 4. derives the source timestamp from the tagged commit;
 5. cross-compiles with `CGO_ENABLED=0`, `-trimpath`, and VCS auto-stamping disabled;
-6. injects the tag and source commit through linker flags;
+6. injects the tag and exact tagged source commit through linker flags;
 7. creates normalized archives containing `repoctl`, `LICENSE`, and `README.md`;
 8. generates `checksums.txt`;
-9. verifies every checksum, archive member, Linux executable, and embedded version;
+9. verifies every checksum, archive member, Linux executable, and embedded version; and
 10. publishes files to a GitHub Release only after successful verification.
+
+A manual dispatch of `release.yml` with no `publish_tag` remains validation-only. Supplying `publish_tag` is publication-capable only for an already-existing immutable tag whose checked-out source satisfies the same main-ancestry and package-verification checks.
 
 Pull requests that change the release boundary run the same package and verification scripts with validation metadata but receive only read permissions and cannot publish a release. Validation builds the packages twice and requires identical checksum manifests.
 
@@ -91,7 +102,7 @@ The release workflow uses GitHub-generated notes for commit/contributor detail. 
 1. move applicable entries from `CHANGELOG.md`'s Unreleased section to `## [<version>] - YYYY-MM-DD`;
 2. state which merged capabilities become supported surface in that tag;
 3. review operator impact, compatibility, security, and known limitations;
-4. compare generated release notes with the curated changelog;
+4. compare generated release notes with the curated changelog; and
 5. add missing upgrade, limitation, or security context to the published release description.
 
 Generated notes are not compatibility authority. The changelog is the curated user-facing record, and a feature being merged on `main` is not by itself a release decision.
@@ -120,7 +131,7 @@ A successful publication job is necessary but not sufficient. After publication,
 2. extract and execute the Linux amd64 binary;
 3. confirm `repoctl --version` reports the tag and exact release commit;
 4. run a bounded local-repository status, plan, and dry-run smoke workflow;
-5. exercise the safest representative path for any newly released CLI capability;
+5. exercise the safest representative path for any newly released CLI capability; and
 6. record the workflow run, tag, commit, release URL, and verification result in the release issue.
 
 The `v0.1.0` milestone completed this downloaded-asset verification. Every later release repeats the same principle against its own published artifacts.
@@ -131,7 +142,7 @@ Repora does not include an automatic updater or rollback mechanism. To roll back
 
 1. download a previously reviewed release;
 2. verify its checksum;
-3. replace the installed binary;
+3. replace the installed binary; and
 4. confirm the selected version with `repoctl --version`.
 
 If a published release is defective, do not move or reuse its tag. Document the defect, stop recommending the affected version, and publish a reviewed patch version. Preserve failed workflow and verification evidence.

@@ -33,6 +33,7 @@ Repora records user-visible capability, compatibility, security, and release-pro
 - The formatting gate excludes generated vendored dependency source while continuing to check first-party Go files.
 - Current documentation now treats managed README, assessment, routing, the published `v0.1.0` baseline, standalone Nix packaging, GitHub posture inventory, documentation posture, hooks/local-workflow posture, bounded commit-history posture, mirror posture, and posture policy/reporting as implemented behavior rather than future work.
 - Posture report evaluation requires an explicit `--as-of YYYY-MM-DD` date so exception expiry is deterministic rather than dependent on the executing machine's wall clock.
+- Release publication now has a manual fail-closed tag workflow that only creates a new `vMAJOR.MINOR.PATCH` tag at current `main`, refuses existing/stale targets, requires the matching changelog heading, and explicitly dispatches the existing release workflow without moving tag authority into package publication.
 
 ### Security
 
