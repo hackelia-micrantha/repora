@@ -70,9 +70,12 @@ repoctl v0.1.0 (<commit>)
 The preferred release action is the manually dispatched `.github/workflows/release-tag.yml` workflow. It accepts a new `vMAJOR.MINOR.PATCH` value and an optional exact commit SHA, then fails closed unless:
 
 - the requested version is a plain semantic-version tag;
-- the target equals current `origin/main`;
-- `CHANGELOG.md` contains a dated heading for that version; and
+- an explicitly supplied commit is a full exact commit SHA;
+- the target commit is reachable from current `origin/main`;
+- the target commit's own `CHANGELOG.md` contains a dated heading for that version; and
 - the tag does not already exist.
+
+If the commit input is omitted, the workflow uses current `main`. Supplying the exact reviewed release commit is preferred because `main` may advance after release validation without invalidating an already-reviewed ancestor.
 
 The workflow creates a lightweight immutable tag without force and explicitly dispatches `.github/workflows/release.yml` with that existing tag. The explicit dispatch is required because events generated with the repository `GITHUB_TOKEN` do not normally trigger another workflow from a resulting tag push. No PAT or additional release secret is required.
 

@@ -70,10 +70,10 @@ Preferred operator path:
 
 1. Open Actions → **create-release-tag** → **Run workflow**.
 2. Enter the new `vMAJOR.MINOR.PATCH` version.
-3. Enter the exact reviewed current-main commit when the release issue records one; otherwise leave `commit` empty to use current `main`.
+3. Enter the exact reviewed release commit recorded in the release issue; leave `commit` empty only when intentionally releasing current `main`.
 4. Run the workflow once.
 
-The tag workflow must fail if the version is malformed, the target differs from current `origin/main`, the changelog heading is missing, or the tag already exists. It must never force-update a tag. After successful tag creation it explicitly dispatches `release.yml`; do not depend on the tag push itself to recursively trigger another workflow when `GITHUB_TOKEN` created the tag.
+The tag workflow must fail if the version is malformed, an explicit commit is not an exact full SHA, the target is not reachable from current `origin/main`, the target commit's own changelog heading is missing, or the tag already exists. It must never force-update a tag. This allows unrelated commits to advance `main` after release validation without silently changing the reviewed release target. After successful tag creation it explicitly dispatches `release.yml`; do not depend on the tag push itself to recursively trigger another workflow when `GITHUB_TOKEN` created the tag.
 
 - [ ] The automated tag workflow creates the expected immutable tag at the reviewed release commit.
 - [ ] The explicitly dispatched release workflow starts for that exact existing tag.

@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       commit:
-        description: Exact current main commit SHA; leave empty to use current main
+        description: Exact reviewed release commit SHA; leave empty to use current main
         required: false
         type: string
 
@@ -51,19 +51,29 @@ jobs:
           MAIN_SHA="$(git rev-parse origin/main)"
 
           if [[ -n "$REQUESTED_COMMIT" ]]; then
+            if [[ ! "$REQUESTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "release commit must be an exact 40-character lowercase commit SHA" >&2
+              exit 1
+            fi
             TARGET_SHA="$(git rev-parse --verify "${REQUESTED_COMMIT}^{commit}")"
+            if [[ "$TARGET_SHA" != "$REQUESTED_COMMIT" ]]; then
+              echo "release commit did not resolve exactly: $REQUESTED_COMMIT" >&2
+              exit 1
+            fi
           else
             TARGET_SHA="$MAIN_SHA"
           fi
 
-          if [[ "$TARGET_SHA" != "$MAIN_SHA" ]]; then
-            echo "release target must equal current origin/main: $MAIN_SHA" >&2
+          if ! git merge-base --is-ancestor "$TARGET_SHA" "$MAIN_SHA"; then
+            echo "release target must be reachable from current origin/main: $MAIN_SHA" >&2
             exit 1
           fi
 
           CHANGELOG_VERSION="${VERSION#v}"
-          if ! grep -Eq "^## \[${CHANGELOG_VERSION}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md; then
-            echo "CHANGELOG.md does not contain a dated ${CHANGELOG_VERSION} release heading" >&2
+          TARGET_CHANGELOG="$(mktemp)"
+          git show "$TARGET_SHA:CHANGELOG.md" > "$TARGET_CHANGELOG"
+          if ! grep -Eq "^## \[${CHANGELOG_VERSION}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" "$TARGET_CHANGELOG"; then
+            echo "target CHANGELOG.md does not contain a dated ${CHANGELOG_VERSION} release heading" >&2
             exit 1
           fi
 
