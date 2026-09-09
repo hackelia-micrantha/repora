@@ -15,8 +15,9 @@ concurrency:
 
 jobs:
   shared-nix:
-    uses: hackelia-micrantha/.github/.github/workflows/reusable-nix-ci.yml@e618ec87afb963cf17be1acf68a8f4553ad3d506
+    uses: hackelia-micrantha/.github/.github/workflows/reusable-nix-ci.yml@c0016c206607f6f101b8e6b70340ad7d4ab52837 # automation-v1 candidate
     with:
       command: nix flake check --no-build --print-build-logs
       runner: ubuntu-latest
       working-directory: .
+      timeout_minutes: 20
