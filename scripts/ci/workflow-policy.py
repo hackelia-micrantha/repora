@@ -9,6 +9,7 @@ SHA_REF = re.compile(r'^\s*-?\s*uses:\s*([^\s]+)@([0-9a-f]{40})\s+#\s+\S.*$')
 USES = re.compile(r'^\s*-?\s*uses:\s*([^\s]+)@([^\s#]+)')
 JOB = re.compile(r'^  ([A-Za-z0-9_-]+):\s*$')
 TIMEOUT = re.compile(r'^    timeout-minutes:\s*\d+\s*$')
+REUSABLE_JOB = re.compile(r'^    uses:\s*[^\s]+@[^\s#]+(?:\s+#.*)?$')
 
 
 def validate(workflow_dir: Path) -> list[str]:
@@ -28,6 +29,12 @@ def validate(workflow_dir: Path) -> list[str]:
         in_jobs = False
         current_job: str | None = None
         job_has_timeout = False
+        job_delegates_reusable_workflow = False
+
+        def finish_job() -> None:
+            if current_job and not job_has_timeout and not job_delegates_reusable_workflow:
+                errors.append(f'{path}: job {current_job!r} lacks timeout-minutes')
+
         for number, line in enumerate(lines, start=1):
             if line == 'jobs:':
                 in_jobs = True
@@ -35,12 +42,17 @@ def validate(workflow_dir: Path) -> list[str]:
             if in_jobs:
                 match = JOB.match(line)
                 if match:
-                    if current_job and not job_has_timeout:
-                        errors.append(f'{path}: job {current_job!r} lacks timeout-minutes')
+                    finish_job()
                     current_job = match.group(1)
                     job_has_timeout = False
+                    job_delegates_reusable_workflow = False
                 elif current_job and TIMEOUT.match(line):
                     job_has_timeout = True
+                elif current_job and REUSABLE_JOB.match(line):
+                    # GitHub does not allow timeout-minutes on a caller job whose
+                    # top-level uses delegates to a reusable workflow. The called
+                    # workflow must own the actual runner-job timeout instead.
+                    job_delegates_reusable_workflow = True
 
             uses = USES.match(line)
             if not uses:
@@ -53,8 +65,7 @@ def validate(workflow_dir: Path) -> list[str]:
                     f'{path}:{number}: third-party action {action}@{ref} must use a full SHA and version comment'
                 )
 
-        if current_job and not job_has_timeout:
-            errors.append(f'{path}: job {current_job!r} lacks timeout-minutes')
+        finish_job()
 
     return errors
 
