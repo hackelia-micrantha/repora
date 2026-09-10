@@ -2,7 +2,7 @@
 
 Status: Current
 
-Use this checklist for Repora GitHub Releases until the distribution model changes. `v0.1.0` established the released mirror-controller baseline; later releases must explicitly identify which post-v0.1 capabilities are included. The current publication mechanism remains GitHub Releases with plain archives and SHA-256 checksums.
+Use this checklist for Repora GitHub Releases until the distribution model changes. `v0.1.0` established the released mirror-controller baseline; later releases must explicitly identify which post-v0.1 capabilities are included. The current publication mechanism remains GitHub Releases with versioned archives and SHA-256 checksums. Each archive is expected to carry the executable plus the public man page, safe example configuration, public JSON schemas, README, and license.
 
 ## 1. Scope and authority
 
@@ -29,7 +29,9 @@ A capability being merged on `main` is not by itself a release decision. The rel
 - [ ] Workflow policy confirms immutable action pins, explicit permissions, timeouts, and no unsafe `pull_request_target` execution.
 - [ ] Release publication retains job-scoped `contents: write`; pull-request validation remains read-only.
 - [ ] Automated tag creation retains job-scoped `contents: write` and `actions: write`; other jobs remain read-only by default.
-- [ ] If Nix packaging changed, `nix flake check` and the packaged app smoke boundary pass on the reviewed revision.
+- [ ] If Nix packaging changed, `nix flake check` and the packaged app/support-file smoke boundary pass on the reviewed revision.
+- [ ] Packaged example configuration contains no credentials, tokens, private keys, or host-specific repository inventory.
+- [ ] Runtime credentials and private operator configuration remain outside derivations and release assets.
 
 Security suppressions require a repository-visible explanation identifying the tool, finding, evidence, scope, owner, and review trigger. Do not suppress a finding only to make CI green.
 
@@ -43,6 +45,8 @@ Security suppressions require a repository-visible explanation identifying the t
 - [ ] Known limitations clearly state that checksums provide integrity, not publisher authentication.
 - [ ] Cross-compiled targets are not described as natively tested.
 - [ ] Managed-artifact, assessment, routing, Nix, or policy-design documentation is included/reconciled when that surface is part of the release scope.
+- [ ] The checked-in `repoctl(1)` man page matches current CLI behavior closely enough for the release surface.
+- [ ] `examples/repora.yaml` uses the current supported provider/path topology and remains safe to distribute publicly.
 
 ## 4. Package reproduction
 
@@ -60,9 +64,10 @@ make release-verify
 ```
 
 - [ ] Repeated packaging produces an identical checksum manifest.
-- [ ] Every archive contains only the expected binary, `README.md`, and `LICENSE`.
+- [ ] Every archive contains the expected binary, `README.md`, `LICENSE`, `share/man/man1/repoctl.1`, `share/repora/examples/repora.yaml`, and every checked-in public `schemas/*.schema.json` file.
 - [ ] The Linux packaged binary passes the CLI smoke boundary.
 - [ ] The embedded version and commit match the intended tag and release commit.
+- [ ] Nix package output contains `bin/repoctl`, `share/man/man1/repoctl.1`, `share/repora/examples/repora.yaml`, and public schemas when Nix is part of the release scope.
 
 ## 5. Publication
 
@@ -89,6 +94,7 @@ A manually created external `v*` tag push remains a supported fallback and trigg
 Download the published assets rather than using local `dist/` files.
 
 - [ ] Verify every downloaded asset against `checksums.txt`.
+- [ ] Confirm the downloaded archive contains `repoctl(1)`, the safe example `repora.yaml`, and the complete public schema set.
 - [ ] Extract and execute the Linux amd64 binary.
 - [ ] Confirm `repoctl --version` reports the published tag and exact commit.
 - [ ] Run a bounded local status/plan/dry-run smoke workflow for the mirror-controller baseline.
@@ -108,4 +114,4 @@ If publication is wrong or verification fails:
 
 ## Exit condition
 
-A release is complete only after the published assets—not merely the workflow or local packages—have passed checksum, metadata, extraction, version, and Linux smoke verification, plus any explicitly declared verification needed for newly released capability.
+A release is complete only after the published assets—not merely the workflow or local packages—have passed checksum, metadata, extraction, version, support-file, and Linux smoke verification, plus any explicitly declared verification needed for newly released capability.
