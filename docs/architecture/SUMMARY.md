@@ -19,6 +19,7 @@ This subtree describes Repora's implemented mirror-controller architecture: topo
 ## Proposed architecture
 
 - [`repository-topology-and-trust-domains.md`](repository-topology-and-trust-domains.md) — **Proposed** post-v0.2 topology model for hosted endpoints, trust domains, projection, promotion, contribution import, and archive semantics under #149/#150. It is not implemented behavior until the linked contracts land.
+- [`repository-storage-hygiene.md`](repository-storage-hygiene.md) — **Proposed** repository storage posture, operation-aware shallow/sparse/partial checkout acquisition, safe local Git maintenance, and deferred destructive history-rewrite boundaries under #166. It is not implemented behavior until the linked slices land.
 
 ## Ownership boundaries
 
@@ -30,4 +31,4 @@ Load the referenced document when exact ordering, safety, mutation, concurrency,
 
 ## Exclusions and stale areas
 
-Do not infer atomic multi-remote transactions, rollback, arbitrary-ref support, hosted-control-plane behavior, projection, promotion, public contribution import, archive execution, or generic Forgejo support from this summary. Proposed documents remain non-executable until their implementation issues land.
+Do not infer atomic multi-remote transactions, rollback, arbitrary-ref support, hosted-control-plane behavior, projection, promotion, public contribution import, archive execution, generic Forgejo support, storage posture, sparse/shallow/partial checkout optimization, automatic Git maintenance, pruning, or history rewriting from this summary. Proposed documents remain non-executable until their implementation issues land.
