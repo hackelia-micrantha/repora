@@ -67,7 +67,7 @@ make release-verify
 - [ ] Every archive contains the expected binary, `README.md`, `LICENSE`, `share/man/man1/repoctl.1`, `share/repora/examples/repora.yaml`, and every checked-in public `schemas/*.schema.json` file.
 - [ ] The Linux packaged binary passes the CLI smoke boundary.
 - [ ] The embedded version and commit match the intended tag and release commit.
-- [ ] Nix package output contains `bin/repoctl`, `share/man/man1/repoctl.1`, `share/repora/examples/repora.yaml`, and public schemas when Nix is part of the release scope.
+- [ ] Nix package output contains `bin/repoctl`, the Nix-compressed `share/man/man1/repoctl.1.gz`, `share/repora/examples/repora.yaml`, and public schemas when Nix is part of the release scope.
 
 ## 5. Publication
 
