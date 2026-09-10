@@ -14,7 +14,7 @@ The flake currently exports native outputs for:
 
 Windows remains supported through Repora's existing cross-platform release archives rather than as a native Nix system.
 
-## Outputs
+## Outputs and installed surface
 
 For each supported Nix system the flake exposes:
 
@@ -29,6 +29,17 @@ formatter.<system>
 
 The default package and application run the canonical `repoctl` Go CLI. Package and check derivations use the repository's Go 1.25 toolchain contract.
 
+The package is a complete public Unix distribution surface rather than a bare executable. A successful build contains:
+
+```text
+bin/repoctl
+share/man/man1/repoctl.1
+share/repora/examples/repora.yaml
+share/repora/schemas/*.schema.json
+```
+
+The installed example configuration and schemas are public reference material only. They do not carry credentials, host-specific repository inventory, provider mutation authority, or local policy decisions.
+
 ## Build and run
 
 Build the package without installing it globally:
@@ -36,6 +47,14 @@ Build the package without installing it globally:
 ```bash
 nix build .#repora
 ./result/bin/repoctl --version
+man -l ./result/share/man/man1/repoctl.1
+```
+
+Inspect the packaged safe configuration example and schemas with:
+
+```bash
+cat ./result/share/repora/examples/repora.yaml
+ls ./result/share/repora/schemas
 ```
 
 Run the application directly:
@@ -45,7 +64,7 @@ nix run . -- --help
 nix run . -- --version
 ```
 
-The package embeds the version declared by the flake plus the flake source revision when one is available. Release-preparation commits align that package version with the immutable release tag so a consumer pinned to a tagged source gets the same `vMAJOR.MINOR.PATCH` CLI version identity as the release archives. Tagged GitHub release archives remain the authoritative prebuilt distribution channel.
+The package embeds the version declared by the flake plus the flake source revision when one is available. Release-preparation commits align that package version with the immutable release tag so a consumer pinned to a tagged source gets the same `vMAJOR.MINOR.PATCH` CLI version identity as the release archives. Tagged GitHub release archives remain the authoritative prebuilt distribution channel, while the tagged flake is the authoritative Nix composition source.
 
 ## Validation
 
@@ -65,7 +84,7 @@ The flake does not define a second validation policy. Its checks reuse Repora's 
 | `contract` | `make contract-test` |
 | `e2e` | `make e2e` |
 | `static-analysis` | `make static-analysis` |
-| `smoke` | packaged `repoctl --help` and `repoctl --version` |
+| `smoke` | packaged `repoctl --help`, `repoctl --version`, man page, safe example config, and public schema presence |
 
 The static-analysis check uses Staticcheck `2026.1`, matching the version declared by the Makefile, but consumes the package from the pinned Nixpkgs input so the Nix sandbox does not need to fetch analyzer source at check time.
 
@@ -103,12 +122,29 @@ A consumer can pin Repora as an ordinary flake input and reference the exported 
 }
 ```
 
+A Home Manager consumer can install the tagged package while keeping its operator configuration in the consuming configuration repository:
+
+```nix
+{ pkgs, repora, ... }:
+{
+  home.packages = [
+    repora.packages.${pkgs.stdenv.hostPlatform.system}.repora
+  ];
+
+  xdg.configFile."repora/repora.yaml".source = ./repora.yaml;
+}
+```
+
+Repora does not implicitly read `~/.config/repora/repora.yaml`; current mirror commands default to `./repora.yaml` or an explicit `-f` path. The example above intentionally separates package composition from host-owned configuration so callers can pass the desired path explicitly.
+
 Consumers may choose their own higher-level service, command, or operator integration. That composition does not transfer Repora's repository-domain logic or mutation decisions into the consuming repository.
 
 Repora keeps its own pinned Nixpkgs input. A consumer may separately test input-following compatibility, but that is not required by the standalone package contract.
 
 ## Trust and authority boundary
 
-Nix packaging exposes the CLI and validation outputs only. Runtime Git credentials, repository topology, destructive authorization, exact-plan validation, stale preflight, leases, and execution evidence remain controlled by Repora's existing runtime contracts.
+Nix packaging exposes the CLI, man page, safe example configuration, public schemas, and validation outputs only. Runtime Git credentials, real repository topology, destructive authorization, exact-plan validation, stale preflight, leases, and execution evidence remain controlled by Repora's existing runtime contracts.
 
-Packaging must therefore never be treated as authorization to mutate a repository merely because the package is installed or composed into another system.
+Do not put credentials, tokens, private keys, or sensitive host-specific values into `flake.nix`, Nix option values that materialize files, or other derivation inputs. Derivation inputs and resulting store paths are not a secret-storage boundary.
+
+Packaging must therefore never be treated as authorization to mutate a repository merely because the package is installed or composed into another system. Source visibility, stripped binaries, and resistance to disassembly are likewise not security boundaries; privileged authority must remain outside distributed artifacts.
