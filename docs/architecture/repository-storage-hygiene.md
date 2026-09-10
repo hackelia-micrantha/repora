@@ -208,8 +208,10 @@ Important boundaries:
 
 - promisor/partial-clone state must be detectable;
 - missing-on-purpose blob content is not corruption;
-- an operation requiring complete blob evidence must explicitly materialize it or fail with incomplete/unavailable evidence;
-- invoking an operation that causes lazy blob fetches must not silently broaden the original scope without being expected by the operation contract.
+- bounded/read-only observation over a promisor repository must disable Git lazy fetching, for example with `GIT_NO_LAZY_FETCH=1`, so measurement cannot mutate the object database or silently contact a remote;
+- object enumeration or metadata lookup that encounters intentionally absent promised objects must preserve incomplete/partial scope rather than implicitly materializing them;
+- an operation requiring complete blob evidence must explicitly authorize and materialize missing objects before making complete claims;
+- invoking an operation that causes lazy blob fetches must be an explicit acquisition effect in that operation's contract, never an incidental side effect of posture observation.
 
 ## Git LFS boundary
 
@@ -300,6 +302,8 @@ Candidate mechanisms include:
 - repository configuration inspection for shallow/partial/promisor/LFS state;
 - filesystem measurement only for explicitly local concerns such as working-tree footprint.
 
+When these commands inspect a partial/promisor repository in a bounded/read-only path, Repora must run the object-enumeration/metadata subprocesses with lazy fetching disabled (`GIT_NO_LAZY_FETCH=1` or an equivalently proven mechanism). Missing promised objects then become explicit incomplete/partial evidence. A separate operation may materialize those objects only when its acquisition contract authorizes network access and the resulting broader scope.
+
 Exact command selection belongs in implementation and tests. Parser contracts should not depend on localized human output when machine-stable alternatives exist.
 
 ## Posture integration
@@ -324,10 +328,12 @@ The first mutating storage slice should target only state Repora can prove it ow
 
 Candidate operations:
 
-- `git maintenance run`;
+- controller-selected `git maintenance run --task <task>` invocations from an explicit allowlist of non-network maintenance tasks;
 - repack/commit-graph/multi-pack-index maintenance selected through supported Git behavior;
 - `git gc` under explicit policy;
 - pruning only after an explicit recovery/retention horizon.
+
+Repora must not invoke bare `git maintenance run` against a target whose repository configuration can enable additional tasks. In particular, `maintenance.prefetch.enabled` must not be able to cause an otherwise local maintenance operation to contact repository-configured remotes or invoke credential helpers. The initial allowlist must exclude network-capable tasks such as `prefetch`; task selection belongs to controller-owned policy, not untrusted target-repository configuration.
 
 ### Invariant: GC is not history cleanup
 
@@ -355,6 +361,8 @@ Initial rules should include:
 - no deleting a user repository merely because it appears stale;
 - no maintenance against a path that fails ownership/identity checks;
 - no concurrent maintenance while another Repora operation actively uses the same managed Git state;
+- no bare/config-expanded maintenance task selection;
+- no network-capable maintenance task in the initial allowlist;
 - no implicit LFS purge;
 - no repository hook execution as a maintenance side effect;
 - no credential persistence in plan/evidence.
@@ -516,7 +524,7 @@ Implementation must preserve existing protections around:
 - command argument construction;
 - durable evidence redaction.
 
-Partial clone and LFS introduce implicit network-fetch opportunities. Operations must not accidentally turn a bounded read into unrestricted content retrieval through transparent filters or lazy fetches.
+Partial clone and LFS introduce implicit network-fetch opportunities. Bounded/read-only observation must suppress Git lazy fetches and represent missing promised objects as incomplete evidence. Maintenance must also use controller-owned explicit task selection so repository configuration cannot add network behavior. Operations must not accidentally turn a bounded read or local maintenance action into unrestricted content retrieval or remote contact through transparent filters, lazy fetches, or maintenance prefetch.
 
 ## Initial acceptance boundary
 
@@ -524,11 +532,11 @@ The first implementation slice following this proposal should prove only:
 
 1. a versioned read-only storage observation contract;
 2. explicit completeness/scope semantics;
-3. deterministic Git-native measurement over a controlled local fixture;
+3. deterministic Git-native measurement over a controlled local fixture with lazy fetching disabled for partial/promisor observation;
 4. convergence through the existing posture policy/report path;
 5. no cleanup/history rewrite authority.
 
-Efficient workspace checkout should follow as a separate low-risk slice under #147 compatibility. Local maintenance should follow only after managed-target ownership and locking are explicit.
+Efficient workspace checkout should follow as a separate low-risk slice under #147 compatibility. Local maintenance should follow only after managed-target ownership, locking, and explicit non-network task allowlisting are implemented.
 
 ## Non-goals
 
