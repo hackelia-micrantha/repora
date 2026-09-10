@@ -45,7 +45,7 @@ nix run . -- --help
 nix run . -- --version
 ```
 
-The package embeds a bounded development version plus the flake source revision when one is available. Tagged GitHub release archives remain the authoritative versioned distribution channel unless a later release decision changes that boundary.
+The package embeds the version declared by the flake plus the flake source revision when one is available. Release-preparation commits align that package version with the immutable release tag so a consumer pinned to a tagged source gets the same `vMAJOR.MINOR.PATCH` CLI version identity as the release archives. Tagged GitHub release archives remain the authoritative prebuilt distribution channel.
 
 ## Validation
 
@@ -91,11 +91,11 @@ Normal repository development commands remain available through `mise` and `make
 
 ## Composing Repora from another flake
 
-A consumer can pin Repora as an ordinary flake input and reference the exported package or application without importing any private Micrantha infrastructure:
+A consumer can pin Repora as an ordinary flake input and reference the exported package or application without importing any private Micrantha infrastructure. Long-lived consumers should pin an immutable release tag or exact revision rather than floating on `main`:
 
 ```nix
 {
-  inputs.repora.url = "github:hackelia-micrantha/repora";
+  inputs.repora.url = "github:hackelia-micrantha/repora/v0.2.1";
 
   outputs = { self, repora, ... }: {
     packages.x86_64-linux.repora = repora.packages.x86_64-linux.repora;
