@@ -1,0 +1,23 @@
+name: Shared Nix CI pilot
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shared-nix-pilot-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shared-nix:
+    uses: hackelia-micrantha/.github/.github/workflows/reusable-nix-ci.yml@c0016c206607f6f101b8e6b70340ad7d4ab52837 # automation-v1 candidate
+    with:
+      command: nix flake check --no-build --print-build-logs
+      runner: ubuntu-latest
+      working-directory: .
+      timeout_minutes: 20

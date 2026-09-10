@@ -38,6 +38,22 @@ class WorkflowPolicyTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_accepts_pinned_reusable_workflow_without_caller_timeout(self) -> None:
+        result = self.run_policy(
+            f'''\
+            name: test
+            on: push
+            permissions:
+              contents: read
+            jobs:
+              delegated:
+                uses: example/shared/.github/workflows/ci.yml@{SHA} # automation-v1 candidate
+                with:
+                  command: test
+            '''
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_rejects_pinned_action_without_version_comment(self) -> None:
         result = self.run_policy(
             f'''\
@@ -51,6 +67,21 @@ class WorkflowPolicyTest(unittest.TestCase):
                 timeout-minutes: 5
                 steps:
                   - uses: actions/checkout@{SHA}
+            '''
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('must use a full SHA and version comment', result.stderr)
+
+    def test_rejects_reusable_workflow_without_version_comment(self) -> None:
+        result = self.run_policy(
+            f'''\
+            name: test
+            on: push
+            permissions:
+              contents: read
+            jobs:
+              delegated:
+                uses: example/shared/.github/workflows/ci.yml@{SHA}
             '''
         )
         self.assertNotEqual(result.returncode, 0)
