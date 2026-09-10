@@ -40,6 +40,17 @@
               "-X main.version=v${version}"
               "-X main.commit=${commit}"
             ];
+            postInstall = ''
+              install -d \
+                "$out/share/man/man1" \
+                "$out/share/repora/examples" \
+                "$out/share/repora/schemas"
+              install -m 0444 man/repoctl.1 "$out/share/man/man1/repoctl.1"
+              install -m 0444 examples/repora.yaml "$out/share/repora/examples/repora.yaml"
+              for schema in schemas/*.schema.json; do
+                install -m 0444 "$schema" "$out/share/repora/schemas/"
+              done
+            '';
             meta = {
               description = "Deterministic, policy-driven repository management system";
               homepage = "https://github.com/hackelia-micrantha/repora";
@@ -120,6 +131,9 @@
             mkdir -p "$out"
             repoctl --help > "$out/help.txt"
             repoctl --version > "$out/version.txt"
+            test -f "${self.packages.${system}.repora}/share/man/man1/repoctl.1"
+            test -f "${self.packages.${system}.repora}/share/repora/examples/repora.yaml"
+            test -n "$(find "${self.packages.${system}.repora}/share/repora/schemas" -type f -name '*.schema.json' -print -quit)"
           '';
         in
         {

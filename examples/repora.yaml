@@ -1,0 +1,12 @@
+# Minimal non-secret Repora topology example.
+# Credentials are intentionally external to this file.
+repos:
+  - id: example
+    uid: example.example
+    canonical:
+      provider: gitlab
+      path: example-group/example
+    mirrors:
+      - provider: github
+        path: example-org/example
+    mode: mirror

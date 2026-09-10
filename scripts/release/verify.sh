@@ -56,10 +56,27 @@ for file in "${expected[@]}"; do
   else
     listing="$(tar -tzf "$dist/$file")"
   fi
-  for member in "$package/repoctl" "$package/LICENSE" "$package/README.md"; do
-    if [[ "$file" == *.zip && "$member" == "$package/repoctl" ]]; then
-      member="$package/repoctl.exe"
+
+  members=(
+    "$package/repoctl"
+    "$package/LICENSE"
+    "$package/README.md"
+    "$package/share/man/man1/repoctl.1"
+    "$package/share/repora/examples/repora.yaml"
+  )
+  if [[ "$file" == *.zip ]]; then
+    members[0]="$package/repoctl.exe"
+  fi
+
+  for member in "${members[@]}"; do
+    if ! grep -Fxq "$member" <<<"$listing"; then
+      printf '%s is missing %s\n' "$file" "$member" >&2
+      exit 1
     fi
+  done
+
+  for schema in schemas/*.schema.json; do
+    member="$package/share/repora/schemas/$(basename "$schema")"
     if ! grep -Fxq "$member" <<<"$listing"; then
       printf '%s is missing %s\n' "$file" "$member" >&2
       exit 1
