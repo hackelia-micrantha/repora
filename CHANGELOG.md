@@ -9,13 +9,16 @@ Repora records user-visible capability, compatibility, security, and release-pro
 ### Changed
 
 - Nix package metadata now reports `v0.2.1` through `repoctl --version`, aligning flake consumers with tagged release binaries.
+- Release archives and the standalone Nix package now ship a complete public support surface: `repoctl(1)`, a safe non-secret `repora.yaml` example, and the checked-in public JSON schemas alongside the CLI.
 - Release tag creation now accepts an exact reviewed commit reachable from current `main` rather than requiring it to remain the tip, while validating the changelog from that exact target.
 - CI now pilots immutable shared Micrantha Nix and Mise workflows as additive repeatability checks without replacing Repora-owned validation.
+- Release and Nix smoke verification now fail when required man-page, example-config, or public-schema assets are missing from the distribution.
 
 ### Security
 
 - Release targeting remains fail-closed: explicit targets must be exact 40-character commit SHAs, reachable from `main`, carry the matching dated changelog section, and never move an existing tag.
 - Shared workflow pilots use immutable SHA pins, least-privilege read permissions, bounded timeouts, and retain native CI, security, and release workflows as authority.
+- Packaged configuration remains intentionally non-secret; credentials, private topology, host-specific authority, and sensitive operator state stay outside release artifacts and Nix derivations.
 
 ## [0.2.0] - 2026-08-24
 
