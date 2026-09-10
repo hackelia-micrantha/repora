@@ -123,6 +123,9 @@ Optional GitHub token used by provider-protected read operations.
 .TP
 .B GH_TOKEN
 Alternative optional GitHub token.
+.TP
+.B REPORA_CACHE_DIR
+Absolute path overriding the default local mirror cache root.
 .PP
 Git transport credentials may also be supplied through the operator's normal Git or SSH credential mechanisms. Credentials must not be embedded in
 .B repora.yaml
@@ -133,7 +136,9 @@ or packaged example configuration.
 Default SCHEMA-0001 repository topology configuration in the current working directory.
 .TP
 .B ~/.cache/repora
-Default local cache root.
+Default local cache root when
+.B REPORA_CACHE_DIR
+is unset.
 .TP
 .B share/repora/examples/repora.yaml
 Non-secret example configuration installed with packaged distributions.
