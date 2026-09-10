@@ -9,6 +9,9 @@ on:
       - Makefile
       - cmd/repoctl/main.go
       - cmd/repoctl/version.go
+      - examples/repora.yaml
+      - man/**
+      - schemas/**
       - scripts/ci/cli-smoke.sh
       - scripts/release/**
       - docs/benchmarks.md

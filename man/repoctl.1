@@ -1,0 +1,179 @@
+.TH REPOCTL 1 "September 2026" "Repora 0.2.1" "User Commands"
+.SH NAME
+repoctl \- deterministic, policy-driven Git repository management CLI
+.SH SYNOPSIS
+.B repoctl
+.I command
+.RI [ options ]
+.br
+.B repoctl
+.BR --help
+.br
+.B repoctl
+.BR --version
+.SH DESCRIPTION
+.B repoctl
+manages configured canonical Git repositories and mirrors, and collects read-only repository posture evidence.
+Mirror configuration is read from a SCHEMA-0001 YAML file, named
+.B repora.yaml
+by default.
+.PP
+Repora is fail-closed around destructive mirror updates. Configuration declares repository identity and topology; credentials and mutation authority are supplied separately at runtime.
+.SH COMMANDS
+.TP
+.B status
+Inspect canonical and mirror default-branch state.
+.TP
+.B plan
+Show planned mirror updates or emit an exact executable plan artifact.
+.TP
+.B apply
+Apply current observations or an exact plan artifact.
+.TP
+.B sync
+Alias for
+.BR apply .
+.TP
+.B posture
+Collect, converge, and evaluate repository posture evidence. Collector subcommands include
+.BR inventory ,
+.BR docs ,
+.BR hooks ,
+.BR commits ,
+and
+.BR mirrors .
+.TP
+.B plan-readme
+Review managed README changes or emit an exact managed-artifact plan.
+.TP
+.B apply-readme
+Dry-run or apply an exact managed README plan with journaled evidence.
+.TP
+.B validate-report
+Validate a repository assessment report without mutation.
+.TP
+.B list-findings
+List findings from a validated assessment report.
+.TP
+.B generate-scorecard
+Render scorecard dimensions from a validated assessment report without recalculation.
+.TP
+.B assess
+Create a canonical assessment skeleton without overwriting an existing file.
+.TP
+.B version
+Show embedded version and commit metadata.
+.TP
+.B help
+Show command help.
+.SH MIRROR OPTIONS
+.TP
+.BI -f " file"
+Path to SCHEMA-0001 YAML configuration. Default:
+.BR repora.yaml .
+.TP
+.B --json
+Print stabilized command JSON where supported.
+.TP
+.B --artifact
+With
+.B plan
+or
+.BR plan-readme ,
+print the exact review/execution artifact as JSON.
+.TP
+.BI --plan-file " file"
+Execute the exact reviewed plan artifact from
+.IR file .
+.TP
+.BI --parallel " n"
+Maximum concurrent repository operations. Default: 5.
+.TP
+.B --continue-on-error
+Continue processing other repositories after an error.
+.TP
+.B --dry-run
+Show what a supported apply operation would change without mutation.
+.TP
+.B --force
+Allow destructive mirror overwrites for ahead or diverged mirrors. This option does not apply to managed README mutation.
+.TP
+.B --debug
+Print debug logs to standard error.
+.SH POSTURE
+The
+.B posture inventory
+action observes repository and CI facts through a GET-only provider boundary.
+.B posture docs,
+.B posture hooks,
+and
+.B posture commits
+collect bounded read-only evidence for their respective domains.
+.B posture mirrors
+reuses Repora's local reconciliation observation path and may refresh local cache state, but does not push or synchronize mirrors.
+.PP
+.B posture converge
+and
+.B posture report
+are offline-only. They consume versioned artifacts, preserve unknown or unavailable evidence, and do not contact providers or mutate repository state.
+.SH ENVIRONMENT
+.TP
+.B GITHUB_TOKEN
+Optional GitHub token used by provider-protected read operations.
+.TP
+.B GH_TOKEN
+Alternative optional GitHub token.
+.TP
+.B REPORA_CACHE_DIR
+Absolute path overriding the default local mirror cache root.
+.PP
+Git transport credentials may also be supplied through the operator's normal Git or SSH credential mechanisms. Credentials must not be embedded in
+.B repora.yaml
+or packaged example configuration.
+.SH FILES
+.TP
+.B repora.yaml
+Default SCHEMA-0001 repository topology configuration in the current working directory.
+.TP
+.B ~/.cache/repora
+Default local cache root when
+.B REPORA_CACHE_DIR
+is unset.
+.TP
+.B share/repora/examples/repora.yaml
+Non-secret example configuration installed with packaged distributions.
+.TP
+.B share/repora/schemas/
+Versioned public JSON schemas installed with packaged distributions.
+.SH EXAMPLES
+Inspect configured repository state:
+.PP
+.nf
+repoctl status -f repora.yaml
+.fi
+.PP
+Review a deterministic mirror plan:
+.PP
+.nf
+repoctl plan -f repora.yaml --artifact > plan.json
+.fi
+.PP
+Preflight an exact plan without mutation:
+.PP
+.nf
+repoctl apply -f repora.yaml --plan-file plan.json --dry-run --json
+.fi
+.PP
+Collect GitHub repository posture without mutation:
+.PP
+.nf
+repoctl posture inventory OWNER/REPO
+.fi
+.SH SECURITY
+Installing Repora grants no repository or provider authority by itself. Keep credentials, host-specific topology, and other sensitive operator state outside Nix derivations and release artifacts. Review exact plans before mutation and preserve Repora's stale-state and lease checks rather than replaying old evidence.
+.PP
+Source visibility, binary stripping, or resistance to disassembly is not a security boundary. Security-sensitive authority must remain in explicit credentials, policy, validation, and runtime controls.
+.SH SEE ALSO
+Project documentation and release notes are published with the Repora source repository at
+.UR https://github.com/hackelia-micrantha/repora
+.UE

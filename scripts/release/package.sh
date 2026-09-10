@@ -47,12 +47,18 @@ for target in "${targets[@]}"; do
     archive="$dist/$package.zip"
   fi
 
-  mkdir -p "$stage"
+  mkdir -p \
+    "$stage/share/man/man1" \
+    "$stage/share/repora/examples" \
+    "$stage/share/repora/schemas"
   CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" \
     go build -trimpath -buildvcs=false \
       -ldflags "-s -w -X main.version=$VERSION -X main.commit=$COMMIT" \
       -o "$stage/$binary" ./cmd/repoctl
   cp LICENSE README.md "$stage/"
+  cp man/repoctl.1 "$stage/share/man/man1/repoctl.1"
+  cp examples/repora.yaml "$stage/share/repora/examples/repora.yaml"
+  cp schemas/*.schema.json "$stage/share/repora/schemas/"
   find "$stage" -exec touch --date="@$SOURCE_DATE_EPOCH" {} +
 
   if [[ "$goos" == "windows" ]]; then

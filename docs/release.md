@@ -2,7 +2,7 @@
 
 Status: Current
 
-Repora publishes versioned `repoctl` archives through GitHub Releases. `v0.1.0` established the first published mirror-controller baseline. The archive distribution remains intentionally limited to plain archives and SHA-256 checksums; standalone Nix packaging is a separate repository-owned composition/install surface documented in [`nix.md`](nix.md).
+Repora publishes versioned `repoctl` archives through GitHub Releases. `v0.1.0` established the first published mirror-controller baseline. Release archives are complete public Unix-style distributions: they contain the executable, man page, safe example configuration, public JSON schemas, license, and README. SHA-256 checksums cover every published archive. Standalone Nix packaging exposes the same public runtime/support surface as a separate repository-owned composition/install path documented in [`nix.md`](nix.md).
 
 Release operators must follow [`release-checklist.md`](release-checklist.md). User-visible capability, compatibility, security, and release-process changes are curated in [`../CHANGELOG.md`](../CHANGELOG.md).
 
@@ -16,6 +16,19 @@ Release operators must follow [`release-checklist.md`](release-checklist.md). Us
 | Windows | amd64 | `repoctl_<version>_windows_amd64.zip` |
 
 Linux amd64 packages are executed through the checked-in CLI smoke boundary during release validation. macOS and Windows packages are cross-compiled and archive-validated; cross-compilation alone is not a claim of native runtime testing.
+
+Each archive has the same support layout beneath its package root:
+
+```text
+repoctl                         # repoctl.exe on Windows
+LICENSE
+README.md
+share/man/man1/repoctl.1
+share/repora/examples/repora.yaml
+share/repora/schemas/*.schema.json
+```
+
+The example configuration is intentionally non-secret. Runtime credentials and real operator topology are not release artifacts.
 
 ## Download and verify
 
@@ -49,21 +62,37 @@ Linux or macOS:
 
 ```bash
 tar -xzf repoctl_<version>_<os>_<arch>.tar.gz
-install -m 0755 repoctl_<version>_<os>_<arch>/repoctl "$HOME/.local/bin/repoctl"
+package="repoctl_<version>_<os>_<arch>"
+mkdir -p "$HOME/.local/bin" "$HOME/.local/share/man/man1" "$HOME/.local/share/repora/examples" "$HOME/.local/share/repora/schemas"
+install -m 0755 "$package/repoctl" "$HOME/.local/bin/repoctl"
+install -m 0644 "$package/share/man/man1/repoctl.1" "$HOME/.local/share/man/man1/repoctl.1"
+install -m 0644 "$package/share/repora/examples/repora.yaml" "$HOME/.local/share/repora/examples/repora.yaml"
+cp "$package"/share/repora/schemas/*.schema.json "$HOME/.local/share/repora/schemas/"
 repoctl --version
 ```
+
+If `$HOME/.local/share/man` is not already in the system manpath, use `man -l "$HOME/.local/share/man/man1/repoctl.1"` or configure the local manpath explicitly.
 
 Windows:
 
 1. Extract the ZIP archive.
 2. Move `repoctl.exe` to a directory on `PATH`.
-3. Run `repoctl.exe --version`.
+3. Keep or copy the `share/repora` reference files wherever local tooling expects documentation/schema assets.
+4. Run `repoctl.exe --version`.
 
 The command reports both the release tag and exact source commit, for example:
 
 ```text
-repoctl v0.1.0 (<commit>)
+repoctl v0.2.1 (<commit>)
 ```
+
+## Configuration ownership
+
+Repora release artifacts ship only a safe example `repora.yaml`. The real operator configuration remains owned by the consuming host or configuration repository. Current mirror commands default to a `repora.yaml` in the working directory and also accept an explicit `-f` path.
+
+Do not embed provider credentials, tokens, private keys, or sensitive host-specific state into release artifacts or Nix derivations. Git/SSH credential helpers, environment-scoped provider tokens, and other runtime credential mechanisms remain separate authority boundaries.
+
+A NixOS/Home Manager consumer should therefore pin the Repora release flake and independently manage the actual `repora.yaml` it wants to pass to the CLI. The public Repora repository owns distribution; the consuming host owns deployment and runtime authority.
 
 ## Release construction
 
@@ -87,14 +116,14 @@ An externally created trusted `v*` tag push remains supported and also starts `.
 4. derives the source timestamp from the tagged commit;
 5. cross-compiles with `CGO_ENABLED=0`, `-trimpath`, and VCS auto-stamping disabled;
 6. injects the tag and exact tagged source commit through linker flags;
-7. creates normalized archives containing `repoctl`, `LICENSE`, and `README.md`;
+7. creates normalized archives containing `repoctl`, `LICENSE`, `README.md`, `repoctl(1)`, the safe example configuration, and all checked-in public `*.schema.json` contracts;
 8. generates `checksums.txt`;
-9. verifies every checksum, archive member, Linux executable, and embedded version; and
+9. verifies every checksum, required archive member, public schema member, Linux executable, and embedded version; and
 10. publishes files to a GitHub Release only after successful verification.
 
 A manual dispatch of `release.yml` with no `publish_tag` remains validation-only. Supplying `publish_tag` is publication-capable only for an already-existing immutable tag whose checked-out source satisfies the same main-ancestry and package-verification checks.
 
-Pull requests that change the release boundary run the same package and verification scripts with validation metadata but receive only read permissions and cannot publish a release. Validation builds the packages twice and requires identical checksum manifests.
+Pull requests that change the release boundary run the same package and verification scripts with validation metadata but receive only read permissions and cannot publish a release. Validation builds the packages twice and requires identical checksum manifests. Changes to the packaged man page, example configuration, or public schemas are themselves release-boundary changes and trigger that validation.
 
 Repository administrators should protect release tags so only the intended release process can create `v*` refs. Published version tags must not be moved or reused.
 
@@ -131,11 +160,12 @@ Outputs are written to `dist/`. Re-running with the same source, Go toolchain, m
 A successful publication job is necessary but not sufficient. After publication, download the release assets from GitHub and verify them independently:
 
 1. verify each archive against the published `checksums.txt`;
-2. extract and execute the Linux amd64 binary;
-3. confirm `repoctl --version` reports the tag and exact release commit;
-4. run a bounded local-repository status, plan, and dry-run smoke workflow;
-5. exercise the safest representative path for any newly released CLI capability; and
-6. record the workflow run, tag, commit, release URL, and verification result in the release issue.
+2. confirm the man page, safe example configuration, and public schemas are present in the downloaded archive;
+3. extract and execute the Linux amd64 binary;
+4. confirm `repoctl --version` reports the tag and exact release commit;
+5. run a bounded local-repository status, plan, and dry-run smoke workflow;
+6. exercise the safest representative path for any newly released CLI capability; and
+7. record the workflow run, tag, commit, release URL, and verification result in the release issue.
 
 The `v0.1.0` milestone completed this downloaded-asset verification. Every later release repeats the same principle against its own published artifacts.
 
@@ -145,7 +175,7 @@ Repora does not include an automatic updater or rollback mechanism. To roll back
 
 1. download a previously reviewed release;
 2. verify its checksum;
-3. replace the installed binary; and
+3. replace the installed binary and matching support files; and
 4. confirm the selected version with `repoctl --version`.
 
 If a published release is defective, do not move or reuse its tag. Document the defect, stop recommending the affected version, and publish a reviewed patch version. Preserve failed workflow and verification evidence.
@@ -154,13 +184,17 @@ Repository mutation recovery remains separate: after a stale or partial mirror/m
 
 ## Nix packaging
 
-The repository now includes a standalone Nix flake for supported Linux/macOS systems. It is validated in pull-request CI and reuses canonical repository checks, but it is not currently published as a separate package-registry channel or substituted for the tagged GitHub archive release process.
+The repository includes a standalone Nix flake for supported Linux/macOS systems. The flake installs the same public support contract as the archive distribution: `repoctl`, `repoctl(1)`, the safe example configuration, and the public JSON schemas. Its smoke check fails if those support files are missing.
+
+Downstream systems should consume an immutable release tag or exact revision rather than floating `main`. Repora keeps its own pinned Nixpkgs input; the downstream host remains responsible for selecting the package, providing the actual operator configuration, and supplying runtime credentials.
 
 See [`nix.md`](nix.md) for build, run, validation, development-shell, and composition guidance.
 
 ## Security and benchmark gates
 
 Release security expectations and suppression rules are defined in [`security-ci.md`](security-ci.md). The rationale for not enforcing a repository-wide performance benchmark gate is documented in [`benchmarks.md`](benchmarks.md).
+
+Source availability and the use of stripped Go release binaries are not security boundaries. Public release consumers can inspect source, binaries, schemas, and behavior. Secrets and privileged decisions must therefore remain outside distributed artifacts and be enforced through explicit credentials, policy, validation, and runtime controls.
 
 ## Deferred distribution work
 
