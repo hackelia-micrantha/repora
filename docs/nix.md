@@ -29,14 +29,16 @@ formatter.<system>
 
 The default package and application run the canonical `repoctl` Go CLI. Package and check derivations use the repository's Go 1.25 toolchain contract.
 
-The package is a complete public Unix distribution surface rather than a bare executable. A successful build contains:
+The package is a complete public Unix distribution surface rather than a bare executable. A successful Nix build contains:
 
 ```text
 bin/repoctl
-share/man/man1/repoctl.1
+share/man/man1/repoctl.1.gz
 share/repora/examples/repora.yaml
 share/repora/schemas/*.schema.json
 ```
+
+The source man page is installed as `repoctl.1`; the normal Nix fixup phase compresses it to `repoctl.1.gz`. This is a packaging representation detail, not a different documentation contract from the uncompressed man page shipped in GitHub release archives.
 
 The installed example configuration and schemas are public reference material only. They do not carry credentials, host-specific repository inventory, provider mutation authority, or local policy decisions.
 
@@ -47,7 +49,7 @@ Build the package without installing it globally:
 ```bash
 nix build .#repora
 ./result/bin/repoctl --version
-man -l ./result/share/man/man1/repoctl.1
+man ./result/share/man/man1/repoctl.1.gz
 ```
 
 Inspect the packaged safe configuration example and schemas with:
@@ -84,7 +86,7 @@ The flake does not define a second validation policy. Its checks reuse Repora's 
 | `contract` | `make contract-test` |
 | `e2e` | `make e2e` |
 | `static-analysis` | `make static-analysis` |
-| `smoke` | packaged `repoctl --help`, `repoctl --version`, man page, safe example config, and public schema presence |
+| `smoke` | packaged `repoctl --help`, `repoctl --version`, compressed man page, safe example config, and public schema presence |
 
 The static-analysis check uses Staticcheck `2026.1`, matching the version declared by the Makefile, but consumes the package from the pinned Nixpkgs input so the Nix sandbox does not need to fetch analyzer source at check time.
 
