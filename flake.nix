@@ -131,7 +131,7 @@
             mkdir -p "$out"
             repoctl --help > "$out/help.txt"
             repoctl --version > "$out/version.txt"
-            test -f "${self.packages.${system}.repora}/share/man/man1/repoctl.1"
+            test -f "${self.packages.${system}.repora}/share/man/man1/repoctl.1.gz"
             test -f "${self.packages.${system}.repora}/share/repora/examples/repora.yaml"
             test -n "$(find "${self.packages.${system}.repora}/share/repora/schemas" -type f -name '*.schema.json' -print -quit)"
           '';
