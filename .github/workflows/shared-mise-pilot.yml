@@ -1,0 +1,23 @@
+name: Shared Mise CI pilot
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shared-mise-pilot-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shared-mise:
+    uses: hackelia-micrantha/.github/.github/workflows/reusable-mise-ci.yml@c0016c206607f6f101b8e6b70340ad7d4ab52837 # automation-v1 candidate
+    with:
+      task: test
+      runner: ubuntu-latest
+      working-directory: .
+      timeout_minutes: 15
