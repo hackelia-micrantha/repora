@@ -30,6 +30,7 @@ func AddInventory(inputs *Inputs, inventory posture.Inventory) error {
 	addConverted(entries, "repository.dependency_update_automation", facts.DependencyAutomation)
 	addConverted(entries, "repository.workflow_paths", facts.WorkflowPaths)
 	entries["ci.workflows_state"] = stateInput(inventory.WorkflowsState, string(inventory.WorkflowsState), inventory.Evidence)
+	addCIAggregates(entries, inventory)
 	for _, workflow := range inventory.Workflows {
 		prefix := "ci.workflow." + workflow.Path
 		entries[prefix+".state"] = stateInput(workflow.State, string(workflow.State), workflow.Evidence)
@@ -49,6 +50,69 @@ func AddInventory(inputs *Inputs, inventory posture.Inventory) error {
 		}
 	}
 	return addEntries(inputs, entries)
+}
+
+func addCIAggregates(entries map[string]FactInput, inventory posture.Inventory) {
+	state := ciAggregateState(inventory)
+	names := []string{
+		"ci.workflow_count",
+		"ci.third_party_action_count",
+		"ci.mutable_third_party_action_count",
+		"ci.pull_request_target_workflow_count",
+		"ci.workflows_without_declared_permissions_count",
+	}
+	if state != posture.StateObserved {
+		for _, name := range names {
+			entries[name] = stateInput(state, 0, inventory.Evidence)
+		}
+		return
+	}
+
+	thirdPartyActions := 0
+	mutableThirdPartyActions := 0
+	pullRequestTargetWorkflows := 0
+	workflowsWithoutDeclaredPermissions := 0
+	for _, workflow := range inventory.Workflows {
+		if workflow.UsesPullRequestTarget {
+			pullRequestTargetWorkflows++
+		}
+		if !workflow.Permissions.Declared {
+			workflowsWithoutDeclaredPermissions++
+		}
+		for _, job := range workflow.Jobs {
+			for _, action := range job.Actions {
+				if !action.ThirdParty {
+					continue
+				}
+				thirdPartyActions++
+				if action.Pinning != "immutable-sha" && action.Pinning != "immutable-digest" {
+					mutableThirdPartyActions++
+				}
+			}
+		}
+	}
+
+	entries["ci.workflow_count"] = observedInput(len(inventory.Workflows), inventory.Evidence)
+	entries["ci.third_party_action_count"] = observedInput(thirdPartyActions, inventory.Evidence)
+	entries["ci.mutable_third_party_action_count"] = observedInput(mutableThirdPartyActions, inventory.Evidence)
+	entries["ci.pull_request_target_workflow_count"] = observedInput(pullRequestTargetWorkflows, inventory.Evidence)
+	entries["ci.workflows_without_declared_permissions_count"] = observedInput(workflowsWithoutDeclaredPermissions, inventory.Evidence)
+}
+
+func ciAggregateState(inventory posture.Inventory) posture.FactState {
+	if inventory.WorkflowsState != posture.StateObserved {
+		return inventory.WorkflowsState
+	}
+	state := posture.StateObserved
+	for _, workflow := range inventory.Workflows {
+		if workflow.State == posture.StateUnavailable {
+			return posture.StateUnavailable
+		}
+		if workflow.State == posture.StateUnknown {
+			state = posture.StateUnknown
+		}
+	}
+	return state
 }
 
 func AddDocumentation(inputs *Inputs, inventory posture.DocumentationInventory) error {
