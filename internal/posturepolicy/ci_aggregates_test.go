@@ -56,6 +56,7 @@ func TestAddInventoryCIAggregatesAreZeroForObservedEmptyWorkflowSet(t *testing.T
 	inventory := posture.NewInventory("acme/project")
 	inventory.RepositoryFacts = validRepositoryFactsForAdapterTest()
 	inventory.WorkflowsState = posture.StateObserved
+	inventory.Workflows = []posture.Workflow{}
 
 	inputs := NewInputs("acme/project")
 	if err := AddInventory(&inputs, inventory); err != nil {
@@ -73,8 +74,8 @@ func TestAddInventoryCIAggregatesPreserveIncompleteWorkflowEvidence(t *testing.T
 		workflows      []posture.Workflow
 		wantState      posture.FactState
 	}{
-		{name: "unknown inventory", workflowsState: posture.StateUnknown, wantState: posture.StateUnknown},
-		{name: "unavailable inventory", workflowsState: posture.StateUnavailable, wantState: posture.StateUnavailable},
+		{name: "unknown inventory", workflowsState: posture.StateUnknown, workflows: []posture.Workflow{}, wantState: posture.StateUnknown},
+		{name: "unavailable inventory", workflowsState: posture.StateUnavailable, workflows: []posture.Workflow{}, wantState: posture.StateUnavailable},
 		{name: "unknown workflow", workflowsState: posture.StateObserved, workflows: []posture.Workflow{incompleteWorkflow(posture.StateUnknown)}, wantState: posture.StateUnknown},
 		{name: "unavailable workflow", workflowsState: posture.StateObserved, workflows: []posture.Workflow{incompleteWorkflow(posture.StateUnavailable)}, wantState: posture.StateUnavailable},
 	}
