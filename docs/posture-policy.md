@@ -143,7 +143,17 @@ Representative fact namespaces are:
 - `commits.*`;
 - `mirrors.*`.
 
-Dynamic workflow, document, hook, commit, and mirror-target identifiers remain part of the fact name so evidence can be correlated without creating a second scanner or drift algorithm.
+Inventory convergence also exposes stable CI aggregate facts for cross-repository policy profiles:
+
+- `ci.workflow_count`;
+- `ci.third_party_action_count`;
+- `ci.mutable_third_party_action_count`;
+- `ci.pull_request_target_workflow_count`;
+- `ci.workflows_without_declared_permissions_count`.
+
+A third-party action is mutable for the aggregate when its normalized pinning is neither `immutable-sha` nor `immutable-digest`. Repository-local actions are not counted as third-party dependencies. The aggregate facts are observed only when the workflow inventory and every normalized workflow are observed. If workflow evidence is incomplete, the aggregates retain `unknown` or `unavailable` state and carry no numeric value; incomplete evidence is never converted into an observed zero.
+
+Dynamic workflow, document, hook, commit, and mirror-target identifiers remain part of the detailed fact names so evidence can be correlated without creating a second scanner or drift algorithm. The stable CI aggregates complement those detailed facts rather than replacing them.
 
 ## Unknown and unavailable evidence
 
