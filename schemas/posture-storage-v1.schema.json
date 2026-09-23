@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/posture-storage-v1.schema.json",
+  "title": "Repora local storage posture v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "version",
+    "repository",
+    "scope",
+    "objects",
+    "git_state",
+    "evidence"
+  ],
+  "properties": {
+    "kind": {
+      "const": "repora.posture-storage"
+    },
+    "version": {
+      "const": 1
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "full_name"
+      ],
+      "properties": {
+        "provider": {
+          "const": "github"
+        },
+        "full_name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
+        }
+      }
+    },
+    "scope": {
+      "const": "local_object_database"
+    },
+    "objects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "loose_count",
+        "loose_bytes",
+        "packed_count",
+        "packed_bytes",
+        "pack_count"
+      ],
+      "properties": {
+        "loose_count": {
+          "$ref": "#/$defs/nonnegativeFact"
+        },
+        "loose_bytes": {
+          "$ref": "#/$defs/nonnegativeFact"
+        },
+        "packed_count": {
+          "$ref": "#/$defs/nonnegativeFact"
+        },
+        "packed_bytes": {
+          "$ref": "#/$defs/nonnegativeFact"
+        },
+        "pack_count": {
+          "$ref": "#/$defs/nonnegativeFact"
+        }
+      }
+    },
+    "git_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shallow",
+        "promisor_configured"
+      ],
+      "properties": {
+        "shallow": {
+          "$ref": "#/$defs/booleanFact"
+        },
+        "promisor_configured": {
+          "$ref": "#/$defs/booleanFact"
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidence"
+      }
+    }
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "reference"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "nonnegativeFact": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "value",
+            "evidence"
+          ],
+          "properties": {
+            "state": {
+              "const": "observed"
+            },
+            "value": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "evidence": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/evidence"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "evidence"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "unknown",
+                "unavailable"
+              ]
+            },
+            "evidence": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/evidence"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "booleanFact": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "value",
+            "evidence"
+          ],
+          "properties": {
+            "state": {
+              "const": "observed"
+            },
+            "value": {
+              "type": "boolean"
+            },
+            "evidence": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/evidence"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "evidence"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "unknown",
+                "unavailable"
+              ]
+            },
+            "evidence": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/evidence"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

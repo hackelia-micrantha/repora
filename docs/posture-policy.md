@@ -132,6 +132,7 @@ The Go convergence adapters consume the existing typed posture artifacts directl
 - `AddHooks` — `repora.posture-hooks` v1;
 - `AddCommits` — `repora.posture-commits` v1;
 - `AddMirrors` — one UID selected from a validated `repora.posture-mirrors` v1 inventory.
+- `AddStorage` — local-only `repora.posture-storage` v1 facts; `storage.scope` must remain `local_object_database` and the repository identity is operator-asserted, not remotely verified.
 
 Adapters preserve fact state and evidence. They reject duplicate fact names and preflight all additions before mutating the convergence input. GitHub-derived domains also reject repository-identity mixing. Mirror convergence additionally correlates the selected repository's GitHub endpoint with the other supplied repository-scoped artifacts.
 

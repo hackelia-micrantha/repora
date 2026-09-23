@@ -15,13 +15,14 @@ type ArtifactSet struct {
 	Hooks         []byte
 	Commits       []byte
 	Mirrors       []byte
+	Storage       []byte
 	MirrorRepoUID string
 }
 
 // ConvergeArtifacts validates and atomically converges collector artifacts into
 // the normalized posture policy input contract.
 func ConvergeArtifacts(artifacts ArtifactSet) (Inputs, error) {
-	if len(artifacts.Inventory) == 0 && len(artifacts.Documentation) == 0 && len(artifacts.Hooks) == 0 && len(artifacts.Commits) == 0 && len(artifacts.Mirrors) == 0 {
+	if len(artifacts.Inventory) == 0 && len(artifacts.Documentation) == 0 && len(artifacts.Hooks) == 0 && len(artifacts.Commits) == 0 && len(artifacts.Mirrors) == 0 && len(artifacts.Storage) == 0 {
 		return Inputs{}, fmt.Errorf("at least one posture artifact is required")
 	}
 	if len(artifacts.Mirrors) == 0 && strings.TrimSpace(artifacts.MirrorRepoUID) != "" {
@@ -70,6 +71,16 @@ func ConvergeArtifacts(artifacts ArtifactSet) (Inputs, error) {
 		}
 		if err := AddCommits(&inputs, inventory); err != nil {
 			return Inputs{}, fmt.Errorf("converge commit posture inventory: %w", err)
+		}
+	}
+
+	if len(artifacts.Storage) != 0 {
+		var inventory posture.StorageInventory
+		if err := decodeStrict(artifacts.Storage, &inventory); err != nil {
+			return Inputs{}, fmt.Errorf("parse storage posture inventory: %w", err)
+		}
+		if err := AddStorage(&inputs, inventory); err != nil {
+			return Inputs{}, fmt.Errorf("converge storage posture inventory: %w", err)
 		}
 	}
 

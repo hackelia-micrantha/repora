@@ -44,11 +44,13 @@ func runPostureConverge(args []string) int {
 	hooksPath := singlePathFlag{name: "hooks"}
 	commitsPath := singlePathFlag{name: "commits"}
 	mirrorsPath := singlePathFlag{name: "mirrors"}
+	storagePath := singlePathFlag{name: "storage"}
 	flags.Var(&inventoryPath, "inventory", "path to repora.posture-inventory v1 JSON")
 	flags.Var(&documentationPath, "docs", "path to repora.posture-documentation v1 JSON")
 	flags.Var(&hooksPath, "hooks", "path to repora.posture-hooks v1 JSON")
 	flags.Var(&commitsPath, "commits", "path to repora.posture-commits v1 JSON")
 	flags.Var(&mirrorsPath, "mirrors", "path to repora.posture-mirrors v1 JSON")
+	flags.Var(&storagePath, "storage", "path to repora.posture-storage v1 JSON")
 	mirrorRepoUID := flags.String("repo-uid", "", "repository uid to select from --mirrors")
 	if err := flags.Parse(args); err != nil {
 		return 1
@@ -57,7 +59,7 @@ func runPostureConverge(args []string) int {
 		printPostureConvergeUsage(os.Stderr)
 		return 1
 	}
-	if !inventoryPath.set && !documentationPath.set && !hooksPath.set && !commitsPath.set && !mirrorsPath.set {
+	if !inventoryPath.set && !documentationPath.set && !hooksPath.set && !commitsPath.set && !mirrorsPath.set && !storagePath.set {
 		printPostureConvergeUsage(os.Stderr)
 		return 1
 	}
@@ -88,6 +90,12 @@ func runPostureConverge(args []string) int {
 	}
 	if commitsPath.set {
 		artifacts.Commits, err = readPostureArtifact("commits", commitsPath.value)
+		if err != nil {
+			return 1
+		}
+	}
+	if storagePath.set {
+		artifacts.Storage, err = readPostureArtifact("storage", storagePath.value)
 		if err != nil {
 			return 1
 		}
@@ -126,5 +134,5 @@ func readPostureArtifact(name, path string) ([]byte, error) {
 }
 
 func printPostureConvergeUsage(w *os.File) {
-	fmt.Fprintln(w, "usage: repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--commits FILE] [--mirrors FILE --repo-uid UID]")
+	fmt.Fprintln(w, "usage: repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--commits FILE] [--storage FILE] [--mirrors FILE --repo-uid UID]")
 }
