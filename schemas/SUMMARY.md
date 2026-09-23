@@ -22,6 +22,7 @@ Use the schema matching the exact artifact kind and version being produced or co
 - `posture-documentation-v1.schema.json`
 - `posture-documentation-profile-v1.schema.json`
 - `posture-mirrors-v1.schema.json`
+- `posture-storage-v1.schema.json`
 - `posture-hooks-v1.schema.json`
 - `posture-hooks-profile-v1.schema.json`
 - `posture-commits-v1.schema.json`
