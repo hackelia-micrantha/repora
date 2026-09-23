@@ -195,6 +195,6 @@ func printPostureUsage(w *os.File) {
 	fmt.Fprintln(w, "       repoctl posture commits OWNER/REPO")
 	fmt.Fprintln(w, "       repoctl posture mirrors -f repora.yaml")
 	fmt.Fprintln(w, "       repoctl posture storage --repository OWNER/REPO --path LOCAL_GIT_REPOSITORY")
-	fmt.Fprintln(w, "       repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--commits FILE] [--mirrors FILE --repo-uid UID]")
+	fmt.Fprintln(w, "       repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--commits FILE] [--storage FILE] [--mirrors FILE --repo-uid UID]")
 	fmt.Fprintln(w, "       repoctl posture report --profile POLICY.json --facts FACTS.json --as-of YYYY-MM-DD [--format markdown|json]")
 }
