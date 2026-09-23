@@ -17,7 +17,8 @@ Repora is a local-first repository controller exposed primarily through the `rep
 7. **Hooks/local-workflow posture** — GET-only bounded hook/config/workflow observation that preserves CI authority and never installs or executes target-repository hook code.
 8. **Bounded commit-history posture** — GET-only process evidence over a capped default-branch history window without identity analytics, productivity scoring, blame, or intent inference.
 9. **Mirror posture** — topology-driven canonical/mirror identity and drift observation that reuses existing reconciliation semantics, may refresh Repora's local cache, and never pushes or mutates provider settings.
-10. **Offline posture policy and reporting** — deterministic expected-versus-observed evaluation over normalized facts, explicit severity/remediation/exceptions, and JSON/Markdown reports without provider access or opaque scoring.
+10. **Local Git storage posture** — read-only Git object-store counts, pack sizes, and shallow/promisor configuration for an explicitly selected local repository; local evidence does not establish canonical repository size or complete history.
+11. **Offline posture policy and reporting** — deterministic expected-versus-observed evaluation over normalized facts, explicit severity/remediation/exceptions, and JSON/Markdown reports without provider access or opaque scoring.
 11. **Packaging and assurance** — release archives plus a standalone Nix package/check/development surface that reuses canonical validation boundaries.
 
 Repora does not provide arbitrary repository-file mutation, provider provisioning, hosted orchestration, automatic posture remediation, or a general execution/authorization policy engine. Its posture policy evaluates normalized evidence offline and grants no mutation authority.
@@ -146,6 +147,10 @@ The collector records merge shape, provider signature state, bounded file/change
 
 Commit posture is repository/process evidence, not people analytics: author and committer identities, productivity metrics, blame, and inferred intent are excluded. Collection remains GET-only and cannot mutate branches, tags, releases, or provider settings.
 
+## Local Git storage posture domain
+
+`repoctl posture storage --repository OWNER/REPO --path LOCAL_GIT_REPOSITORY` emits `repora.posture-storage` v1 for an existing local checkout or bare Git repository. The repository identity is operator-asserted rather than inferred from a remote. Its fixed `local_object_database` scope covers materialized loose/packed object counts and sizes, pack count, and local shallow/promisor configuration. Even `shallow=false` does not establish complete canonical history. The collector disables lazy fetching and optional Git locks, suppresses inherited Git environment overrides, and grants no clone, fetch, GC, pruning, LFS, history rewrite, or provider mutation authority. A typed offline adapter exposes only locally-scoped facts to existing posture policy/reporting. See [`../posture-storage.md`](../posture-storage.md).
+
 ## Offline posture policy and reporting domain
 
 `repoctl posture report` consumes validated normalized posture facts plus an external `repora.posture-policy-profile` v1. It evaluates explicit expectations, severity, remediation, and time-bounded exceptions and emits deterministic `repora.posture-report` v1 JSON or Markdown.
@@ -194,7 +199,7 @@ GitLab and Bitbucket Cloud Git transport/reconciliation evidence is supported; G
 | `internal/managedartifact` | README template/render/observation/plan/preflight/candidate verification | Generic file authority or mirror reconciliation |
 | `internal/managedartifactapply` | journaled managed README execution/result correlation | Replanning reviewed content |
 | `internal/assessment` | strict assessment contracts, validation, skeleton, projections | Live discovery, automated scoring, mutation |
-| `internal/posture` | versioned posture facts and bounded repository/CI, documentation, hooks/local-workflow, commit-history, and mirror observation | Policy evaluation, findings, scanners, remediation, provider mutation |
+| `internal/posture` | versioned posture facts and bounded repository/CI, documentation, hooks/local-workflow, commit-history, mirror, and local Git storage observation | Policy evaluation, findings, scanners, remediation, provider mutation |
 | `internal/posturepolicy` | offline normalized-fact adapters, expectation evaluation, exceptions, and deterministic reports | Provider reads, scanner execution, opaque scoring, or mutation |
 | `internal/journal` | immutable intent/result evidence and protected persistence | Mutation or replay authority |
 | `internal/git` | bounded Git subprocess/cache/object/ref/push mechanics | Product policy or durable identity |
@@ -231,6 +236,7 @@ Current serialized contracts include:
 - `repora.posture-commits` v1;
 - `repora.posture-commits-profile` v1;
 - `repora.posture-mirrors` v1;
+- `repora.posture-storage` v1;
 - `repora.posture-policy-inputs` v1;
 - `repora.posture-policy-profile` v1;
 - `repora.posture-report` v1.
