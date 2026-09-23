@@ -107,6 +107,31 @@ func TestStorageGitReadOverridesCallerGitDirectory(t *testing.T) {
 	}
 }
 
+func TestStoragePromisorConfigAndInheritedTraceSuppression(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is unavailable")
+	}
+	path := t.TempDir()
+	if out, err := exec.Command("git", "init", "-q", path).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+	if out, err := exec.Command("git", "-C", path, "config", "--local", "remote.origin.promisor", "true").CombinedOutput(); err != nil {
+		t.Fatalf("git config: %v: %s", err, out)
+	}
+	trace := filepath.Join(t.TempDir(), "unexpected-trace")
+	t.Setenv("GIT_TRACE2_EVENT", trace)
+	inventory, err := CollectLocalGitStorage(context.Background(), path, "example/project")
+	if err != nil {
+		t.Fatalf("read-only collect: %v", err)
+	}
+	if inventory.GitState.PromisorConfigured.Value == nil || !*inventory.GitState.PromisorConfigured.Value {
+		t.Fatalf("promisor config was not observed: %+v", inventory.GitState)
+	}
+	if _, err := os.Stat(trace); !os.IsNotExist(err) {
+		t.Fatalf("collector allowed inherited Git tracing to write a file: %v", err)
+	}
+}
+
 func TestStorageRepositoryIdentityIsRequired(t *testing.T) {
 	if _, err := CollectLocalGitStorage(context.Background(), os.TempDir(), "../bad"); err == nil {
 		t.Fatal("accepted invalid operator-supplied repository identity")
