@@ -7,45 +7,45 @@ import (
 )
 
 const (
-	StorageInventoryKind = "repora.posture-storage"
+	StorageInventoryKind    = "repora.posture-storage"
 	StorageInventoryVersion = 1
-	StorageLocalScope = "local_object_database"
+	StorageLocalScope       = "local_object_database"
 )
 
 // StorageObjectFacts describe bytes and object counts in this checkout's local
 // Git object database, not the size of a canonical provider repository.
 type StorageObjectFacts struct {
-	LooseCount Fact[int64] `json:"loose_count"`
-	LooseBytes Fact[int64] `json:"loose_bytes"`
+	LooseCount  Fact[int64] `json:"loose_count"`
+	LooseBytes  Fact[int64] `json:"loose_bytes"`
 	PackedCount Fact[int64] `json:"packed_count"`
 	PackedBytes Fact[int64] `json:"packed_bytes"`
-	PackCount Fact[int64] `json:"pack_count"`
+	PackCount   Fact[int64] `json:"pack_count"`
 }
 
 // StorageGitState describes observed local checkout properties. In particular,
 // shallow=false and promisor_configured=false do NOT prove complete remote history.
 type StorageGitState struct {
-	Shallow Fact[bool] `json:"shallow"`
+	Shallow            Fact[bool] `json:"shallow"`
 	PromisorConfigured Fact[bool] `json:"promisor_configured"`
 }
 
 type StorageInventory struct {
-	Kind string `json:"kind"`
-	Version int `json:"version"`
+	Kind       string             `json:"kind"`
+	Version    int                `json:"version"`
 	Repository RepositoryIdentity `json:"repository"`
-	Scope string `json:"scope"`
-	Objects StorageObjectFacts `json:"objects"`
-	GitState StorageGitState `json:"git_state"`
-	Evidence []Evidence `json:"evidence"`
+	Scope      string             `json:"scope"`
+	Objects    StorageObjectFacts `json:"objects"`
+	GitState   StorageGitState    `json:"git_state"`
+	Evidence   []Evidence         `json:"evidence"`
 }
 
 func NewStorageInventory(fullName string) StorageInventory {
 	return StorageInventory{
-		Kind: StorageInventoryKind,
-		Version: StorageInventoryVersion,
+		Kind:       StorageInventoryKind,
+		Version:    StorageInventoryVersion,
 		Repository: RepositoryIdentity{Provider: "github", FullName: fullName},
-		Scope: StorageLocalScope,
-		Evidence: []Evidence{},
+		Scope:      StorageLocalScope,
+		Evidence:   []Evidence{},
 	}
 }
 
@@ -66,7 +66,7 @@ func (i StorageInventory) Validate() error {
 		return fmt.Errorf("storage evidence array is required")
 	}
 	checks := []struct {
-		name string
+		name  string
 		value Fact[int64]
 	}{
 		{"loose_count", i.Objects.LooseCount},
