@@ -20,6 +20,7 @@ Use the smallest authoritative source that answers the question.
 | How do hooks/local-workflow posture facts work? | [`posture-hooks.md`](posture-hooks.md) |
 | How does bounded commit-history posture work? | [`posture-commits.md`](posture-commits.md) |
 | How does mirror-management posture work? | [`posture-mirrors.md`](posture-mirrors.md) |
+| How does local Git storage posture work? | [`posture-storage.md`](posture-storage.md) |
 | How do posture policy evaluation and deterministic reports work? | [`posture-policy.md`](posture-policy.md) |
 | What is the broader repository/CI posture model? | [`posture.md`](posture.md) |
 | Why is there no repository-wide benchmark gate? | [`benchmarks.md`](benchmarks.md) |
