@@ -14,7 +14,8 @@ Usage:
   repoctl posture hooks OWNER/REPO
   repoctl posture commits OWNER/REPO
   repoctl posture mirrors -f repora.yaml
-  repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--commits FILE] [--mirrors FILE --repo-uid UID]
+  repoctl posture storage --repository OWNER/REPO --path LOCAL_GIT_REPOSITORY
+  repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--commits FILE] [--storage FILE] [--mirrors FILE --repo-uid UID]
   repoctl posture report --profile POLICY.json --facts FACTS.json --as-of YYYY-MM-DD [--format markdown|json]
   repoctl plan-readme -f repora.yaml [--artifact]
   repoctl apply-readme -f repora.yaml --plan-file FILE [--dry-run] [--json]
@@ -73,6 +74,8 @@ Options for posture commands:
         strict repora.posture-hooks v1 JSON
   posture converge --commits string
         strict repora.posture-commits v1 JSON
+  posture converge --storage string
+        strict repora.posture-storage v1 JSON; local object database only
   posture converge --mirrors string
         strict repora.posture-mirrors v1 JSON; requires --repo-uid
   posture converge --repo-uid string
