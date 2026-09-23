@@ -1,0 +1,31 @@
+apiVersion: testule.dev/v1alpha1
+kind: TestPlan
+metadata:
+  name: repora-repository
+subject:
+  component: repoctl
+requirements:
+  levels:
+    unit: required
+    component: required
+    contract: required
+    integration: required
+    endToEnd: required
+  behaviors:
+    positive: required
+    negative: required
+    boundary: required
+    adversarial: required
+  generation:
+    example: required
+    generated: optional
+    property: optional
+    fuzz: optional
+    model: optional
+  inapplicable:
+    - dimension: level
+      value: system
+      rationale: Repora currently ships as a local CLI and library rather than a deployed service or distributed system; its real local Git and process boundaries are covered by integration and built-CLI end-to-end requirements.
+    - dimension: generation
+      value: aiAssisted
+      rationale: AI-assisted test generation is not an authoritative correctness requirement for the deterministic repoctl CLI and repository-state mutation boundaries; candidate AI-proposed tests must pass independent native validation.
