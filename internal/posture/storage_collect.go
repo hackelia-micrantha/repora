@@ -103,13 +103,11 @@ func storageGitRead(ctx context.Context, path string, args ...string) (string, i
 	env := make([]string, 0, len(os.Environ())+5)
 	for _, value := range os.Environ() {
 		key, _, _ := strings.Cut(value, "=")
-		switch key {
-		case "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY",
-			"GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_CONFIG_COUNT",
-			"GIT_CONFIG_PARAMETERS", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM":
-			continue
-		}
-		if strings.HasPrefix(key, "GIT_CONFIG_KEY_") || strings.HasPrefix(key, "GIT_CONFIG_VALUE_") {
+		// Inherited Git environment may retarget the repository, enable
+		// external helpers, or write trace files during an otherwise read-only
+		// command. Start from a closed Git environment and add only bounded
+		// controller-owned variables below.
+		if strings.HasPrefix(key, "GIT_") {
 			continue
 		}
 		env = append(env, value)
