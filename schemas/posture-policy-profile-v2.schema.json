@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/posture-policy-profile-v2.schema.json",
+  "title": "Repora posture policy profile v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "id", "rules", "exceptions"],
+  "properties": {
+    "kind": {"const": "repora.posture-policy-profile"},
+    "version": {"const": 2},
+    "id": {"type": "string", "minLength": 1},
+    "rules": {"type": "array", "items": {"$ref": "#/$defs/rule"}},
+    "exceptions": {"type": "array", "items": {"$ref": "#/$defs/exception"}}
+  },
+  "$defs": {
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operator"],
+      "properties": {
+        "operator": {"enum": ["equals", "at_least", "at_most", "non_empty"]},
+        "expected": {}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"operator": {"const": "non_empty"}}},
+          "then": {"not": {"required": ["expected"]}},
+          "else": {"required": ["expected"]}
+        }
+      ]
+    },
+    "applicability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fact", "applicable_when", "not_applicable_when"],
+      "properties": {
+        "fact": {"type": "string", "minLength": 1},
+        "applicable_when": {"$ref": "#/$defs/condition"},
+        "not_applicable_when": {"$ref": "#/$defs/condition"}
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "area", "fact", "operator", "severity", "title", "remediation"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "area": {"type": "string", "minLength": 1},
+        "fact": {"type": "string", "minLength": 1},
+        "operator": {"enum": ["equals", "at_least", "at_most", "non_empty"]},
+        "expected": {},
+        "applicability": {"$ref": "#/$defs/applicability"},
+        "severity": {"enum": ["critical", "high", "medium", "low", "informational"]},
+        "title": {"type": "string", "minLength": 1},
+        "remediation": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"operator": {"const": "non_empty"}}},
+          "then": {"not": {"required": ["expected"]}},
+          "else": {"required": ["expected"]}
+        }
+      ]
+    },
+    "exception": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "reason", "owner", "expires"],
+      "properties": {
+        "rule_id": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1},
+        "owner": {"type": "string", "minLength": 1},
+        "expires": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+      }
+    }
+  }
+}
