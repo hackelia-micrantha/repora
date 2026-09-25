@@ -131,7 +131,7 @@ func (r Report) Marshal() ([]byte, error) {
 }
 
 func (r Report) Validate() error {
-	if r.Kind != ReportKind || r.Version != ReportVersion {
+	if r.Kind != ReportKind || (r.Version != ReportVersion && r.Version != ReportVersionV2) {
 		return fmt.Errorf("unsupported posture report: kind=%q version=%d", r.Kind, r.Version)
 	}
 	if strings.TrimSpace(r.Repository) == "" || strings.TrimSpace(r.ProfileID) == "" {
@@ -160,8 +160,23 @@ func (r Report) Validate() error {
 		}
 		switch evaluation.Status {
 		case StatusPass, StatusFail, StatusWarning, StatusExcepted, StatusUnknown, StatusUnavailable:
+		case StatusNotApplicable:
+			if r.Version != ReportVersionV2 {
+				return fmt.Errorf("evaluation[%d] status %q requires report version %d", idx, evaluation.Status, ReportVersionV2)
+			}
 		default:
 			return fmt.Errorf("evaluation[%d] has unsupported status %q", idx, evaluation.Status)
+		}
+		if r.Version == ReportVersion && evaluation.Applicability != nil {
+			return fmt.Errorf("evaluation[%d] applicability requires report version %d", idx, ReportVersionV2)
+		}
+		if evaluation.Applicability != nil {
+			if err := validateApplicabilityEvaluation(*evaluation.Applicability); err != nil {
+				return fmt.Errorf("evaluation[%d] applicability: %w", idx, err)
+			}
+		}
+		if evaluation.Status == StatusNotApplicable && (evaluation.Applicability == nil || evaluation.Applicability.Decision != ApplicabilityNotApplicable) {
+			return fmt.Errorf("evaluation[%d] not-applicable status requires a not-applicable applicability decision", idx)
 		}
 		if len(evaluation.Expected) > 0 && !json.Valid(evaluation.Expected) {
 			return fmt.Errorf("evaluation[%d] expected value is invalid JSON", idx)
@@ -177,6 +192,41 @@ func (r Report) Validate() error {
 				return fmt.Errorf("evaluation[%d] exception expiry must use YYYY-MM-DD: %w", idx, err)
 			}
 		}
+	}
+	return nil
+}
+
+func validateApplicabilityEvaluation(evaluation ApplicabilityEvaluation) error {
+	if strings.TrimSpace(evaluation.Fact) == "" {
+		return fmt.Errorf("fact is required")
+	}
+	if evaluation.Evidence == nil {
+		return fmt.Errorf("evidence array is required")
+	}
+	if err := validateCondition(evaluation.ApplicableWhen); err != nil {
+		return fmt.Errorf("applicable_when: %w", err)
+	}
+	if err := validateCondition(evaluation.NotApplicableWhen); err != nil {
+		return fmt.Errorf("not_applicable_when: %w", err)
+	}
+	switch evaluation.State {
+	case posture.StateObserved:
+		if len(evaluation.Observed) == 0 || !json.Valid(evaluation.Observed) {
+			return fmt.Errorf("observed applicability requires a valid observed value")
+		}
+		if evaluation.Decision != ApplicabilityApplicable && evaluation.Decision != ApplicabilityNotApplicable && evaluation.Decision != ApplicabilityUnresolved {
+			return fmt.Errorf("observed applicability has invalid decision %q", evaluation.Decision)
+		}
+	case posture.StateUnknown:
+		if len(evaluation.Observed) != 0 || evaluation.Decision != ApplicabilityUnknown {
+			return fmt.Errorf("unknown applicability must have decision %q and no observed value", ApplicabilityUnknown)
+		}
+	case posture.StateUnavailable:
+		if len(evaluation.Observed) != 0 || evaluation.Decision != ApplicabilityUnavailable {
+			return fmt.Errorf("unavailable applicability must have decision %q and no observed value", ApplicabilityUnavailable)
+		}
+	default:
+		return fmt.Errorf("unsupported applicability state %q", evaluation.State)
 	}
 	return nil
 }

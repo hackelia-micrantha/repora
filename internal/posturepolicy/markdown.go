@@ -42,6 +42,9 @@ func RenderMarkdown(report Report) string {
 			fmt.Fprintf(&b, "- Status: **%s**\n", escapeMarkdownText(string(evaluation.Status)))
 			fmt.Fprintf(&b, "- Severity: %s\n", inlineCode(string(evaluation.Severity)))
 			fmt.Fprintf(&b, "- Fact: %s\n", inlineCode(evaluation.Fact))
+			if evaluation.Applicability != nil {
+				renderApplicability(&b, *evaluation.Applicability)
+			}
 			if len(evaluation.Expected) > 0 {
 				fmt.Fprintf(&b, "- Expected: %s\n", inlineCode(compactJSON(evaluation.Expected)))
 			}
@@ -64,7 +67,7 @@ func RenderMarkdown(report Report) string {
 					b.WriteString("\n")
 				}
 			}
-			if len(evaluation.Remediation) > 0 {
+			if evaluation.Status != StatusNotApplicable && len(evaluation.Remediation) > 0 {
 				b.WriteString("- Remediation options:\n")
 				for _, remediation := range evaluation.Remediation {
 					fmt.Fprintf(&b, "  - %s\n", escapeMarkdownText(remediation))
@@ -80,11 +83,42 @@ func RenderMarkdown(report Report) string {
 		b.WriteString("None.\n")
 	} else {
 		for _, evaluation := range unsupported {
+			if evaluation.Applicability != nil && evaluation.Applicability.Decision != ApplicabilityApplicable {
+				fmt.Fprintf(&b, "- %s (%s): applicability %s is %s\n", inlineCode(evaluation.RuleID), escapeMarkdownText(evaluation.Area), inlineCode(evaluation.Applicability.Fact), escapeMarkdownText(string(evaluation.Applicability.Decision)))
+				continue
+			}
 			fmt.Fprintf(&b, "- %s (%s): %s is %s\n", inlineCode(evaluation.RuleID), escapeMarkdownText(evaluation.Area), inlineCode(evaluation.Fact), escapeMarkdownText(string(evaluation.Status)))
 		}
 	}
 
 	return b.String()
+}
+
+func renderApplicability(b *strings.Builder, applicability ApplicabilityEvaluation) {
+	fmt.Fprintf(b, "- Applicability fact: %s\n", inlineCode(applicability.Fact))
+	fmt.Fprintf(b, "- Applicability decision: **%s**\n", escapeMarkdownText(string(applicability.Decision)))
+	fmt.Fprintf(b, "- Applicable when: %s\n", inlineCode(renderCondition(applicability.ApplicableWhen)))
+	fmt.Fprintf(b, "- Not applicable when: %s\n", inlineCode(renderCondition(applicability.NotApplicableWhen)))
+	if len(applicability.Observed) > 0 {
+		fmt.Fprintf(b, "- Applicability observed: %s\n", inlineCode(compactJSON(applicability.Observed)))
+	}
+	if len(applicability.Evidence) > 0 {
+		b.WriteString("- Applicability evidence:\n")
+		for _, evidence := range applicability.Evidence {
+			fmt.Fprintf(b, "  - %s %s", inlineCode(evidence.Source), inlineCode(evidence.Reference))
+			if evidence.Detail != "" {
+				fmt.Fprintf(b, ": %s", escapeMarkdownText(evidence.Detail))
+			}
+			b.WriteString("\n")
+		}
+	}
+}
+
+func renderCondition(condition Condition) string {
+	if len(condition.Expected) == 0 {
+		return string(condition.Operator)
+	}
+	return string(condition.Operator) + " " + compactJSON(condition.Expected)
 }
 
 func compactJSON(value []byte) string {

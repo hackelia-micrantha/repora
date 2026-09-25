@@ -12,12 +12,14 @@ import (
 )
 
 const (
-	ProfileKind    = "repora.posture-policy-profile"
-	ProfileVersion = 1
-	InputsKind     = "repora.posture-policy-inputs"
-	InputsVersion  = 1
-	ReportKind     = "repora.posture-report"
-	ReportVersion  = 1
+	ProfileKind      = "repora.posture-policy-profile"
+	ProfileVersion   = 1
+	ProfileVersionV2 = 2
+	InputsKind       = "repora.posture-policy-inputs"
+	InputsVersion    = 1
+	ReportKind       = "repora.posture-report"
+	ReportVersion    = 1
+	ReportVersionV2  = 2
 )
 
 type Severity string
@@ -47,15 +49,27 @@ type Profile struct {
 	Exceptions []Exception `json:"exceptions"`
 }
 
+type Condition struct {
+	Operator Operator        `json:"operator"`
+	Expected json.RawMessage `json:"expected,omitempty"`
+}
+
+type RuleApplicability struct {
+	Fact              string    `json:"fact"`
+	ApplicableWhen    Condition `json:"applicable_when"`
+	NotApplicableWhen Condition `json:"not_applicable_when"`
+}
+
 type Rule struct {
-	ID          string          `json:"id"`
-	Area        string          `json:"area"`
-	Fact        string          `json:"fact"`
-	Operator    Operator        `json:"operator"`
-	Expected    json.RawMessage `json:"expected,omitempty"`
-	Severity    Severity        `json:"severity"`
-	Title       string          `json:"title"`
-	Remediation []string        `json:"remediation"`
+	ID            string             `json:"id"`
+	Applicability *RuleApplicability `json:"applicability,omitempty"`
+	Area          string          `json:"area"`
+	Fact          string          `json:"fact"`
+	Operator      Operator        `json:"operator"`
+	Expected      json.RawMessage `json:"expected,omitempty"`
+	Severity      Severity        `json:"severity"`
+	Title         string          `json:"title"`
+	Remediation   []string        `json:"remediation"`
 }
 
 type Exception struct {
@@ -84,10 +98,31 @@ const (
 	StatusPass        ResultStatus = "pass"
 	StatusFail        ResultStatus = "fail"
 	StatusWarning     ResultStatus = "warning"
-	StatusExcepted    ResultStatus = "excepted"
-	StatusUnknown     ResultStatus = "unknown"
+	StatusExcepted      ResultStatus = "excepted"
+	StatusNotApplicable ResultStatus = "not-applicable"
+	StatusUnknown       ResultStatus = "unknown"
 	StatusUnavailable ResultStatus = "unavailable"
 )
+
+type ApplicabilityDecision string
+
+const (
+	ApplicabilityApplicable    ApplicabilityDecision = "applicable"
+	ApplicabilityNotApplicable ApplicabilityDecision = "not-applicable"
+	ApplicabilityUnresolved    ApplicabilityDecision = "unresolved"
+	ApplicabilityUnknown       ApplicabilityDecision = "unknown"
+	ApplicabilityUnavailable   ApplicabilityDecision = "unavailable"
+)
+
+type ApplicabilityEvaluation struct {
+	Fact              string                `json:"fact"`
+	State             posture.FactState     `json:"state"`
+	Decision          ApplicabilityDecision `json:"decision"`
+	Observed          json.RawMessage       `json:"observed,omitempty"`
+	Evidence          []posture.Evidence    `json:"evidence"`
+	ApplicableWhen    Condition             `json:"applicable_when"`
+	NotApplicableWhen Condition             `json:"not_applicable_when"`
+}
 
 type Evaluation struct {
 	RuleID       string             `json:"rule_id"`
@@ -100,8 +135,9 @@ type Evaluation struct {
 	Observed     json.RawMessage    `json:"observed,omitempty"`
 	Evidence     []posture.Evidence `json:"evidence"`
 	Remediation  []string           `json:"remediation"`
-	Exception    *Exception         `json:"exception,omitempty"`
-	ExceptionGap string             `json:"exception_gap,omitempty"`
+	Applicability *ApplicabilityEvaluation `json:"applicability,omitempty"`
+	Exception     *Exception               `json:"exception,omitempty"`
+	ExceptionGap  string                   `json:"exception_gap,omitempty"`
 }
 
 type Report struct {
@@ -114,7 +150,7 @@ type Report struct {
 }
 
 func (p Profile) Validate() error {
-	if p.Kind != ProfileKind || p.Version != ProfileVersion {
+	if p.Kind != ProfileKind || (p.Version != ProfileVersion && p.Version != ProfileVersionV2) {
 		return fmt.Errorf("unsupported posture policy profile: kind=%q version=%d", p.Kind, p.Version)
 	}
 	if strings.TrimSpace(p.ID) == "" {
@@ -125,7 +161,7 @@ func (p Profile) Validate() error {
 	}
 	seen := map[string]struct{}{}
 	for i, rule := range p.Rules {
-		if err := rule.validate(); err != nil {
+		if err := rule.validate(p.Version); err != nil {
 			return fmt.Errorf("rule[%d]: %w", i, err)
 		}
 		if _, exists := seen[rule.ID]; exists {
@@ -152,24 +188,20 @@ func (p Profile) Validate() error {
 	return nil
 }
 
-func (r Rule) validate() error {
+func (r Rule) validate(profileVersion int) error {
 	if strings.TrimSpace(r.ID) == "" || strings.TrimSpace(r.Area) == "" || strings.TrimSpace(r.Fact) == "" || strings.TrimSpace(r.Title) == "" {
 		return fmt.Errorf("id, area, fact, and title are required")
 	}
-	switch r.Operator {
-	case OperatorEquals, OperatorAtLeast, OperatorAtMost:
-		if len(r.Expected) == 0 {
-			return fmt.Errorf("operator %q requires expected value", r.Operator)
+	if err := validateCondition(Condition{Operator: r.Operator, Expected: r.Expected}); err != nil {
+		return err
+	}
+	if r.Applicability != nil {
+		if profileVersion != ProfileVersionV2 {
+			return fmt.Errorf("applicability requires posture policy profile version %d", ProfileVersionV2)
 		}
-		if !json.Valid(r.Expected) {
-			return fmt.Errorf("operator %q expected value must be valid JSON", r.Operator)
+		if err := r.Applicability.validate(); err != nil {
+			return fmt.Errorf("applicability: %w", err)
 		}
-	case OperatorNonEmpty:
-		if len(r.Expected) != 0 {
-			return fmt.Errorf("operator %q must not define expected value", r.Operator)
-		}
-	default:
-		return fmt.Errorf("unsupported operator %q", r.Operator)
 	}
 	switch r.Severity {
 	case SeverityCritical, SeverityHigh, SeverityMedium, SeverityLow, SeverityInfo:
@@ -183,6 +215,38 @@ func (r Rule) validate() error {
 		if strings.TrimSpace(remediation) == "" {
 			return fmt.Errorf("remediation[%d] must not be empty", i)
 		}
+	}
+	return nil
+}
+
+func (a RuleApplicability) validate() error {
+	if strings.TrimSpace(a.Fact) == "" {
+		return fmt.Errorf("fact is required")
+	}
+	if err := validateCondition(a.ApplicableWhen); err != nil {
+		return fmt.Errorf("applicable_when: %w", err)
+	}
+	if err := validateCondition(a.NotApplicableWhen); err != nil {
+		return fmt.Errorf("not_applicable_when: %w", err)
+	}
+	return nil
+}
+
+func validateCondition(condition Condition) error {
+	switch condition.Operator {
+	case OperatorEquals, OperatorAtLeast, OperatorAtMost:
+		if len(condition.Expected) == 0 {
+			return fmt.Errorf("operator %q requires expected value", condition.Operator)
+		}
+		if !json.Valid(condition.Expected) {
+			return fmt.Errorf("operator %q expected value must be valid JSON", condition.Operator)
+		}
+	case OperatorNonEmpty:
+		if len(condition.Expected) != 0 {
+			return fmt.Errorf("operator %q must not define expected value", condition.Operator)
+		}
+	default:
+		return fmt.Errorf("unsupported operator %q", condition.Operator)
 	}
 	return nil
 }
