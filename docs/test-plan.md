@@ -11,13 +11,13 @@ The repository-owned `testplan.yaml` declares Repora's **intended required and o
 | Plan requirement | Current candidate or native boundary | Review needed before claiming satisfaction |
 | --- | --- | --- |
 | `level.unit`, `behavior.positive`, `generation.example` | `internal/plan.TestReconcileIsDeterministicAndDoesNotMutateInputs` | CI stages and verifies the exact native JSON event and revision for this target. That source still requires explicit Testule import/annotation before any row is satisfied. |
-| `level.component` | `internal/apply.TestPreflightRepositoryArtifactAuditedChecksEveryTargetBeforeMutation` | Confirm the assertion covers multi-target preflight and side-effect ordering, not whole-repository integration. |
-| `level.contract` | `cmd/repoctl.TestStatusOutputMatchesGoldenContract` and `make contract-test` | Keep the specific Go JSON target separate from the Python/Go script-based routing and receipt contracts. |
-| `level.integration` | `TestExecuteSynchronizesBehindMirrorUsingLocalGitRepos` in `internal/apply/apply_integration_test.go` (native Go package `repoctl/internal/apply`) | Confirm the real disposable-local-Git setup and exact observed package/target; this target is not a remote-hosted provider test. |
+| `level.component` | `internal/apply.TestPreflightRepositoryArtifactAuditedChecksEveryTargetBeforeMutation` | Reviewed candidate: stale second-target preflight is detected before mutation and journal outcomes retain skipped/stale state. |
+| `level.contract` | `cmd/repoctl.TestStatusOutputMatchesGoldenContract` | Reviewed candidate: marshalled status JSON must match the committed golden contract byte-for-byte. Broader Python/Go routing/receipt contracts remain separate native checks. |
+| `level.integration` | `repoctl/internal/apply.TestExecuteSynchronizesBehindMirrorUsingLocalGitRepos` | Reviewed candidate: non-short execution uses disposable real local Git repositories and proves BEHIND → apply → EQUAL. A skipped observation is non-evidence. |
 | `level.endToEnd` | `make e2e` → `scripts/ci/cli-smoke.sh` on the **built** `repoctl` | This is currently a shell process boundary, **not a Go `test -json` target**. Do not label a unit test E2E merely to fill the row. A bounded generic process/contract Evidence source or dedicated reviewed native target is needed. |
-| `behavior.negative` | `internal/plan.TestReconcileRejectsUnsupportedTopologyWithoutPartialPlan` | Verify the rejected topology and absence of a partial mutation plan. |
-| `behavior.boundary` | `internal/apply.TestPreflightRepositoryArtifactAuditedRejectsUnknownTargetBeforeGitReads` | Review exact target-identity and no-Git-read assertions; choose a distinct size/time/path boundary target if this is insufficient. |
-| `behavior.adversarial` | `internal/git.TestEnsureMirrorRejectsSymlinkEscape` | Confirm real path/symlink escape rejection; do not infer protection against every adversarial class from this one fixture. |
+| `behavior.negative` | `repoctl/internal/plan.TestReconcileRejectsUnsupportedTopologyWithoutPartialPlan` | Reviewed candidate: unsupported topologies return repository-specific errors and no partial actions. |
+| `behavior.boundary` | `repoctl/cmd/repoctl.TestApplyHonorsParallelLimit` | Reviewed narrow boundary candidate: configured apply parallelism of 1 is enforced; this does not claim all size/time/path/resource boundaries. |
+| `behavior.adversarial` | `repoctl/internal/git.TestEnsureMirrorRejectsSymlinkEscape` | Reviewed candidate: a real symlink escape is rejected and no repository is materialized outside the workspace. |
 
 The importer must bind the **exact checked-out Git revision** and canonical plan fingerprint, verify target-level and package-level success from bounded native `go test -json` output, and use explicit reviewed semantic annotations. The imported record must not claim Testule executed tests that native Go actually ran. A deliberately incomplete representative mapping must still return actual Testule exit 5 before a complete mapping may become a blocking CI gate.
 
@@ -31,6 +31,12 @@ Successful PR/main CI retains:
 - `artifacts/testule/subject-revision.txt` — exact checked-out Git commit. On `pull_request`, this is GitHub's tested synthetic merge revision; on `main`, it is the landed commit. The later importer must bind to this tested subject, not relabel it as the PR branch head.
 
 These files are **native observation source material**, not Testule Evidence. They do not contain a Testule plan fingerprint, do not assign Testule semantics by themselves, and do not make the repository plan complete. The later consumer slice must use a qualified Testule executable, bind the canonical plan fingerprint and revision, import the explicit reviewed `unit/positive/example` annotation, and prove that this deliberately representative-only input still leaves blocking gaps with actual Testule exit 5.
+
+## Reviewed Go observation map
+
+`make testule-observation-map` executes only the six reviewed Go-observable candidates above with `go test -race -count=1 -json`, without `-short`. One bounded stream is verified target-by-target with the same exact run/pass rules as the representative source, then retained with the exact checkout revision. This is still native source material only; no Testule fingerprint, normalized Evidence record, or gap state is assigned by this job.
+
+The required `level.endToEnd` row is intentionally excluded. Its authoritative candidate is the built-process `make e2e` smoke, which is not Go JSON. That generic external-process ingestion need is recorded on Testule #16 rather than being hidden by relabeling an in-process Go test.
 
 ## Generation and deployment disposition
 
