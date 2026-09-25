@@ -476,12 +476,24 @@ func extractCIWorkflowSignalInputs(data []byte) ([]string, []string, error) {
 			for idx := 0; idx+1 < len(node.Content); idx += 2 {
 				key := node.Content[idx]
 				value := node.Content[idx+1]
-				if key.Kind == yaml.ScalarNode && value.Kind == yaml.ScalarNode {
-					switch key.Value {
-					case "run":
-						runBlocks = append(runBlocks, value.Value)
-					case "uses":
-						actionUses = append(actionUses, value.Value)
+				if key.Kind == yaml.ScalarNode && key.Value == "steps" && value.Kind == yaml.SequenceNode {
+					for _, step := range value.Content {
+						if step.Kind != yaml.MappingNode {
+							continue
+						}
+						for stepIdx := 0; stepIdx+1 < len(step.Content); stepIdx += 2 {
+							stepKey := step.Content[stepIdx]
+							stepValue := step.Content[stepIdx+1]
+							if stepKey.Kind != yaml.ScalarNode || stepValue.Kind != yaml.ScalarNode {
+								continue
+							}
+							switch stepKey.Value {
+							case "run":
+								runBlocks = append(runBlocks, stepValue.Value)
+							case "uses":
+								actionUses = append(actionUses, stepValue.Value)
+							}
+						}
 					}
 				}
 				visit(value)
