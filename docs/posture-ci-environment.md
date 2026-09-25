@@ -1,4 +1,4 @@
-# CI environment posture v1
+# CI environment posture
 
 Status: Current
 
@@ -6,7 +6,7 @@ Status: Current
 
 ## Contract
 
-The command emits `repora.posture-ci-environment` v1 JSON. The serialized contract is `schemas/posture-ci-environment-v1.schema.json`.
+The command emits `repora.posture-ci-environment` v2 JSON. The v2 contract is `schemas/posture-ci-environment-v2.schema.json`. Offline convergence continues accepting the unchanged v1 contract in `schemas/posture-ci-environment-v1.schema.json`; v1 does not contain host-tool or setup-action signals.
 
 The collector records:
 
@@ -15,6 +15,8 @@ The collector records:
 - GitHub Actions workflow discovery completeness;
 - bounded per-workflow flake-invocation signals;
 - bounded high-confidence imperative-install signals;
+- bounded YAML-aware direct host-tool invocation signals;
+- bounded explicit tool setup/provisioning action signals;
 - an optional project declaration at `.repora/posture-ci-environment.yaml`;
 - explicitly declared irreducible `bootstrap` or `platform` external inputs.
 
@@ -47,7 +49,11 @@ Flake invocation signals are deliberately conservative and currently recognize:
 
 Imperative-install signals cover high-confidence shell installation patterns such as apt/apk/dnf/yum/brew, pip, global npm/pnpm/yarn installs, cargo/go installs, and rustup toolchain/component installation.
 
-Signals are observations only. Shell comments, wrappers, generated commands, or unusual syntax can require human classification. Repora does not claim that static text inspection proves semantic ownership.
+V2 additionally parses workflow YAML as data and inspects only `run` and `uses` scalar values for the new signals. Direct host-tool observation uses a bounded command-position set: Go, Node/package managers, Python/pip, Rust, Java build tools, Docker/Podman, Kubernetes/Helm, Terraform/OpenTofu, jq/yq, and gh. Explicit setup-action observation recognizes a bounded set such as `actions/setup-go`, `actions/setup-node`, `actions/setup-python`, `actions/setup-java`, selected Rust/tooling actions, and explicit Docker/Terraform/Kubernetes/Helm setup actions.
+
+A recognized current-flake command line such as `nix develop .#ci --command go test ./...` is not also labeled as a direct host-tool invocation. Comments and scalar text outside `run` / `uses` are excluded from these v2 signals. If YAML cannot be parsed, the v2 signals are `unknown`; unreadable or oversized workflows remain `unavailable` / `unknown` rather than becoming observed empty sets.
+
+Signals are observations only. A direct `go test` signal does not prove whether Go came from the runner image, a setup action, a container, or another boundary. Shell comments, wrappers, generated commands, or unusual syntax can require human classification. Repora does not claim that static text inspection proves semantic ownership.
 
 ## Policy convergence
 
@@ -82,7 +88,7 @@ Important limits remain:
 - a flake file or workflow signal does not by itself prove that the flake is the authoritative environment;
 - static workflow signals are bounded observations, not full shell semantics;
 - declared `platform` / `bootstrap` inputs remain visible evidence and do not automatically become policy exceptions;
-- arbitrary undeclared ambient runner binaries are not yet fully detectable;
+- bounded direct host-tool and setup-action signals now expose statically visible runner/tool assumptions, but they do not prove provenance and are not a complete ambient-binary inventory;
 - Dubnium remains the runtime/space-time telemetry authority for its runner fleet.
 
 Those remaining evidence gaps stay tracked by #197 rather than being hidden by the example profile.

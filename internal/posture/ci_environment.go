@@ -13,13 +13,14 @@ import (
 )
 
 const (
-	CIEnvironmentInventoryKind    = "repora.posture-ci-environment"
-	CIEnvironmentInventoryVersion = 1
-	CIEnvironmentProfileKind      = "repora.posture-ci-environment-profile"
-	CIEnvironmentProfileVersion   = 1
-	ciEnvironmentProfilePath      = ".repora/posture-ci-environment.yaml"
-	maxCIEnvironmentBytes         = 1 << 20
-	maxCIExternalInputs           = 64
+	CIEnvironmentInventoryKind      = "repora.posture-ci-environment"
+	CIEnvironmentInventoryVersion   = 1
+	CIEnvironmentInventoryVersionV2 = 2
+	CIEnvironmentProfileKind        = "repora.posture-ci-environment-profile"
+	CIEnvironmentProfileVersion     = 1
+	ciEnvironmentProfilePath        = ".repora/posture-ci-environment.yaml"
+	maxCIEnvironmentBytes           = 1 << 20
+	maxCIExternalInputs             = 64
 )
 
 type CIEnvironmentProfile struct {
@@ -43,11 +44,13 @@ type CIExternalInputFact struct {
 }
 
 type CIEnvironmentWorkflowFact struct {
-	Path                     string         `json:"path"`
-	ContentState             FactState      `json:"content_state"`
-	FlakeInvocationSignals   Fact[[]string] `json:"flake_invocation_signals"`
-	ImperativeInstallSignals Fact[[]string] `json:"imperative_install_signals"`
-	Evidence                 []Evidence     `json:"evidence"`
+	Path                      string          `json:"path"`
+	ContentState              FactState       `json:"content_state"`
+	FlakeInvocationSignals    Fact[[]string]  `json:"flake_invocation_signals"`
+	ImperativeInstallSignals  Fact[[]string]  `json:"imperative_install_signals"`
+	HostToolInvocationSignals *Fact[[]string] `json:"host_tool_invocation_signals,omitempty"`
+	ToolSetupActionSignals    *Fact[[]string] `json:"tool_setup_action_signals,omitempty"`
+	Evidence                  []Evidence      `json:"evidence"`
 }
 
 type CIEnvironmentInventory struct {
@@ -137,7 +140,7 @@ func validCIExternalInputID(value string) bool {
 func newCIEnvironmentInventory(fullName string) CIEnvironmentInventory {
 	return CIEnvironmentInventory{
 		Kind:           CIEnvironmentInventoryKind,
-		Version:        CIEnvironmentInventoryVersion,
+		Version:        CIEnvironmentInventoryVersionV2,
 		Repository:     RepositoryIdentity{Provider: "github", FullName: fullName},
 		Workflows:      []CIEnvironmentWorkflowFact{},
 		ExternalInputs: []CIExternalInputFact{},
@@ -146,7 +149,7 @@ func newCIEnvironmentInventory(fullName string) CIEnvironmentInventory {
 }
 
 func (i CIEnvironmentInventory) Validate() error {
-	if i.Kind != CIEnvironmentInventoryKind || i.Version != CIEnvironmentInventoryVersion {
+	if i.Kind != CIEnvironmentInventoryKind || (i.Version != CIEnvironmentInventoryVersion && i.Version != CIEnvironmentInventoryVersionV2) {
 		return fmt.Errorf("unsupported CI environment inventory contract: kind=%q version=%d", i.Kind, i.Version)
 	}
 	if i.Repository.Provider != "github" {
@@ -193,6 +196,22 @@ func (i CIEnvironmentInventory) Validate() error {
 		}
 		if err := validateFact("imperative_install_signals", workflow.ImperativeInstallSignals); err != nil {
 			return err
+		}
+		switch i.Version {
+		case CIEnvironmentInventoryVersion:
+			if workflow.HostToolInvocationSignals != nil || workflow.ToolSetupActionSignals != nil {
+				return fmt.Errorf("workflow %q v1 must not define v2 tool signals", workflow.Path)
+			}
+		case CIEnvironmentInventoryVersionV2:
+			if workflow.HostToolInvocationSignals == nil || workflow.ToolSetupActionSignals == nil {
+				return fmt.Errorf("workflow %q v2 requires host-tool and setup-action signals", workflow.Path)
+			}
+			if err := validateFact("host_tool_invocation_signals", *workflow.HostToolInvocationSignals); err != nil {
+				return err
+			}
+			if err := validateFact("tool_setup_action_signals", *workflow.ToolSetupActionSignals); err != nil {
+				return err
+			}
 		}
 		if workflow.Evidence == nil {
 			return fmt.Errorf("workflow %q evidence array is required", workflow.Path)
@@ -350,6 +369,10 @@ func collectCIEnvironmentWorkflows(ctx context.Context, reader GitHubReader, ful
 			fact.ContentState = StateUnavailable
 			fact.FlakeInvocationSignals = Unavailable[[]string](obs.Evidence)
 			fact.ImperativeInstallSignals = Unavailable[[]string](obs.Evidence)
+			hostTools := Unavailable[[]string](obs.Evidence)
+			setupActions := Unavailable[[]string](obs.Evidence)
+			fact.HostToolInvocationSignals = &hostTools
+			fact.ToolSetupActionSignals = &setupActions
 			workflows = append(workflows, fact)
 			continue
 		}
@@ -358,12 +381,29 @@ func collectCIEnvironmentWorkflows(ctx context.Context, reader GitHubReader, ful
 			fact.ContentState = StateUnknown
 			fact.FlakeInvocationSignals = Unknown[[]string](evidence)
 			fact.ImperativeInstallSignals = Unknown[[]string](evidence)
+			hostTools := Unknown[[]string](evidence)
+			setupActions := Unknown[[]string](evidence)
+			fact.HostToolInvocationSignals = &hostTools
+			fact.ToolSetupActionSignals = &setupActions
 			workflows = append(workflows, fact)
 			continue
 		}
 		fact.ContentState = StateObserved
 		fact.FlakeInvocationSignals = Observed(detectFlakeInvocationSignals(data), obs.Evidence)
 		fact.ImperativeInstallSignals = Observed(detectImperativeInstallSignals(data), obs.Evidence)
+		runBlocks, actionUses, parseErr := extractCIWorkflowSignalInputs(data)
+		if parseErr != nil {
+			evidence := evidenceWithDetail(obs.Evidence, "workflow YAML could not be parsed for bounded host-tool/setup-action observation")
+			hostTools := Unknown[[]string](evidence)
+			setupActions := Unknown[[]string](evidence)
+			fact.HostToolInvocationSignals = &hostTools
+			fact.ToolSetupActionSignals = &setupActions
+		} else {
+			hostTools := Observed(detectHostToolInvocationSignals(runBlocks), obs.Evidence)
+			setupActions := Observed(detectToolSetupActionSignals(actionUses), obs.Evidence)
+			fact.HostToolInvocationSignals = &hostTools
+			fact.ToolSetupActionSignals = &setupActions
+		}
 		workflows = append(workflows, fact)
 	}
 	if tree.Truncated && len(paths) == 0 {
@@ -417,6 +457,157 @@ func detectImperativeInstallSignals(data []byte) []string {
 	for _, pattern := range imperativeInstallPatterns {
 		if pattern.re.MatchString(text) {
 			signals = append(signals, pattern.name)
+		}
+	}
+	return sortedUnique(signals)
+}
+
+
+func extractCIWorkflowSignalInputs(data []byte) ([]string, []string, error) {
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		return nil, nil, err
+	}
+	runBlocks := []string{}
+	actionUses := []string{}
+	var visit func(*yaml.Node)
+	visit = func(node *yaml.Node) {
+		if node.Kind == yaml.MappingNode {
+			for idx := 0; idx+1 < len(node.Content); idx += 2 {
+				key := node.Content[idx]
+				value := node.Content[idx+1]
+				if key.Kind == yaml.ScalarNode && key.Value == "steps" && value.Kind == yaml.SequenceNode {
+					for _, step := range value.Content {
+						if step.Kind != yaml.MappingNode {
+							continue
+						}
+						for stepIdx := 0; stepIdx+1 < len(step.Content); stepIdx += 2 {
+							stepKey := step.Content[stepIdx]
+							stepValue := step.Content[stepIdx+1]
+							if stepKey.Kind != yaml.ScalarNode || stepValue.Kind != yaml.ScalarNode {
+								continue
+							}
+							switch stepKey.Value {
+							case "run":
+								runBlocks = append(runBlocks, stepValue.Value)
+							case "uses":
+								actionUses = append(actionUses, stepValue.Value)
+							}
+						}
+					}
+				}
+				visit(value)
+			}
+			return
+		}
+		for _, child := range node.Content {
+			visit(child)
+		}
+	}
+	visit(&root)
+	return runBlocks, actionUses, nil
+}
+
+var boundedHostTools = map[string]struct{}{
+	"go": {}, "node": {}, "npm": {}, "pnpm": {}, "yarn": {},
+	"python": {}, "python3": {}, "pip": {}, "pip3": {},
+	"cargo": {}, "rustc": {}, "java": {}, "javac": {}, "gradle": {}, "mvn": {},
+	"docker": {}, "podman": {}, "kubectl": {}, "helm": {},
+	"terraform": {}, "tofu": {}, "jq": {}, "yq": {}, "gh": {},
+}
+
+func detectHostToolInvocationSignals(runBlocks []string) []string {
+	signals := []string{}
+	for _, block := range runBlocks {
+		for _, line := range strings.Split(block, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			if isCurrentFlakeCommandLine(line) {
+				continue
+			}
+			fields := strings.Fields(line)
+			if len(fields) == 0 {
+				continue
+			}
+			idx := 0
+			for idx < len(fields) && looksLikeShellAssignment(fields[idx]) {
+				idx++
+			}
+			for idx < len(fields) {
+				switch fields[idx] {
+				case "sudo", "command":
+					idx++
+				case "env":
+					idx++
+					for idx < len(fields) && (strings.HasPrefix(fields[idx], "-") || looksLikeShellAssignment(fields[idx])) {
+						idx++
+					}
+				default:
+					goto commandFound
+				}
+			}
+		commandFound:
+			if idx >= len(fields) {
+				continue
+			}
+			command := strings.Trim(fields[idx], "'\"")
+			if slash := strings.LastIndex(command, "/"); slash >= 0 {
+				command = command[slash+1:]
+			}
+			if _, ok := boundedHostTools[command]; ok {
+				signals = append(signals, command)
+			}
+		}
+	}
+	return sortedUnique(signals)
+}
+
+func looksLikeShellAssignment(value string) bool {
+	eq := strings.IndexByte(value, '=')
+	if eq <= 0 {
+		return false
+	}
+	name := value[:eq]
+	for idx, r := range name {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '_' || (idx > 0 && r >= '0' && r <= '9') {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func isCurrentFlakeCommandLine(line string) bool {
+	for _, pattern := range currentFlakeCommandPatterns {
+		if pattern.re.MatchString(line) {
+			return true
+		}
+	}
+	return false
+}
+
+var boundedToolSetupActions = map[string]struct{}{
+	"actions/setup-go": {}, "actions/setup-node": {}, "actions/setup-python": {}, "actions/setup-java": {},
+	"dtolnay/rust-toolchain": {},
+	"docker/setup-buildx-action": {}, "docker/setup-qemu-action": {},
+	"hashicorp/setup-terraform": {}, "opentofu/setup-opentofu": {},
+	"azure/setup-kubectl": {}, "azure/setup-helm": {},
+}
+
+func detectToolSetupActionSignals(actionUses []string) []string {
+	signals := []string{}
+	for _, ref := range actionUses {
+		ref = strings.TrimSpace(strings.ToLower(ref))
+		if ref == "" || strings.HasPrefix(ref, "./") {
+			continue
+		}
+		if at := strings.IndexByte(ref, '@'); at >= 0 {
+			ref = ref[:at]
+		}
+		if _, ok := boundedToolSetupActions[ref]; ok {
+			signals = append(signals, ref)
 		}
 	}
 	return sortedUnique(signals)

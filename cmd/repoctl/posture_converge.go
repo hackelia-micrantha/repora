@@ -49,7 +49,7 @@ func runPostureConverge(args []string) int {
 	flags.Var(&inventoryPath, "inventory", "path to repora.posture-inventory v1 JSON")
 	flags.Var(&documentationPath, "docs", "path to repora.posture-documentation v1 JSON")
 	flags.Var(&hooksPath, "hooks", "path to repora.posture-hooks v1 JSON")
-	flags.Var(&ciEnvironmentPath, "ci-environment", "path to repora.posture-ci-environment v1 JSON")
+	flags.Var(&ciEnvironmentPath, "ci-environment", "path to repora.posture-ci-environment v1 or v2 JSON")
 	flags.Var(&commitsPath, "commits", "path to repora.posture-commits v1 JSON")
 	flags.Var(&mirrorsPath, "mirrors", "path to repora.posture-mirrors v1 JSON")
 	flags.Var(&storagePath, "storage", "path to repora.posture-storage v1 JSON")

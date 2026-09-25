@@ -74,7 +74,7 @@ Options for posture commands:
   posture converge --hooks string
         strict repora.posture-hooks v1 JSON
   posture converge --ci-environment string
-        strict repora.posture-ci-environment v1 JSON
+        strict repora.posture-ci-environment v1 or v2 JSON
   posture converge --commits string
         strict repora.posture-commits v1 JSON
   posture converge --storage string
@@ -98,7 +98,7 @@ Posture docs is also GET-only. It observes document presence, configured README 
 
 Posture hooks is GET-only. It observes common/custom hook configuration, optional .repora/posture-hooks.yaml expectations, required local-check coverage in GitHub Actions, bootstrap/bypass documentation, and bounded static network-load signals. It never installs or executes target-repository hook code, and CI remains the enforcement authority.
 
-Posture ci-environment is GET-only. It observes flake/lock presence, bounded workflow flake and imperative-install signals, and an optional explicit CI applicability/external-input declaration. It does not infer CI applicability from workflow presence and does not evaluate compliance.
+Posture ci-environment is GET-only. It emits v2 evidence with flake/lock presence, bounded workflow flake, imperative-install, direct host-tool invocation, and explicit setup-action signals, plus an optional CI applicability/external-input declaration. Offline convergence also accepts the unchanged v1 contract. It does not infer CI applicability from workflow presence and does not evaluate compliance.
 
 Posture commits is GET-only. It observes an explicitly bounded default-branch history window, commit signature verification state, merge shape, change size/file scope, configured sensitive-path matches, and optional commit-to-PR association. Repository-owned thresholds are observation parameters only; direct-push/unreviewed status, tag signatures, and release boundaries remain unknown unless evidence can prove them. It performs no productivity scoring, identity profiling, blame, intent inference, or history mutation.
 

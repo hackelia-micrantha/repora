@@ -9,6 +9,7 @@ import (
 func TestCIEnvironmentPostureSchemasAreWellFormed(t *testing.T) {
 	for _, schemaPath := range []string{
 		"../../schemas/posture-ci-environment-v1.schema.json",
+		"../../schemas/posture-ci-environment-v2.schema.json",
 		"../../schemas/posture-ci-environment-profile-v1.schema.json",
 	} {
 		data, err := os.ReadFile(schemaPath)
