@@ -28,7 +28,7 @@ The importer must bind the **exact checked-out Git revision** and canonical plan
 Successful PR/main CI retains:
 
 - `artifacts/testule/representative-go-test.json` — bounded native Go event stream;
-- `artifacts/testule/subject-revision.txt` — exact checked-out Git commit.
+- `artifacts/testule/subject-revision.txt` — exact checked-out Git commit. On `pull_request`, this is GitHub's tested synthetic merge revision; on `main`, it is the landed commit. The later importer must bind to this tested subject, not relabel it as the PR branch head.
 
 These files are **native observation source material**, not Testule Evidence. They do not contain a Testule plan fingerprint, do not assign Testule semantics by themselves, and do not make the repository plan complete. The later consumer slice must use a qualified Testule executable, bind the canonical plan fingerprint and revision, import the explicit reviewed `unit/positive/example` annotation, and prove that this deliberately representative-only input still leaves blocking gaps with actual Testule exit 5.
 
