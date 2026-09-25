@@ -63,13 +63,13 @@ type RuleApplicability struct {
 type Rule struct {
 	ID            string             `json:"id"`
 	Applicability *RuleApplicability `json:"applicability,omitempty"`
-	Area          string          `json:"area"`
-	Fact          string          `json:"fact"`
-	Operator      Operator        `json:"operator"`
-	Expected      json.RawMessage `json:"expected,omitempty"`
-	Severity      Severity        `json:"severity"`
-	Title         string          `json:"title"`
-	Remediation   []string        `json:"remediation"`
+	Area          string             `json:"area"`
+	Fact          string             `json:"fact"`
+	Operator      Operator           `json:"operator"`
+	Expected      json.RawMessage    `json:"expected,omitempty"`
+	Severity      Severity           `json:"severity"`
+	Title         string             `json:"title"`
+	Remediation   []string           `json:"remediation"`
 }
 
 type Exception struct {
@@ -95,15 +95,14 @@ type Inputs struct {
 type ResultStatus string
 
 const (
-	StatusPass        ResultStatus = "pass"
-	StatusFail        ResultStatus = "fail"
-	StatusWarning     ResultStatus = "warning"
+	StatusPass          ResultStatus = "pass"
+	StatusFail          ResultStatus = "fail"
+	StatusWarning       ResultStatus = "warning"
 	StatusExcepted      ResultStatus = "excepted"
 	StatusNotApplicable ResultStatus = "not-applicable"
 	StatusUnknown       ResultStatus = "unknown"
-	StatusUnavailable ResultStatus = "unavailable"
+	StatusUnavailable   ResultStatus = "unavailable"
 )
-
 type ApplicabilityDecision string
 
 const (
@@ -125,16 +124,16 @@ type ApplicabilityEvaluation struct {
 }
 
 type Evaluation struct {
-	RuleID       string             `json:"rule_id"`
-	Area         string             `json:"area"`
-	Fact         string             `json:"fact"`
-	Severity     Severity           `json:"severity"`
-	Status       ResultStatus       `json:"status"`
-	Title        string             `json:"title"`
-	Expected     json.RawMessage    `json:"expected,omitempty"`
-	Observed     json.RawMessage    `json:"observed,omitempty"`
-	Evidence     []posture.Evidence `json:"evidence"`
-	Remediation  []string           `json:"remediation"`
+	RuleID        string                   `json:"rule_id"`
+	Area          string                   `json:"area"`
+	Fact          string                   `json:"fact"`
+	Severity      Severity                 `json:"severity"`
+	Status        ResultStatus             `json:"status"`
+	Title         string                   `json:"title"`
+	Expected      json.RawMessage          `json:"expected,omitempty"`
+	Observed      json.RawMessage          `json:"observed,omitempty"`
+	Evidence      []posture.Evidence       `json:"evidence"`
+	Remediation   []string                 `json:"remediation"`
 	Applicability *ApplicabilityEvaluation `json:"applicability,omitempty"`
 	Exception     *Exception               `json:"exception,omitempty"`
 	ExceptionGap  string                   `json:"exception_gap,omitempty"`
