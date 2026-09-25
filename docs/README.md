@@ -18,6 +18,7 @@ Use the smallest authoritative source that answers the question.
 | How does the GitHub repository/CI posture inventory work? | [`posture-inventory.md`](posture-inventory.md) |
 | How does deterministic documentation/README posture work? | [`posture-documentation.md`](posture-documentation.md) |
 | How do hooks/local-workflow posture facts work? | [`posture-hooks.md`](posture-hooks.md) |
+| How does flake-first CI environment posture work? | [`posture-ci-environment.md`](posture-ci-environment.md) |
 | How does bounded commit-history posture work? | [`posture-commits.md`](posture-commits.md) |
 | How does mirror-management posture work? | [`posture-mirrors.md`](posture-mirrors.md) |
 | How does local Git storage posture work? | [`posture-storage.md`](posture-storage.md) |
@@ -70,7 +71,7 @@ The RFC-0001 documentation set and `plans/implementation-plan-v0.1.md` predate s
 - **ADRs** own durable decisions and consequences; they do not act as project plans.
 - **Architecture documents** explain current implementation, authority boundaries, and package ownership.
 - **Schemas** define machine-readable compatibility contracts.
-- **Posture inventories** capture normalized observed/unknown/unavailable repository evidence; [CI environment posture](posture-ci-environment.md) adds flake/lock, workflow ownership-signal, CI-applicability declaration, and external platform/bootstrap input evidence without evaluating compliance. repository-owned observation profiles select deterministic facts but do not define severity, findings, exceptions, or remediation policy. Hooks posture treats repository hook/config data as non-executable observation input and keeps CI authoritative. Commit posture keeps history bounded and excludes identity/productivity analytics. Mirror posture reuses existing reconciliation observations rather than redefining drift semantics.
+- **Posture inventories** capture normalized observed/unknown/unavailable repository evidence; [CI environment posture](posture-ci-environment.md) adds flake/lock, workflow ownership-signal, CI-applicability declaration, and external platform/bootstrap input evidence without evaluating compliance. Repository-owned observation profiles select deterministic facts but do not define severity, findings, exceptions, or remediation policy. Hooks posture treats repository hook/config data as non-executable observation input and keeps CI authoritative. Commit posture keeps history bounded and excludes identity/productivity analytics. Mirror posture reuses existing reconciliation observations rather than redefining drift semantics.
 - **Posture policy profiles** are external policy data over normalized facts. They own explicit expectations, severity, remediation options, and bounded exceptions; they do not grant provider access or mutation authority. Posture reports preserve source evidence and unknown/unavailable states and do not collapse findings into an opaque numeric score.
 - **Assessment reports** capture point-in-time analysis and evidence; they reference GitHub/repository state rather than replacing it.
 - **README files** provide orientation and current capability summaries, not detailed requirements.

@@ -223,7 +223,7 @@ func TestPostureInventoryFallsBackToGHToken(t *testing.T) {
 }
 
 func TestPostureHelpAndUsage(t *testing.T) {
-	for _, subcommand := range []string{"inventory", "docs", "hooks", "commits"} {
+	for _, subcommand := range []string{"inventory", "docs", "hooks", "ci-environment", "commits"} {
 		var stdout bytes.Buffer
 		code := withStdout(t, &stdout, func() int {
 			return run([]string{"posture", subcommand, "--help"})
@@ -237,7 +237,7 @@ func TestPostureHelpAndUsage(t *testing.T) {
 	code := withStderr(t, &stderr, func() int {
 		return run([]string{"posture", "inventory"})
 	})
-	want := "usage: repoctl posture inventory OWNER/REPO\n       repoctl posture docs OWNER/REPO\n       repoctl posture hooks OWNER/REPO\n       repoctl posture commits OWNER/REPO\n       repoctl posture mirrors -f repora.yaml\n       repoctl posture storage --repository OWNER/REPO --path LOCAL_GIT_REPOSITORY\n       repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--commits FILE] [--storage FILE] [--mirrors FILE --repo-uid UID]\n       repoctl posture report --profile POLICY.json --facts FACTS.json --as-of YYYY-MM-DD [--format markdown|json]\n"
+	want := "usage: repoctl posture inventory OWNER/REPO\n       repoctl posture docs OWNER/REPO\n       repoctl posture hooks OWNER/REPO\n       repoctl posture ci-environment OWNER/REPO\n       repoctl posture commits OWNER/REPO\n       repoctl posture mirrors -f repora.yaml\n       repoctl posture storage --repository OWNER/REPO --path LOCAL_GIT_REPOSITORY\n       repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--ci-environment FILE] [--commits FILE] [--storage FILE] [--mirrors FILE --repo-uid UID]\n       repoctl posture report --profile POLICY.json --facts FACTS.json --as-of YYYY-MM-DD [--format markdown|json]\n"
 	if code != 1 || stderr.String() != want {
 		t.Fatalf("usage code=%d output=%q want=%q", code, stderr.String(), want)
 	}

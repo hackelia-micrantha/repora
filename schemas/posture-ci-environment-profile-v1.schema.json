@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/posture-ci-environment-profile-v1.schema.json",
+  "title": "Repora CI environment posture profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "ci_applicability"],
+  "properties": {
+    "kind": {"const": "repora.posture-ci-environment-profile"},
+    "version": {"const": 1},
+    "ci_applicability": {"enum": ["applicable", "not-applicable", "unresolved"]},
+    "external_inputs": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/externalInput"}
+    }
+  },
+  "$defs": {
+    "externalInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "class", "rationale"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9._-]+$"},
+        "class": {"enum": ["bootstrap", "platform"]},
+        "rationale": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

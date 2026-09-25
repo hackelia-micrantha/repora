@@ -36,6 +36,7 @@ The operator workflow is explicitly split into collection, offline convergence, 
 repoctl posture inventory OWNER/REPO > inventory.json
 repoctl posture docs OWNER/REPO > docs.json
 repoctl posture hooks OWNER/REPO > hooks.json
+repoctl posture ci-environment OWNER/REPO > ci-environment.json
 repoctl posture commits OWNER/REPO > commits.json
 repoctl posture mirrors -f repora.yaml > mirrors.json
 
@@ -43,6 +44,7 @@ repoctl posture converge \
   --inventory inventory.json \
   --docs docs.json \
   --hooks hooks.json \
+  --ci-environment ci-environment.json \
   --commits commits.json \
   --mirrors mirrors.json \
   --repo-uid repo.example \
@@ -130,6 +132,7 @@ The Go convergence adapters consume the existing typed posture artifacts directl
 - `AddInventory` — `repora.posture-inventory` v1;
 - `AddDocumentation` — `repora.posture-documentation` v1;
 - `AddHooks` — `repora.posture-hooks` v1;
+- `AddCIEnvironment` — `repora.posture-ci-environment` v1;
 - `AddCommits` — `repora.posture-commits` v1;
 - `AddMirrors` — one UID selected from a validated `repora.posture-mirrors` v1 inventory.
 - `AddStorage` — local-only `repora.posture-storage` v1 facts; `storage.scope` must remain `local_object_database` and the repository identity is operator-asserted, not remotely verified.
