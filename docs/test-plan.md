@@ -1,6 +1,6 @@
 # Repository TestPlan pilot
 
-The repository-owned `testplan.yaml` declares Repora's **intended required and optional validation dimensions** for Micrantha's Testule Pilot 2 ([tracking issue #178](https://github.com/hackelia-micrantha/repora/issues/178), [organization rollout #36](https://github.com/hackelia-micrantha/hackelia-micrantha/issues/36)). This is a **declaration-only first slice**. Structural validation, a green Go workflow, or the presence of an example test **does not** establish that a Testule requirement is satisfied. No revision-bound Evidence importer or complete `testule gaps` gate is installed in Repora yet.
+The repository-owned `testplan.yaml` declares Repora's **intended required and optional validation dimensions** for Micrantha's Testule Pilot 2 ([tracking issue #178](https://github.com/hackelia-micrantha/repora/issues/178), [organization rollout #36](https://github.com/hackelia-micrantha/hackelia-micrantha/issues/36)). The declaration slice is merged and semantically validated, but structural validation, a green Go workflow, or the presence of an example test **does not** establish that a Testule requirement is satisfied. Repora now stages one bounded exact native observation source for later import; no normalized Repora Testule Evidence or complete `testule gaps` gate is installed yet.
 
 ## Native validation remains authoritative
 
@@ -10,7 +10,7 @@ The repository-owned `testplan.yaml` declares Repora's **intended required and o
 
 | Plan requirement | Current candidate or native boundary | Review needed before claiming satisfaction |
 | --- | --- | --- |
-| `level.unit`, `behavior.positive`, `generation.example` | `internal/plan.TestReconcileIsDeterministicAndDoesNotMutateInputs` | Verify the exact assertions and native JSON event on the selected revision. |
+| `level.unit`, `behavior.positive`, `generation.example` | `internal/plan.TestReconcileIsDeterministicAndDoesNotMutateInputs` | CI stages and verifies the exact native JSON event and revision for this target. That source still requires explicit Testule import/annotation before any row is satisfied. |
 | `level.component` | `internal/apply.TestPreflightRepositoryArtifactAuditedChecksEveryTargetBeforeMutation` | Confirm the assertion covers multi-target preflight and side-effect ordering, not whole-repository integration. |
 | `level.contract` | `cmd/repoctl.TestStatusOutputMatchesGoldenContract` and `make contract-test` | Keep the specific Go JSON target separate from the Python/Go script-based routing and receipt contracts. |
 | `level.integration` | `TestExecuteSynchronizesBehindMirrorUsingLocalGitRepos` in `internal/apply/apply_integration_test.go` (native Go package `repoctl/internal/apply`) | Confirm the real disposable-local-Git setup and exact observed package/target; this target is not a remote-hosted provider test. |
@@ -20,6 +20,17 @@ The repository-owned `testplan.yaml` declares Repora's **intended required and o
 | `behavior.adversarial` | `internal/git.TestEnsureMirrorRejectsSymlinkEscape` | Confirm real path/symlink escape rejection; do not infer protection against every adversarial class from this one fixture. |
 
 The importer must bind the **exact checked-out Git revision** and canonical plan fingerprint, verify target-level and package-level success from bounded native `go test -json` output, and use explicit reviewed semantic annotations. The imported record must not claim Testule executed tests that native Go actually ran. A deliberately incomplete representative mapping must still return actual Testule exit 5 before a complete mapping may become a blocking CI gate.
+
+## Bounded representative native observation source
+
+`make testule-observation-source` runs only the reviewed planner target with `go test -count=1 -json`. The producer stream is drained to EOF through a one-MiB exclusive mode-0600 capture. Overflow fails closed after draining, so a retained prefix is never trusted and cannot turn producer SIGPIPE into a misleading native result. A separate parser requires the exact package/target to have a `run` event and exactly one terminal `pass`; missing, skipped, failed, malformed, or mismatched observations fail the source step.
+
+Successful PR/main CI retains:
+
+- `artifacts/testule/representative-go-test.json` — bounded native Go event stream;
+- `artifacts/testule/subject-revision.txt` — exact checked-out Git commit.
+
+These files are **native observation source material**, not Testule Evidence. They do not contain a Testule plan fingerprint, do not assign Testule semantics by themselves, and do not make the repository plan complete. The later consumer slice must use a qualified Testule executable, bind the canonical plan fingerprint and revision, import the explicit reviewed `unit/positive/example` annotation, and prove that this deliberately representative-only input still leaves blocking gaps with actual Testule exit 5.
 
 ## Generation and deployment disposition
 
@@ -31,7 +42,7 @@ PR Linux verification binaries execute the CLI smoke; Windows/macOS binaries are
 
 ## Acceptance before enabling a Testule gate
 
-1. Validate this YAML with an actual pinned Testule `v1alpha1` validator; keep this slice draft until the validation and toolchain source are documented.
+1. The checked-in plan has already passed an actual pinned Testule `v1alpha1` validation; invalidate that proof if the plan bytes change and revalidate before claiming conformance.
 2. Review the exact assertions and native events for each candidate. Record missing dimensions rather than attaching invented annotations.
 3. Resolve the Go 1.25.13 / Testule Go 1.26 toolchain and distribution decision without silently raising Repora's supported Go version or adding an untrusted artifact source.
 4. Preserve native correctness checks and run a representative intentionally incomplete Evidence smoke before a complete, exact-revision gap gate.
