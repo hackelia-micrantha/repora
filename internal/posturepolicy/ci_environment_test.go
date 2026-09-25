@@ -24,6 +24,9 @@ func TestAddCIEnvironmentPreservesDeclarationsAndSignals(t *testing.T) {
 				ContentState:             posture.StateObserved,
 				FlakeInvocationSignals:   posture.Observed([]string{"flake-check"}),
 				ImperativeInstallSignals: posture.Observed([]string{"apt-install"}),
+				WorkloadToolSignals:      posture.Observed([]string{"go"}),
+				SetupProvisioningSignals: posture.Observed([]string{}),
+				AmbientToolCandidates:    posture.Observed([]string{"go"}),
 				Evidence:                 []posture.Evidence{},
 			},
 		},
@@ -44,6 +47,12 @@ func TestAddCIEnvironmentPreservesDeclarationsAndSignals(t *testing.T) {
 	}
 	if got := string(inputs.Facts["ci_environment.workflows_with_flake_signals_count"].Value); got != "1" {
 		t.Fatalf("flake workflow count = %s", got)
+	}
+	if got := string(inputs.Facts["ci_environment.workflows_with_ambient_tool_candidates_count"].Value); got != "1" {
+		t.Fatalf("ambient candidate workflow count = %s", got)
+	}
+	if got := string(inputs.Facts["ci_environment.workflow..github/workflows/ci.yml.ambient_tool_candidates"].Value); got != `["go"]` {
+		t.Fatalf("ambient candidates = %s", got)
 	}
 	if got := string(inputs.Facts["ci_environment.external_input.linux-kernel.class"].Value); got != `"platform"` {
 		t.Fatalf("external input class = %s", got)
