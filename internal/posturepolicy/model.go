@@ -103,6 +103,7 @@ const (
 	StatusUnknown       ResultStatus = "unknown"
 	StatusUnavailable   ResultStatus = "unavailable"
 )
+
 type ApplicabilityDecision string
 
 const (
