@@ -24,6 +24,7 @@ This runs formatting verification, module hygiene, `go vet`, fast race-enabled t
 | `make static-analysis` | Run `go vet` and the pinned Staticcheck release against all Go packages and tests. |
 | `make test` | Run fast tests with `-race -count=1 -short`. |
 | `make coverage` | Run the fast test suite with race detection and write coverage profile and summary files under `artifacts/coverage/`. |
+| `make testule-observation-source` | Run one reviewed planner target as bounded native `go test -json` source material for the Testule pilot; this is not normalized Testule Evidence or a gap result. |
 | `make integration` | Run integration-bearing packages against disposable local Git repositories. |
 | `make contract-test` | Run routing, context-receipt, and repository-assessment contract validation. |
 | `make deep-repeat` | Repeat the fast race-enabled suite, reporting the failing iteration. |
@@ -54,6 +55,12 @@ The unit-test CI job runs `make coverage`. The `go test` output reports coverage
 CI retains both `coverage.out` and the text summary for 7 days in the `go-coverage` artifact. Coverage is evidence for review and trend analysis; no repository-wide percentage threshold is enforced.
 
 Coverage profiles contain repository-relative Go source paths and must not be augmented with credentials, environment dumps, or sensitive local paths.
+
+### Testule native observation source
+
+The unit CI job also runs `make testule-observation-source`. This does **not** rerun the full suite: it executes only `repoctl/internal/plan.TestReconcileIsDeterministicAndDoesNotMutateInputs` with `-count=1 -json`, drains the native stream through a one-MiB fail-closed capture, verifies the exact target reached a passing terminal event, and retains the stream plus `git rev-parse HEAD` for seven days.
+
+On pull requests, the recorded revision is GitHub's synthetic merge checkout because that is the code actually tested. On `main`, it is the landed commit. The files under `artifacts/testule/` are native observation source material only: they do not carry a canonical Testule plan fingerprint, semantic annotation, normalized Evidence record, or a `testule gaps` outcome. Those remain separate consumer work under the Testule pilot.
 
 ## Verification binaries and target status
 
