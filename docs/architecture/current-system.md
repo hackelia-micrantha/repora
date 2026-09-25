@@ -255,8 +255,8 @@ Current serialized contracts include:
 - `repora.posture-mirrors` v1;
 - `repora.posture-storage` v1;
 - `repora.posture-policy-inputs` v1;
-- `repora.posture-policy-profile` v1;
-- `repora.posture-report` v1.
+- `repora.posture-policy-profile` v1 and v2;
+- `repora.posture-report` v1 and v2.
 
 Versioned files under `schemas/` are authoritative for serialized shapes.
 

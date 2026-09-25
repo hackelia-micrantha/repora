@@ -117,7 +117,7 @@ reuses Repora's local reconciliation observation path and may refresh local cach
 .B posture converge
 and
 .B posture report
-are offline-only. They consume versioned artifacts, preserve unknown or unavailable evidence, and do not contact providers or mutate repository state.
+are offline-only. They consume versioned artifacts, preserve unknown or unavailable evidence, and do not contact providers or mutate repository state. Policy profile v2 supports bounded conditional applicability over one normalized fact and reports explicit not-applicable results without treating them as passes or findings.
 .SH ENVIRONMENT
 .TP
 .B GITHUB_TOKEN

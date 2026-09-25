@@ -25,21 +25,29 @@ func Evaluate(profile Profile, inputs Inputs, asOf time.Time) (Report, error) {
 
 	evaluations := make([]Evaluation, 0, len(profile.Rules))
 	for _, rule := range profile.Rules {
-		fact, exists := inputs.Facts[rule.Fact]
-		if !exists {
-			fact = FactInput{
-				State: posture.StateUnknown,
-				Evidence: []posture.Evidence{{
-					Source:    "posture-policy",
-					Reference: rule.Fact,
-					Detail:    "normalized fact was not supplied to the convergence layer",
-				}},
+		var applicability *ApplicabilityEvaluation
+		if rule.Applicability != nil {
+			applicabilityFact := inputFact(inputs, rule.Applicability.Fact)
+			applicabilityEvaluation, applies, status, err := evaluateApplicability(*rule.Applicability, applicabilityFact)
+			if err != nil {
+				return Report{}, fmt.Errorf("evaluate rule %q applicability: %w", rule.ID, err)
+			}
+			applicability = &applicabilityEvaluation
+			if !applies {
+				evaluation := newEvaluation(rule, applicabilityFact.Evidence)
+				evaluation.Status = status
+				evaluation.Applicability = applicability
+				evaluations = append(evaluations, evaluation)
+				continue
 			}
 		}
+
+		fact := inputFact(inputs, rule.Fact)
 		evaluation, err := evaluateRule(rule, fact)
 		if err != nil {
 			return Report{}, fmt.Errorf("evaluate rule %q: %w", rule.ID, err)
 		}
+		evaluation.Applicability = applicability
 		if exception, ok := exceptions[rule.ID]; ok && isMismatch(evaluation.Status) {
 			expires, _ := time.Parse("2006-01-02", exception.Expires)
 			evaluation.Exception = &exception
@@ -52,9 +60,13 @@ func Evaluate(profile Profile, inputs Inputs, asOf time.Time) (Report, error) {
 		evaluations = append(evaluations, evaluation)
 	}
 
+	reportVersion := ReportVersion
+	if profile.Version == ProfileVersionV2 {
+		reportVersion = ReportVersionV2
+	}
 	return Report{
 		Kind:        ReportKind,
-		Version:     ReportVersion,
+		Version:     reportVersion,
 		Repository:  inputs.Repository,
 		ProfileID:   profile.ID,
 		AsOf:        asOf.UTC().Format("2006-01-02"),
@@ -62,17 +74,83 @@ func Evaluate(profile Profile, inputs Inputs, asOf time.Time) (Report, error) {
 	}, nil
 }
 
-func evaluateRule(rule Rule, fact FactInput) (Evaluation, error) {
-	evaluation := Evaluation{
+func inputFact(inputs Inputs, name string) FactInput {
+	if fact, exists := inputs.Facts[name]; exists {
+		return fact
+	}
+	return FactInput{
+		State: posture.StateUnknown,
+		Evidence: []posture.Evidence{{
+			Source:    "posture-policy",
+			Reference: name,
+			Detail:    "normalized fact was not supplied to the convergence layer",
+		}},
+	}
+}
+
+func evaluateApplicability(selector RuleApplicability, fact FactInput) (ApplicabilityEvaluation, bool, ResultStatus, error) {
+	evaluation := ApplicabilityEvaluation{
+		Fact:              selector.Fact,
+		State:             fact.State,
+		Evidence:          append([]posture.Evidence{}, fact.Evidence...),
+		ApplicableWhen:    cloneCondition(selector.ApplicableWhen),
+		NotApplicableWhen: cloneCondition(selector.NotApplicableWhen),
+	}
+	switch fact.State {
+	case posture.StateUnknown:
+		evaluation.Decision = ApplicabilityUnknown
+		return evaluation, false, StatusUnknown, nil
+	case posture.StateUnavailable:
+		evaluation.Decision = ApplicabilityUnavailable
+		return evaluation, false, StatusUnavailable, nil
+	case posture.StateObserved:
+		evaluation.Observed = cloneRaw(fact.Value)
+	default:
+		return ApplicabilityEvaluation{}, false, "", fmt.Errorf("fact %q has unsupported state %q", selector.Fact, fact.State)
+	}
+
+	applies, err := matchesCondition(selector.ApplicableWhen, fact.Value)
+	if err != nil {
+		return ApplicabilityEvaluation{}, false, "", fmt.Errorf("applicable_when: %w", err)
+	}
+	notApplicable, err := matchesCondition(selector.NotApplicableWhen, fact.Value)
+	if err != nil {
+		return ApplicabilityEvaluation{}, false, "", fmt.Errorf("not_applicable_when: %w", err)
+	}
+	if applies && notApplicable {
+		return ApplicabilityEvaluation{}, false, "", fmt.Errorf("applicability fact %q matches both applicable_when and not_applicable_when", selector.Fact)
+	}
+	if applies {
+		evaluation.Decision = ApplicabilityApplicable
+		return evaluation, true, "", nil
+	}
+	if notApplicable {
+		evaluation.Decision = ApplicabilityNotApplicable
+		return evaluation, false, StatusNotApplicable, nil
+	}
+	evaluation.Decision = ApplicabilityUnresolved
+	return evaluation, false, StatusUnknown, nil
+}
+
+func cloneCondition(condition Condition) Condition {
+	return Condition{Operator: condition.Operator, Expected: cloneRaw(condition.Expected)}
+}
+
+func newEvaluation(rule Rule, evidence []posture.Evidence) Evaluation {
+	return Evaluation{
 		RuleID:      rule.ID,
 		Area:        rule.Area,
 		Fact:        rule.Fact,
 		Severity:    rule.Severity,
 		Title:       rule.Title,
 		Expected:    cloneRaw(rule.Expected),
-		Evidence:    append([]posture.Evidence{}, fact.Evidence...),
+		Evidence:    append([]posture.Evidence{}, evidence...),
 		Remediation: append([]string{}, rule.Remediation...),
 	}
+}
+
+func evaluateRule(rule Rule, fact FactInput) (Evaluation, error) {
+	evaluation := newEvaluation(rule, fact.Evidence)
 
 	switch fact.State {
 	case posture.StateUnknown:
@@ -87,7 +165,7 @@ func evaluateRule(rule Rule, fact FactInput) (Evaluation, error) {
 		return Evaluation{}, fmt.Errorf("fact %q has unsupported state %q", rule.Fact, fact.State)
 	}
 
-	matched, err := matches(rule, fact.Value)
+	matched, err := matchesCondition(Condition{Operator: rule.Operator, Expected: rule.Expected}, fact.Value)
 	if err != nil {
 		return Evaluation{}, err
 	}
@@ -105,24 +183,24 @@ func isMismatch(status ResultStatus) bool {
 	return status == StatusFail || status == StatusWarning
 }
 
-func matches(rule Rule, observed json.RawMessage) (bool, error) {
-	switch rule.Operator {
+func matchesCondition(condition Condition, observed json.RawMessage) (bool, error) {
+	switch condition.Operator {
 	case OperatorEquals:
 		left, err := decodeJSONValue(observed)
 		if err != nil {
 			return false, fmt.Errorf("decode observed value: %w", err)
 		}
-		right, err := decodeJSONValue(rule.Expected)
+		right, err := decodeJSONValue(condition.Expected)
 		if err != nil {
 			return false, fmt.Errorf("decode expected value: %w", err)
 		}
 		return equalJSONValue(left, right), nil
 	case OperatorAtLeast, OperatorAtMost:
-		comparison, err := compareJSONNumbers(observed, rule.Expected)
+		comparison, err := compareJSONNumbers(observed, condition.Expected)
 		if err != nil {
 			return false, err
 		}
-		if rule.Operator == OperatorAtLeast {
+		if condition.Operator == OperatorAtLeast {
 			return comparison >= 0, nil
 		}
 		return comparison <= 0, nil
@@ -142,7 +220,7 @@ func matches(rule Rule, observed json.RawMessage) (bool, error) {
 			return false, nil
 		}
 	default:
-		return false, fmt.Errorf("unsupported operator %q", rule.Operator)
+		return false, fmt.Errorf("unsupported operator %q", condition.Operator)
 	}
 }
 

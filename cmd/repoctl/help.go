@@ -84,7 +84,7 @@ Options for posture commands:
   posture converge --repo-uid string
         repository uid to select from the mirror posture artifact
   posture report --profile string
-        strict repora.posture-policy-profile v1 JSON; policy is external to repository-controlled observation profiles
+        strict repora.posture-policy-profile v1 or v2 JSON; policy is external to repository-controlled observation profiles
   posture report --facts string
         strict repora.posture-policy-inputs v1 JSON containing normalized facts only
   posture report --as-of string
@@ -106,7 +106,7 @@ Posture mirrors reuses the existing mirror reconciliation cache/status semantics
 
 Posture converge is offline-only. It strictly validates supplied versioned collector artifacts, rejects duplicate source flags and repository-identity mismatches, preserves observed/unknown/unavailable states through the typed adapters, and emits deterministic repora.posture-policy-inputs v1 JSON. It does not re-scan repositories or contact providers.
 
-Posture report is offline-only. It consumes normalized fact inputs and an external policy profile, preserves unknown/unavailable evidence, evaluates explicit expected-vs-observed rules and exceptions, and emits deterministic Markdown or JSON. It does not contact providers, re-scan repositories, mutate state, or calculate an opaque numeric score.
+Posture report is offline-only. It consumes normalized fact inputs and an external policy profile, preserves unknown/unavailable evidence, evaluates explicit expected-vs-observed rules and exceptions, and emits deterministic Markdown or JSON. Policy v2 may additionally classify a rule as applicable, explicitly not applicable, or unresolved using one normalized applicability fact; target facts are not evaluated until applicability is established. It does not contact providers, re-scan repositories, mutate state, or calculate an opaque numeric score.
 
 Options for plan-readme:
   -f string

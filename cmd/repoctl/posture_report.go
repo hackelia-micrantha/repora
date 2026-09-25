@@ -16,7 +16,7 @@ func runPostureReport(args []string) int {
 	}
 	flags := flag.NewFlagSet("repoctl posture report", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
-	profilePath := flags.String("profile", "", "path to repora.posture-policy-profile v1 JSON")
+	profilePath := flags.String("profile", "", "path to repora.posture-policy-profile v1 or v2 JSON")
 	factsPath := flags.String("facts", "", "path to repora.posture-policy-inputs v1 JSON")
 	format := flags.String("format", "markdown", "output format: markdown or json")
 	asOfValue := flags.String("as-of", "", "policy evaluation date in YYYY-MM-DD format")
