@@ -16,11 +16,11 @@ const (
 	CIEnvironmentInventoryKind      = "repora.posture-ci-environment"
 	CIEnvironmentInventoryVersionV1 = 1
 	CIEnvironmentInventoryVersion   = 2
-	CIEnvironmentProfileKind      = "repora.posture-ci-environment-profile"
-	CIEnvironmentProfileVersion   = 1
-	ciEnvironmentProfilePath      = ".repora/posture-ci-environment.yaml"
-	maxCIEnvironmentBytes         = 1 << 20
-	maxCIExternalInputs           = 64
+	CIEnvironmentProfileKind        = "repora.posture-ci-environment-profile"
+	CIEnvironmentProfileVersion     = 1
+	ciEnvironmentProfilePath        = ".repora/posture-ci-environment.yaml"
+	maxCIEnvironmentBytes           = 1 << 20
+	maxCIExternalInputs             = 64
 )
 
 type CIEnvironmentProfile struct {
@@ -417,7 +417,6 @@ func detectFlakeInvocationSignals(data []byte) []string {
 	}
 	return sortedUnique(signals)
 }
-
 
 type ciWorkflowDocument struct {
 	Jobs map[string]struct {
