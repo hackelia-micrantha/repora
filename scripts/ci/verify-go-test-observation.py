@@ -25,7 +25,7 @@ def main(argv):
         print(f"observation stream exceeds {MAX_INPUT_BYTES} bytes", file=sys.stderr)
         return 1
 
-    saw_run = False
+    target_actions = []
     terminal_actions = []
     try:
         with path.open("r", encoding="utf-8") as source:
@@ -43,21 +43,30 @@ def main(argv):
                 if event.get("Package") != package or event.get("Test") != target:
                     continue
                 action = event.get("Action")
-                if action == "run":
-                    saw_run = True
+                if isinstance(action, str):
+                    target_actions.append(action)
                 if action in TERMINAL_ACTIONS:
                     terminal_actions.append(str(action))
     except (OSError, UnicodeError) as exc:
         print(f"cannot read observation stream {path}: {exc}", file=sys.stderr)
         return 1
 
-    if not saw_run:
-        print(f"exact target was not observed running: {package} {target}", file=sys.stderr)
+    if target_actions.count("run") != 1:
+        print(
+            f"exact target must have one run event; observed {target_actions!r}",
+            file=sys.stderr,
+        )
         return 1
     if terminal_actions != ["pass"]:
         print(
             "exact target must have one passing terminal event; "
             f"observed {terminal_actions!r}",
+            file=sys.stderr,
+        )
+        return 1
+    if target_actions.index("run") > target_actions.index("pass"):
+        print(
+            f"exact target pass preceded run event: {target_actions!r}",
             file=sys.stderr,
         )
         return 1
