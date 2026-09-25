@@ -13,6 +13,7 @@ type ArtifactSet struct {
 	Inventory     []byte
 	Documentation []byte
 	Hooks         []byte
+	CIEnvironment []byte
 	Commits       []byte
 	Mirrors       []byte
 	Storage       []byte
@@ -22,7 +23,7 @@ type ArtifactSet struct {
 // ConvergeArtifacts validates and atomically converges collector artifacts into
 // the normalized posture policy input contract.
 func ConvergeArtifacts(artifacts ArtifactSet) (Inputs, error) {
-	if len(artifacts.Inventory) == 0 && len(artifacts.Documentation) == 0 && len(artifacts.Hooks) == 0 && len(artifacts.Commits) == 0 && len(artifacts.Mirrors) == 0 && len(artifacts.Storage) == 0 {
+	if len(artifacts.Inventory) == 0 && len(artifacts.Documentation) == 0 && len(artifacts.Hooks) == 0 && len(artifacts.CIEnvironment) == 0 && len(artifacts.Commits) == 0 && len(artifacts.Mirrors) == 0 && len(artifacts.Storage) == 0 {
 		return Inputs{}, fmt.Errorf("at least one posture artifact is required")
 	}
 	if len(artifacts.Mirrors) == 0 && strings.TrimSpace(artifacts.MirrorRepoUID) != "" {
@@ -61,6 +62,16 @@ func ConvergeArtifacts(artifacts ArtifactSet) (Inputs, error) {
 		}
 		if err := AddHooks(&inputs, inventory); err != nil {
 			return Inputs{}, fmt.Errorf("converge hooks posture inventory: %w", err)
+		}
+	}
+
+	if len(artifacts.CIEnvironment) != 0 {
+		var inventory posture.CIEnvironmentInventory
+		if err := decodeStrict(artifacts.CIEnvironment, &inventory); err != nil {
+			return Inputs{}, fmt.Errorf("parse CI environment posture inventory: %w", err)
+		}
+		if err := AddCIEnvironment(&inputs, inventory); err != nil {
+			return Inputs{}, fmt.Errorf("converge CI environment posture inventory: %w", err)
 		}
 	}
 

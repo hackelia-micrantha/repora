@@ -39,6 +39,7 @@ Collect, converge, and evaluate repository posture evidence. Collector subcomman
 .BR inventory ,
 .BR docs ,
 .BR hooks ,
+.BR ci-environment ,
 .BR commits ,
 and
 .BR mirrors .
@@ -106,6 +107,7 @@ The
 action observes repository and CI facts through a GET-only provider boundary.
 .B posture docs,
 .B posture hooks,
+.B posture ci-environment,
 and
 .B posture commits
 collect bounded read-only evidence for their respective domains.
@@ -168,6 +170,7 @@ Collect GitHub repository posture without mutation:
 .PP
 .nf
 repoctl posture inventory OWNER/REPO
+repoctl posture ci-environment OWNER/REPO
 .fi
 .SH SECURITY
 Installing Repora grants no repository or provider authority by itself. Keep credentials, host-specific topology, and other sensitive operator state outside Nix derivations and release artifacts. Review exact plans before mutation and preserve Repora's stale-state and lease checks rather than replaying old evidence.

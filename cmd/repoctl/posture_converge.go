@@ -42,12 +42,14 @@ func runPostureConverge(args []string) int {
 	inventoryPath := singlePathFlag{name: "inventory"}
 	documentationPath := singlePathFlag{name: "docs"}
 	hooksPath := singlePathFlag{name: "hooks"}
+	ciEnvironmentPath := singlePathFlag{name: "ci-environment"}
 	commitsPath := singlePathFlag{name: "commits"}
 	mirrorsPath := singlePathFlag{name: "mirrors"}
 	storagePath := singlePathFlag{name: "storage"}
 	flags.Var(&inventoryPath, "inventory", "path to repora.posture-inventory v1 JSON")
 	flags.Var(&documentationPath, "docs", "path to repora.posture-documentation v1 JSON")
 	flags.Var(&hooksPath, "hooks", "path to repora.posture-hooks v1 JSON")
+	flags.Var(&ciEnvironmentPath, "ci-environment", "path to repora.posture-ci-environment v1 JSON")
 	flags.Var(&commitsPath, "commits", "path to repora.posture-commits v1 JSON")
 	flags.Var(&mirrorsPath, "mirrors", "path to repora.posture-mirrors v1 JSON")
 	flags.Var(&storagePath, "storage", "path to repora.posture-storage v1 JSON")
@@ -59,7 +61,7 @@ func runPostureConverge(args []string) int {
 		printPostureConvergeUsage(os.Stderr)
 		return 1
 	}
-	if !inventoryPath.set && !documentationPath.set && !hooksPath.set && !commitsPath.set && !mirrorsPath.set && !storagePath.set {
+	if !inventoryPath.set && !documentationPath.set && !hooksPath.set && !ciEnvironmentPath.set && !commitsPath.set && !mirrorsPath.set && !storagePath.set {
 		printPostureConvergeUsage(os.Stderr)
 		return 1
 	}
@@ -84,6 +86,12 @@ func runPostureConverge(args []string) int {
 	}
 	if hooksPath.set {
 		artifacts.Hooks, err = readPostureArtifact("hooks", hooksPath.value)
+		if err != nil {
+			return 1
+		}
+	}
+	if ciEnvironmentPath.set {
+		artifacts.CIEnvironment, err = readPostureArtifact("ci-environment", ciEnvironmentPath.value)
 		if err != nil {
 			return 1
 		}
@@ -134,5 +142,5 @@ func readPostureArtifact(name, path string) ([]byte, error) {
 }
 
 func printPostureConvergeUsage(w *os.File) {
-	fmt.Fprintln(w, "usage: repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--commits FILE] [--storage FILE] [--mirrors FILE --repo-uid UID]")
+	fmt.Fprintln(w, "usage: repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--ci-environment FILE] [--commits FILE] [--storage FILE] [--mirrors FILE --repo-uid UID]")
 }
