@@ -16,6 +16,7 @@ jobs:
       - name: harmless prose
         env:
           NOTE: "go test and actions/setup-python@v5"
+          run: "python3 fake.py"
         run: |
           echo "go test"
           go test ./...
