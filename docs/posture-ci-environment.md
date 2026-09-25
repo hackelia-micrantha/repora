@@ -1,4 +1,4 @@
-# CI environment posture v1
+# CI environment posture
 
 Status: Current
 
@@ -6,7 +6,7 @@ Status: Current
 
 ## Contract
 
-The command emits `repora.posture-ci-environment` v1 JSON. The serialized contract is `schemas/posture-ci-environment-v1.schema.json`.
+The command emits `repora.posture-ci-environment` v2 JSON. Repora continues to accept v1 artifacts for compatibility. The serialized contracts are `schemas/posture-ci-environment-v1.schema.json` and `schemas/posture-ci-environment-v2.schema.json`.
 
 The collector records:
 
@@ -15,6 +15,7 @@ The collector records:
 - GitHub Actions workflow discovery completeness;
 - bounded per-workflow flake-invocation signals;
 - bounded high-confidence imperative-install signals;
+- bounded workload-tool invocation, known setup/provisioning, and conservative ambient-tool candidate signals;
 - an optional project declaration at `.repora/posture-ci-environment.yaml`;
 - explicitly declared irreducible `bootstrap` or `platform` external inputs.
 
@@ -47,7 +48,9 @@ Flake invocation signals are deliberately conservative and currently recognize:
 
 Imperative-install signals cover high-confidence shell installation patterns such as apt/apk/dnf/yum/brew, pip, global npm/pnpm/yarn installs, cargo/go installs, and rustup toolchain/component installation.
 
-Signals are observations only. Shell comments, wrappers, generated commands, or unusual syntax can require human classification. Repora does not claim that static text inspection proves semantic ownership.
+Signals are observations only. V2 parses GitHub Actions YAML steps and recognizes a deliberately small workload-tool family set from the start of `run:` command lines. It separately records known setup actions and derives an ambient candidate only when a recognized workload tool lacks a corresponding recognized setup action in that workflow.
+
+Commands beginning with `nix` are not reinterpreted as ambient nested tools, so `nix develop ... -c cargo test` does not become a bare Rust assumption. Comment-only lines are ignored. This is still bounded static evidence: shell wrappers, generated commands, PATH mutation, custom setup actions, composite actions, containers, and unusual syntax can remain unknown or require human classification. Runtime proof remains the responsibility of the runner/telemetry authority, such as Dubnium.
 
 ## Policy convergence
 
@@ -82,7 +85,7 @@ Important limits remain:
 - a flake file or workflow signal does not by itself prove that the flake is the authoritative environment;
 - static workflow signals are bounded observations, not full shell semantics;
 - declared `platform` / `bootstrap` inputs remain visible evidence and do not automatically become policy exceptions;
-- arbitrary undeclared ambient runner binaries are not yet fully detectable;
+- undeclared ambient runner-tool assumptions are detectable only for the bounded v2 tool/setup patterns; arbitrary binaries and runtime PATH provenance remain outside static proof;
 - Dubnium remains the runtime/space-time telemetry authority for its runner fleet.
 
 Those remaining evidence gaps stay tracked by #197 rather than being hidden by the example profile.

@@ -2,6 +2,7 @@ package posture
 
 import (
 	"context"
+	"strings"
 	"testing"
 )
 
@@ -20,7 +21,7 @@ func TestCollectGitHubCIEnvironmentCapturesFlakeAndInstallSignals(t *testing.T) 
 		treeObs: available("github.git_tree", "tree"),
 		blobs: map[string][]byte{
 			"profile": []byte("kind: repora.posture-ci-environment-profile\nversion: 1\nci_applicability: applicable\nexternal_inputs:\n  - id: linux-kernel\n    class: platform\n    rationale: required by the runner isolation boundary\n"),
-			"ci":      []byte("name: CI\njobs:\n  test:\n    steps:\n      - run: nix flake check\n      - run: apt-get install -y shellcheck\n"),
+			"ci":      []byte("name: CI\njobs:\n  test:\n    steps:\n      - uses: actions/setup-go@v6\n      - run: go test ./...\n      - run: nix flake check\n      - run: apt-get install -y shellcheck\n"),
 		},
 	}
 	inventory, err := CollectGitHubCIEnvironment(context.Background(), reader, "acme/project")
@@ -45,6 +46,60 @@ func TestCollectGitHubCIEnvironmentCapturesFlakeAndInstallSignals(t *testing.T) 
 	}
 	if workflow.ImperativeInstallSignals.Value == nil || len(*workflow.ImperativeInstallSignals.Value) != 1 || (*workflow.ImperativeInstallSignals.Value)[0] != "apt-install" {
 		t.Fatalf("install signals = %#v", workflow.ImperativeInstallSignals)
+	}
+	if workflow.WorkloadToolSignals.Value == nil || len(*workflow.WorkloadToolSignals.Value) != 1 || (*workflow.WorkloadToolSignals.Value)[0] != "go" {
+		t.Fatalf("workload tool signals = %#v", workflow.WorkloadToolSignals)
+	}
+	if workflow.SetupProvisioningSignals.Value == nil || len(*workflow.SetupProvisioningSignals.Value) != 1 || (*workflow.SetupProvisioningSignals.Value)[0] != "go" {
+		t.Fatalf("setup signals = %#v", workflow.SetupProvisioningSignals)
+	}
+	if workflow.AmbientToolCandidates.Value == nil || len(*workflow.AmbientToolCandidates.Value) != 0 {
+		t.Fatalf("ambient candidates = %#v", workflow.AmbientToolCandidates)
+	}
+}
+
+func TestDetectWorkflowToolSignalsFindsBareAmbientCandidates(t *testing.T) {
+	data := []byte(`name: CI
+jobs:
+  test:
+    steps:
+      - run: go test ./...
+      - run: |
+          # python in a comment must not count
+          python3 -m pytest
+      - run: nix develop .#ci -c cargo test
+`)
+	tools, setups := detectWorkflowToolSignals(data)
+	if got, want := strings.Join(tools, ","), "go,python"; got != want {
+		t.Fatalf("tools = %q, want %q", got, want)
+	}
+	if len(setups) != 0 {
+		t.Fatalf("setups = %#v, want none", setups)
+	}
+	if got, want := strings.Join(detectAmbientToolCandidates(tools, setups), ","), "go,python"; got != want {
+		t.Fatalf("ambient candidates = %q, want %q", got, want)
+	}
+}
+
+func TestDetectWorkflowToolSignalsCorrelatesKnownSetupActions(t *testing.T) {
+	data := []byte(`name: CI
+jobs:
+  test:
+    steps:
+      - uses: actions/setup-python@v6
+      - uses: actions/setup-node@v5
+      - run: python -m pytest
+      - run: npm test
+`)
+	tools, setups := detectWorkflowToolSignals(data)
+	if got, want := strings.Join(tools, ","), "node,python"; got != want {
+		t.Fatalf("tools = %q, want %q", got, want)
+	}
+	if got, want := strings.Join(setups, ","), "node,python"; got != want {
+		t.Fatalf("setups = %q, want %q", got, want)
+	}
+	if candidates := detectAmbientToolCandidates(tools, setups); len(candidates) != 0 {
+		t.Fatalf("ambient candidates = %#v, want none", candidates)
 	}
 }
 

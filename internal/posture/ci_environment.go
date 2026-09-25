@@ -13,13 +13,14 @@ import (
 )
 
 const (
-	CIEnvironmentInventoryKind    = "repora.posture-ci-environment"
-	CIEnvironmentInventoryVersion = 1
-	CIEnvironmentProfileKind      = "repora.posture-ci-environment-profile"
-	CIEnvironmentProfileVersion   = 1
-	ciEnvironmentProfilePath      = ".repora/posture-ci-environment.yaml"
-	maxCIEnvironmentBytes         = 1 << 20
-	maxCIExternalInputs           = 64
+	CIEnvironmentInventoryKind      = "repora.posture-ci-environment"
+	CIEnvironmentInventoryVersionV1 = 1
+	CIEnvironmentInventoryVersion   = 2
+	CIEnvironmentProfileKind        = "repora.posture-ci-environment-profile"
+	CIEnvironmentProfileVersion     = 1
+	ciEnvironmentProfilePath        = ".repora/posture-ci-environment.yaml"
+	maxCIEnvironmentBytes           = 1 << 20
+	maxCIExternalInputs             = 64
 )
 
 type CIEnvironmentProfile struct {
@@ -47,6 +48,9 @@ type CIEnvironmentWorkflowFact struct {
 	ContentState             FactState      `json:"content_state"`
 	FlakeInvocationSignals   Fact[[]string] `json:"flake_invocation_signals"`
 	ImperativeInstallSignals Fact[[]string] `json:"imperative_install_signals"`
+	WorkloadToolSignals      Fact[[]string] `json:"workload_tool_signals,omitempty"`
+	SetupProvisioningSignals Fact[[]string] `json:"setup_provisioning_signals,omitempty"`
+	AmbientToolCandidates    Fact[[]string] `json:"ambient_tool_candidates,omitempty"`
 	Evidence                 []Evidence     `json:"evidence"`
 }
 
@@ -146,7 +150,7 @@ func newCIEnvironmentInventory(fullName string) CIEnvironmentInventory {
 }
 
 func (i CIEnvironmentInventory) Validate() error {
-	if i.Kind != CIEnvironmentInventoryKind || i.Version != CIEnvironmentInventoryVersion {
+	if i.Kind != CIEnvironmentInventoryKind || (i.Version != CIEnvironmentInventoryVersionV1 && i.Version != CIEnvironmentInventoryVersion) {
 		return fmt.Errorf("unsupported CI environment inventory contract: kind=%q version=%d", i.Kind, i.Version)
 	}
 	if i.Repository.Provider != "github" {
@@ -193,6 +197,17 @@ func (i CIEnvironmentInventory) Validate() error {
 		}
 		if err := validateFact("imperative_install_signals", workflow.ImperativeInstallSignals); err != nil {
 			return err
+		}
+		if i.Version >= CIEnvironmentInventoryVersion {
+			if err := validateFact("workload_tool_signals", workflow.WorkloadToolSignals); err != nil {
+				return err
+			}
+			if err := validateFact("setup_provisioning_signals", workflow.SetupProvisioningSignals); err != nil {
+				return err
+			}
+			if err := validateFact("ambient_tool_candidates", workflow.AmbientToolCandidates); err != nil {
+				return err
+			}
 		}
 		if workflow.Evidence == nil {
 			return fmt.Errorf("workflow %q evidence array is required", workflow.Path)
@@ -350,6 +365,9 @@ func collectCIEnvironmentWorkflows(ctx context.Context, reader GitHubReader, ful
 			fact.ContentState = StateUnavailable
 			fact.FlakeInvocationSignals = Unavailable[[]string](obs.Evidence)
 			fact.ImperativeInstallSignals = Unavailable[[]string](obs.Evidence)
+			fact.WorkloadToolSignals = Unavailable[[]string](obs.Evidence)
+			fact.SetupProvisioningSignals = Unavailable[[]string](obs.Evidence)
+			fact.AmbientToolCandidates = Unavailable[[]string](obs.Evidence)
 			workflows = append(workflows, fact)
 			continue
 		}
@@ -358,12 +376,19 @@ func collectCIEnvironmentWorkflows(ctx context.Context, reader GitHubReader, ful
 			fact.ContentState = StateUnknown
 			fact.FlakeInvocationSignals = Unknown[[]string](evidence)
 			fact.ImperativeInstallSignals = Unknown[[]string](evidence)
+			fact.WorkloadToolSignals = Unknown[[]string](evidence)
+			fact.SetupProvisioningSignals = Unknown[[]string](evidence)
+			fact.AmbientToolCandidates = Unknown[[]string](evidence)
 			workflows = append(workflows, fact)
 			continue
 		}
 		fact.ContentState = StateObserved
 		fact.FlakeInvocationSignals = Observed(detectFlakeInvocationSignals(data), obs.Evidence)
 		fact.ImperativeInstallSignals = Observed(detectImperativeInstallSignals(data), obs.Evidence)
+		toolSignals, setupSignals := detectWorkflowToolSignals(data)
+		fact.WorkloadToolSignals = Observed(toolSignals, obs.Evidence)
+		fact.SetupProvisioningSignals = Observed(setupSignals, obs.Evidence)
+		fact.AmbientToolCandidates = Observed(detectAmbientToolCandidates(toolSignals, setupSignals), obs.Evidence)
 		workflows = append(workflows, fact)
 	}
 	if tree.Truncated && len(paths) == 0 {
@@ -391,6 +416,100 @@ func detectFlakeInvocationSignals(data []byte) []string {
 		}
 	}
 	return sortedUnique(signals)
+}
+
+type ciWorkflowDocument struct {
+	Jobs map[string]struct {
+		Steps []struct {
+			Uses string `yaml:"uses"`
+			Run  string `yaml:"run"`
+		} `yaml:"steps"`
+	} `yaml:"jobs"`
+}
+
+var workloadToolNames = map[string]string{
+	"go":      "go",
+	"python":  "python",
+	"python3": "python",
+	"node":    "node",
+	"npm":     "node",
+	"pnpm":    "node",
+	"yarn":    "node",
+	"cargo":   "rust",
+	"rustc":   "rust",
+	"java":    "java",
+	"javac":   "java",
+	"dotnet":  "dotnet",
+	"gradle":  "gradle",
+	"mvn":     "maven",
+	"cmake":   "cmake",
+	"make":    "make",
+}
+
+var setupActionSignals = []struct {
+	prefix string
+	signal string
+}{
+	{prefix: "actions/setup-go@", signal: "go"},
+	{prefix: "actions/setup-python@", signal: "python"},
+	{prefix: "actions/setup-node@", signal: "node"},
+	{prefix: "actions/setup-java@", signal: "java"},
+	{prefix: "actions/setup-dotnet@", signal: "dotnet"},
+	{prefix: "dtolnay/rust-toolchain@", signal: "rust"},
+	{prefix: "actions-rust-lang/setup-rust-toolchain@", signal: "rust"},
+	{prefix: "gradle/actions/setup-gradle@", signal: "gradle"},
+}
+
+func detectWorkflowToolSignals(data []byte) ([]string, []string) {
+	var document ciWorkflowDocument
+	if err := yaml.Unmarshal(data, &document); err != nil {
+		return []string{}, []string{}
+	}
+	tools := []string{}
+	setups := []string{}
+	for _, job := range document.Jobs {
+		for _, step := range job.Steps {
+			uses := strings.ToLower(strings.TrimSpace(step.Uses))
+			for _, candidate := range setupActionSignals {
+				if strings.HasPrefix(uses, candidate.prefix) {
+					setups = append(setups, candidate.signal)
+				}
+			}
+			for _, line := range strings.Split(step.Run, "\n") {
+				line = strings.TrimSpace(line)
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+				fields := strings.Fields(line)
+				if len(fields) == 0 {
+					continue
+				}
+				command := strings.Trim(fields[0], "'\"")
+				if strings.Contains(command, "/") {
+					parts := strings.Split(command, "/")
+					command = parts[len(parts)-1]
+				}
+				if family, ok := workloadToolNames[command]; ok {
+					tools = append(tools, family)
+				}
+			}
+		}
+	}
+	return sortedUnique(tools), sortedUnique(setups)
+}
+
+func detectAmbientToolCandidates(toolSignals, setupSignals []string) []string {
+	provisioned := map[string]struct{}{}
+	for _, signal := range setupSignals {
+		provisioned[signal] = struct{}{}
+	}
+	candidates := []string{}
+	for _, tool := range toolSignals {
+		if _, ok := provisioned[tool]; !ok {
+			candidates = append(candidates, tool)
+		}
+	}
+	return sortedUnique(candidates)
 }
 
 var imperativeInstallPatterns = []struct {

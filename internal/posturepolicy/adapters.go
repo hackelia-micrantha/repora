@@ -146,6 +146,7 @@ func AddCIEnvironment(inputs *Inputs, inventory posture.CIEnvironmentInventory) 
 	if aggregateState == posture.StateObserved {
 		withFlakeSignals := 0
 		withInstallSignals := 0
+		withAmbientCandidates := 0
 		for _, workflow := range inventory.Workflows {
 			if workflow.FlakeInvocationSignals.Value != nil && len(*workflow.FlakeInvocationSignals.Value) > 0 {
 				withFlakeSignals++
@@ -153,14 +154,23 @@ func AddCIEnvironment(inputs *Inputs, inventory posture.CIEnvironmentInventory) 
 			if workflow.ImperativeInstallSignals.Value != nil && len(*workflow.ImperativeInstallSignals.Value) > 0 {
 				withInstallSignals++
 			}
+			if workflow.AmbientToolCandidates.Value != nil && len(*workflow.AmbientToolCandidates.Value) > 0 {
+				withAmbientCandidates++
+			}
 		}
 		entries["ci_environment.workflow_count"] = observedInput(len(inventory.Workflows), inventory.Evidence)
 		entries["ci_environment.workflows_with_flake_signals_count"] = observedInput(withFlakeSignals, inventory.Evidence)
 		entries["ci_environment.workflows_with_imperative_install_signals_count"] = observedInput(withInstallSignals, inventory.Evidence)
+		if inventory.Version >= posture.CIEnvironmentInventoryVersion {
+			entries["ci_environment.workflows_with_ambient_tool_candidates_count"] = observedInput(withAmbientCandidates, inventory.Evidence)
+		}
 	} else {
 		entries["ci_environment.workflow_count"] = stateInput(aggregateState, 0, inventory.Evidence)
 		entries["ci_environment.workflows_with_flake_signals_count"] = stateInput(aggregateState, 0, inventory.Evidence)
 		entries["ci_environment.workflows_with_imperative_install_signals_count"] = stateInput(aggregateState, 0, inventory.Evidence)
+		if inventory.Version >= posture.CIEnvironmentInventoryVersion {
+			entries["ci_environment.workflows_with_ambient_tool_candidates_count"] = stateInput(aggregateState, 0, inventory.Evidence)
+		}
 	}
 
 	for _, workflow := range inventory.Workflows {
@@ -168,6 +178,11 @@ func AddCIEnvironment(inputs *Inputs, inventory posture.CIEnvironmentInventory) 
 		entries[prefix+".content_state"] = stateInput(workflow.ContentState, string(workflow.ContentState), workflow.Evidence)
 		addConverted(entries, prefix+".flake_invocation_signals", workflow.FlakeInvocationSignals)
 		addConverted(entries, prefix+".imperative_install_signals", workflow.ImperativeInstallSignals)
+		if inventory.Version >= posture.CIEnvironmentInventoryVersion {
+			addConverted(entries, prefix+".workload_tool_signals", workflow.WorkloadToolSignals)
+			addConverted(entries, prefix+".setup_provisioning_signals", workflow.SetupProvisioningSignals)
+			addConverted(entries, prefix+".ambient_tool_candidates", workflow.AmbientToolCandidates)
+		}
 	}
 	entries["ci_environment.external_input_count"] = observedInput(len(inventory.ExternalInputs), inventory.Evidence)
 	for _, input := range inventory.ExternalInputs {
