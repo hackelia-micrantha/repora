@@ -62,7 +62,7 @@ type CIEnvironmentInventory struct {
 	FlakeLockPresent      Fact[bool]                  `json:"flake_lock_present"`
 	WorkflowsState        FactState                   `json:"workflows_state"`
 	Workflows             []CIEnvironmentWorkflowFact `json:"workflows"`
-	ExternalInputs        []CIExternalInputFact        `json:"external_inputs"`
+	ExternalInputs        []CIExternalInputFact       `json:"external_inputs"`
 	Evidence              []Evidence                  `json:"evidence"`
 }
 
