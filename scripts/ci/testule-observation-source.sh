@@ -5,7 +5,7 @@ root="$(git rev-parse --show-toplevel)"
 cd "$root"
 
 output_dir="${1:-artifacts/testule}"
-max_bytes="${TESTULE_OBSERVATION_MAX_BYTES:-1048576}"
+max_bytes="1048576"
 package="repoctl/internal/plan"
 target="TestReconcileIsDeterministicAndDoesNotMutateInputs"
 stream="$output_dir/representative-go-test.json"
