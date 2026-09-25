@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repora.dev/schemas/posture-ci-environment-v2.schema.json",
+  "title": "Repora CI environment posture v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "version",
+    "repository",
+    "default_branch",
+    "default_commit",
+    "profile_declared",
+    "declared_applicability",
+    "flake_present",
+    "flake_lock_present",
+    "workflows_state",
+    "workflows",
+    "external_inputs",
+    "evidence"
+  ],
+  "properties": {
+    "kind": {
+      "const": "repora.posture-ci-environment"
+    },
+    "version": {
+      "const": 2
+    },
+    "repository": {
+      "$ref": "#/$defs/repository"
+    },
+    "default_branch": {
+      "$ref": "#/$defs/fact"
+    },
+    "default_commit": {
+      "$ref": "#/$defs/fact"
+    },
+    "profile_declared": {
+      "$ref": "#/$defs/fact"
+    },
+    "declared_applicability": {
+      "$ref": "#/$defs/fact"
+    },
+    "flake_present": {
+      "$ref": "#/$defs/fact"
+    },
+    "flake_lock_present": {
+      "$ref": "#/$defs/fact"
+    },
+    "workflows_state": {
+      "enum": [
+        "observed",
+        "unknown",
+        "unavailable"
+      ]
+    },
+    "workflows": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/workflow"
+      }
+    },
+    "external_inputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/externalInput"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidence"
+      }
+    }
+  },
+  "$defs": {
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "full_name"
+      ],
+      "properties": {
+        "provider": {
+          "const": "github"
+        },
+        "full_name": {
+          "type": "string",
+          "minLength": 3
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "reference"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "fact": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "value",
+            "evidence"
+          ],
+          "properties": {
+            "state": {
+              "const": "observed"
+            },
+            "value": {},
+            "evidence": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/evidence"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "evidence"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "unknown",
+                "unavailable"
+              ]
+            },
+            "evidence": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/evidence"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "content_state",
+        "flake_invocation_signals",
+        "imperative_install_signals",
+        "evidence",
+        "workload_tool_signals",
+        "setup_provisioning_signals",
+        "ambient_tool_candidates"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_state": {
+          "enum": [
+            "observed",
+            "unknown",
+            "unavailable"
+          ]
+        },
+        "flake_invocation_signals": {
+          "$ref": "#/$defs/fact"
+        },
+        "imperative_install_signals": {
+          "$ref": "#/$defs/fact"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        },
+        "workload_tool_signals": {
+          "$ref": "#/$defs/fact"
+        },
+        "setup_provisioning_signals": {
+          "$ref": "#/$defs/fact"
+        },
+        "ambient_tool_candidates": {
+          "$ref": "#/$defs/fact"
+        }
+      }
+    },
+    "externalInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "class",
+        "rationale",
+        "evidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "class": {
+          "enum": [
+            "bootstrap",
+            "platform"
+          ]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        }
+      }
+    }
+  }
+}
