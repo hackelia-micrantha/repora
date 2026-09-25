@@ -13,14 +13,14 @@ import (
 )
 
 const (
-	CIEnvironmentInventoryKind    = "repora.posture-ci-environment"
-	CIEnvironmentInventoryVersion = 1
+	CIEnvironmentInventoryKind      = "repora.posture-ci-environment"
+	CIEnvironmentInventoryVersion   = 1
 	CIEnvironmentInventoryVersionV2 = 2
-	CIEnvironmentProfileKind      = "repora.posture-ci-environment-profile"
-	CIEnvironmentProfileVersion   = 1
-	ciEnvironmentProfilePath      = ".repora/posture-ci-environment.yaml"
-	maxCIEnvironmentBytes         = 1 << 20
-	maxCIExternalInputs           = 64
+	CIEnvironmentProfileKind        = "repora.posture-ci-environment-profile"
+	CIEnvironmentProfileVersion     = 1
+	ciEnvironmentProfilePath        = ".repora/posture-ci-environment.yaml"
+	maxCIEnvironmentBytes           = 1 << 20
+	maxCIExternalInputs             = 64
 )
 
 type CIEnvironmentProfile struct {
