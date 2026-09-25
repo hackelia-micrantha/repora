@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import json
-import os
 import stat
 import subprocess
 import sys
@@ -92,6 +91,12 @@ class VerifyGoTestObservationTests(unittest.TestCase):
             "mismatch": [
                 self.event("run", target="OtherTest"),
                 self.event("pass", target="OtherTest"),
+            ],
+            "pass-before-run": [self.event("pass"), self.event("run")],
+            "duplicate-run": [
+                self.event("run"),
+                self.event("run"),
+                self.event("pass"),
             ],
         }
         for name, events in cases.items():
