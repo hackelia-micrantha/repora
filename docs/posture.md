@@ -11,6 +11,7 @@ Current fact collectors are:
 - `repoctl posture inventory OWNER/REPO` → `repora.posture-inventory` v1 for GitHub repository/CI facts;
 - `repoctl posture docs OWNER/REPO` → `repora.posture-documentation` v1 for deterministic documentation/README facts;
 - `repoctl posture hooks OWNER/REPO` → `repora.posture-hooks` v1 for bounded hooks/local-workflow facts;
+- `repoctl posture ci-environment OWNER/REPO` → `repora.posture-ci-environment` v1 for flake/lock, workflow ownership-signal, explicit applicability, and external bootstrap/platform input evidence;
 - `repoctl posture mirrors -f repora.yaml` → `repora.posture-mirrors` v1 from declared Repora topology and existing mirror reconciliation evidence.
 
 All posture domains preserve `observed`, `unknown`, and `unavailable` evidence. Provider API collection is read-only. Mirror posture may refresh Repora's local bare cache for observation, but it does not push or synchronize repositories. Hooks posture reads hook/config/document/workflow content only as bounded data and never installs or executes target-repository hook code.
@@ -75,6 +76,8 @@ Current GitHub workflow observation includes:
 - mutable versus immutable action pinning.
 
 It does not infer actual infrastructure from arbitrary runner labels or groups.
+
+The separate CI-environment posture domain observes whether `flake.nix` / `flake.lock` are present, bounded workflow signals that invoke the current flake, high-confidence imperative-install signals, and an optional explicit applicability/external-input declaration. It does not infer applicability from workflow presence, does not treat a flake file as proof of ownership, and does not execute the workflow or flake.
 
 Future policy may flag patterns such as privileged untrusted PR execution, mutable third-party actions, broad token permissions, unsafe self-hosted-runner exposure, missing deployment gates, or weak release controls. Those are policy conclusions, not collector behavior.
 
