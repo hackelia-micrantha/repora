@@ -69,7 +69,7 @@ func TestConditionalApplicabilityStates(t *testing.T) {
 		{
 			name:          "unknown applicability",
 			applicability: &FactInput{State: posture.StateUnknown, Evidence: []posture.Evidence{{Source: "test", Reference: "ci-profile"}}},
-			wantStatus:   StatusUnknown,
+			wantStatus:    StatusUnknown,
 			wantDecision:  ApplicabilityUnknown,
 		},
 		{
@@ -80,7 +80,7 @@ func TestConditionalApplicabilityStates(t *testing.T) {
 		},
 		{
 			name:         "missing applicability",
-			wantStatus: StatusUnknown,
+			wantStatus:   StatusUnknown,
 			wantDecision: ApplicabilityUnknown,
 		},
 	}
