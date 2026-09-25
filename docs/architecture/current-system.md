@@ -139,6 +139,21 @@ Important boundaries:
 - truncated/inaccessible/malformed evidence becomes unknown or unavailable rather than a passing fact;
 - policy evaluation, findings, remediation, and provider mutation remain outside the domain.
 
+## CI environment posture domain
+
+`repoctl posture ci-environment OWNER/REPO` emits `repora.posture-ci-environment` v1 evidence for repository-owned CI environment boundaries.
+
+The collector records flake/lock presence, bounded workflow current-flake invocation signals, bounded high-confidence imperative-install signals, and an optional `.repora/posture-ci-environment.yaml` declaration for CI applicability and irreducible `bootstrap` / `platform` external inputs. Workflow presence never resolves CI applicability by itself, and flake presence never proves CI ownership.
+
+Important boundaries:
+
+- the collector reuses the GET-only GitHub reader and immutable default-branch tree/blob evidence;
+- repository-owned applicability/external-input declarations are observation data, not policy authority;
+- external inputs are not accepted as exceptions merely because a repository declares them;
+- workflow content is inspected as bounded untrusted text and is never executed;
+- normalized `ci_environment.*` facts are consumed by existing offline posture policy/reporting;
+- runtime runner space/time telemetry remains outside Repora's collector and may be supplied by an authoritative system such as Dubnium.
+
 ## Bounded commit-history posture domain
 
 `repoctl posture commits OWNER/REPO` emits `repora.posture-commits` v1 evidence for a capped default-branch history window. An optional repository profile configures the history limit, change-size thresholds, sensitive-path patterns, and pull-request association observation.
@@ -155,7 +170,7 @@ Commit posture is repository/process evidence, not people analytics: author and 
 
 `repoctl posture report` consumes validated normalized posture facts plus an external `repora.posture-policy-profile` v1. It evaluates explicit expectations, severity, remediation, and time-bounded exceptions and emits deterministic `repora.posture-report` v1 JSON or Markdown.
 
-Evaluation requires an explicit `--as-of` date so exception expiry has no hidden wall-clock dependency. Typed adapters consume the inventory, documentation, hooks, commits, and mirror fact contracts, preserve observed/unknown/unavailable state and source evidence, reject identity mixing and fact collisions atomically, and do not re-scan providers.
+Evaluation requires an explicit `--as-of` date so exception expiry has no hidden wall-clock dependency. Typed adapters consume the inventory, documentation, hooks, CI-environment, commits, and mirror fact contracts, preserve observed/unknown/unavailable state and source evidence, reject identity mixing and fact collisions atomically, and do not re-scan providers.
 
 Policy profiles are external policy data. Repository-owned observation profiles cannot assign severity, suppress policy, grant provider access, authorize mutation, or convert missing evidence into a pass. The policy layer does not call providers, execute scanners, create issues, mutate repositories, or calculate an opaque score.
 
@@ -199,7 +214,7 @@ GitLab and Bitbucket Cloud Git transport/reconciliation evidence is supported; G
 | `internal/managedartifact` | README template/render/observation/plan/preflight/candidate verification | Generic file authority or mirror reconciliation |
 | `internal/managedartifactapply` | journaled managed README execution/result correlation | Replanning reviewed content |
 | `internal/assessment` | strict assessment contracts, validation, skeleton, projections | Live discovery, automated scoring, mutation |
-| `internal/posture` | versioned posture facts and bounded repository/CI, documentation, hooks/local-workflow, commit-history, mirror, and local Git storage observation | Policy evaluation, findings, scanners, remediation, provider mutation |
+| `internal/posture` | versioned posture facts and bounded repository/CI, documentation, hooks/local-workflow, CI-environment/flake ownership, commit-history, mirror, and local Git storage observation | Policy evaluation, findings, scanners, remediation, provider mutation |
 | `internal/posturepolicy` | offline normalized-fact adapters, expectation evaluation, exceptions, and deterministic reports | Provider reads, scanner execution, opaque scoring, or mutation |
 | `internal/journal` | immutable intent/result evidence and protected persistence | Mutation or replay authority |
 | `internal/git` | bounded Git subprocess/cache/object/ref/push mechanics | Product policy or durable identity |
@@ -233,6 +248,8 @@ Current serialized contracts include:
 - `repora.posture-documentation-profile` v1;
 - `repora.posture-hooks` v1;
 - `repora.posture-hooks-profile` v1;
+- `repora.posture-ci-environment` v1;
+- `repora.posture-ci-environment-profile` v1;
 - `repora.posture-commits` v1;
 - `repora.posture-commits-profile` v1;
 - `repora.posture-mirrors` v1;

@@ -4,6 +4,10 @@ Repora records user-visible capability, compatibility, security, and release-pro
 
 ## [Unreleased]
 
+### Added
+
+- Read-only CI-environment posture records repository flake/lock presence, bounded workflow flake and imperative-install signals, explicit CI applicability/external-input declarations, and offline convergence facts without inferring compliance or executing repository code.
+
 ## [0.2.1] - 2026-09-09
 
 ### Changed

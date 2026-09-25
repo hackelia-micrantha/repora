@@ -12,10 +12,11 @@ Usage:
   repoctl posture inventory OWNER/REPO
   repoctl posture docs OWNER/REPO
   repoctl posture hooks OWNER/REPO
+  repoctl posture ci-environment OWNER/REPO
   repoctl posture commits OWNER/REPO
   repoctl posture mirrors -f repora.yaml
   repoctl posture storage --repository OWNER/REPO --path LOCAL_GIT_REPOSITORY
-  repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--commits FILE] [--storage FILE] [--mirrors FILE --repo-uid UID]
+  repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--ci-environment FILE] [--commits FILE] [--storage FILE] [--mirrors FILE --repo-uid UID]
   repoctl posture report --profile POLICY.json --facts FACTS.json --as-of YYYY-MM-DD [--format markdown|json]
   repoctl plan-readme -f repora.yaml [--artifact]
   repoctl apply-readme -f repora.yaml --plan-file FILE [--dry-run] [--json]
@@ -63,7 +64,7 @@ Options for mirror commands:
 
 Options for posture commands:
   OWNER/REPO
-        GitHub repository to inspect with posture inventory, posture docs, posture hooks, or posture commits. Public repositories need no token; private/provider-protected evidence may use GITHUB_TOKEN or GH_TOKEN from the environment.
+        GitHub repository to inspect with posture inventory, posture docs, posture hooks, posture ci-environment, or posture commits. Public repositories need no token; private/provider-protected evidence may use GITHUB_TOKEN or GH_TOKEN from the environment.
   posture mirrors -f string
         inspect mirror posture for repositories declared in SCHEMA-0001 YAML (default "repora.yaml")
   posture converge --inventory string
@@ -72,6 +73,8 @@ Options for posture commands:
         strict repora.posture-documentation v1 JSON
   posture converge --hooks string
         strict repora.posture-hooks v1 JSON
+  posture converge --ci-environment string
+        strict repora.posture-ci-environment v1 JSON
   posture converge --commits string
         strict repora.posture-commits v1 JSON
   posture converge --storage string
@@ -94,6 +97,8 @@ Posture inventory is GET-only. Provider fields unavailable under current access 
 Posture docs is also GET-only. It observes document presence, configured README sections and links, exact content markers, and document-routing trust metadata. A target repository may declare observation targets in .repora/posture-documentation.yaml. The profile selects facts to observe; it does not assign severity or authorize remediation.
 
 Posture hooks is GET-only. It observes common/custom hook configuration, optional .repora/posture-hooks.yaml expectations, required local-check coverage in GitHub Actions, bootstrap/bypass documentation, and bounded static network-load signals. It never installs or executes target-repository hook code, and CI remains the enforcement authority.
+
+Posture ci-environment is GET-only. It observes flake/lock presence, bounded workflow flake and imperative-install signals, and an optional explicit CI applicability/external-input declaration. It does not infer CI applicability from workflow presence and does not evaluate compliance.
 
 Posture commits is GET-only. It observes an explicitly bounded default-branch history window, commit signature verification state, merge shape, change size/file scope, configured sensitive-path matches, and optional commit-to-PR association. Repository-owned thresholds are observation parameters only; direct-push/unreviewed status, tag signatures, and release boundaries remain unknown unless evidence can prove them. It performs no productivity scoring, identity profiling, blame, intent inference, or history mutation.
 

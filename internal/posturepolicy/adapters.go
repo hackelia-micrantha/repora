@@ -115,6 +115,69 @@ func ciAggregateState(inventory posture.Inventory) posture.FactState {
 	return state
 }
 
+func AddCIEnvironment(inputs *Inputs, inventory posture.CIEnvironmentInventory) error {
+	if err := inventory.Validate(); err != nil {
+		return err
+	}
+	if err := requireRepository(inputs, inventory.Repository.FullName); err != nil {
+		return err
+	}
+	entries := map[string]FactInput{}
+	addConverted(entries, "ci_environment.default_branch", inventory.DefaultBranch)
+	addConverted(entries, "ci_environment.default_commit", inventory.DefaultCommit)
+	addConverted(entries, "ci_environment.profile_declared", inventory.ProfileDeclared)
+	addConverted(entries, "ci_environment.declared_applicability", inventory.DeclaredApplicability)
+	addConverted(entries, "ci_environment.flake_present", inventory.FlakePresent)
+	addConverted(entries, "ci_environment.flake_lock_present", inventory.FlakeLockPresent)
+	entries["ci_environment.workflows_state"] = stateInput(inventory.WorkflowsState, string(inventory.WorkflowsState), inventory.Evidence)
+
+	aggregateState := inventory.WorkflowsState
+	if aggregateState == posture.StateObserved {
+		for _, workflow := range inventory.Workflows {
+			if workflow.ContentState == posture.StateUnavailable {
+				aggregateState = posture.StateUnavailable
+				break
+			}
+			if workflow.ContentState == posture.StateUnknown {
+				aggregateState = posture.StateUnknown
+			}
+		}
+	}
+	if aggregateState == posture.StateObserved {
+		withFlakeSignals := 0
+		withInstallSignals := 0
+		for _, workflow := range inventory.Workflows {
+			if workflow.FlakeInvocationSignals.Value != nil && len(*workflow.FlakeInvocationSignals.Value) > 0 {
+				withFlakeSignals++
+			}
+			if workflow.ImperativeInstallSignals.Value != nil && len(*workflow.ImperativeInstallSignals.Value) > 0 {
+				withInstallSignals++
+			}
+		}
+		entries["ci_environment.workflow_count"] = observedInput(len(inventory.Workflows), inventory.Evidence)
+		entries["ci_environment.workflows_with_flake_signals_count"] = observedInput(withFlakeSignals, inventory.Evidence)
+		entries["ci_environment.workflows_with_imperative_install_signals_count"] = observedInput(withInstallSignals, inventory.Evidence)
+	} else {
+		entries["ci_environment.workflow_count"] = stateInput(aggregateState, 0, inventory.Evidence)
+		entries["ci_environment.workflows_with_flake_signals_count"] = stateInput(aggregateState, 0, inventory.Evidence)
+		entries["ci_environment.workflows_with_imperative_install_signals_count"] = stateInput(aggregateState, 0, inventory.Evidence)
+	}
+
+	for _, workflow := range inventory.Workflows {
+		prefix := "ci_environment.workflow." + workflow.Path
+		entries[prefix+".content_state"] = stateInput(workflow.ContentState, string(workflow.ContentState), workflow.Evidence)
+		addConverted(entries, prefix+".flake_invocation_signals", workflow.FlakeInvocationSignals)
+		addConverted(entries, prefix+".imperative_install_signals", workflow.ImperativeInstallSignals)
+	}
+	entries["ci_environment.external_input_count"] = observedInput(len(inventory.ExternalInputs), inventory.Evidence)
+	for _, input := range inventory.ExternalInputs {
+		prefix := "ci_environment.external_input." + input.ID
+		entries[prefix+".class"] = observedInput(input.Class, input.Evidence)
+		entries[prefix+".rationale"] = observedInput(input.Rationale, input.Evidence)
+	}
+	return addEntries(inputs, entries)
+}
+
 func AddDocumentation(inputs *Inputs, inventory posture.DocumentationInventory) error {
 	if err := inventory.Validate(); err != nil {
 		return err

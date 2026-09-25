@@ -23,6 +23,10 @@ var collectGitHubHooksPosture = func(ctx context.Context, fullName, token string
 	return posture.CollectGitHubHooks(ctx, posture.NewHTTPGitHubReader(token), fullName)
 }
 
+var collectGitHubCIEnvironmentPosture = func(ctx context.Context, fullName, token string) (posture.CIEnvironmentInventory, error) {
+	return posture.CollectGitHubCIEnvironment(ctx, posture.NewHTTPGitHubReader(token), fullName)
+}
+
 var collectGitHubCommitPosture = func(ctx context.Context, fullName, token string) (posture.CommitInventory, error) {
 	reader := posture.NewHTTPGitHubReader(token)
 	return posture.CollectGitHubCommits(ctx, reader, reader, fullName)
@@ -53,7 +57,7 @@ func runPosture(args []string) int {
 	}
 	if len(args) == 2 && (args[1] == "-h" || args[1] == "--help") {
 		switch args[0] {
-		case "inventory", "docs", "hooks", "commits":
+		case "inventory", "docs", "hooks", "ci-environment", "commits":
 			fmt.Fprintf(os.Stdout, "usage: repoctl posture %s OWNER/REPO\n", args[0])
 			return 0
 		}
@@ -117,6 +121,22 @@ func runPosture(args []string) int {
 		}
 		if _, err := os.Stdout.Write(data); err != nil {
 			fmt.Fprintf(os.Stderr, "repoctl: write hooks posture inventory: %v\n", err)
+			return 1
+		}
+		return 0
+	case "ci-environment":
+		inventory, err := collectGitHubCIEnvironmentPosture(ctx, args[1], token)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: posture ci-environment: %v\n", err)
+			return 1
+		}
+		data, err := inventory.Marshal()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: posture ci-environment: %v\n", err)
+			return 1
+		}
+		if _, err := os.Stdout.Write(data); err != nil {
+			fmt.Fprintf(os.Stderr, "repoctl: write CI environment posture inventory: %v\n", err)
 			return 1
 		}
 		return 0
@@ -192,9 +212,10 @@ func printPostureUsage(w *os.File) {
 	fmt.Fprintln(w, "usage: repoctl posture inventory OWNER/REPO")
 	fmt.Fprintln(w, "       repoctl posture docs OWNER/REPO")
 	fmt.Fprintln(w, "       repoctl posture hooks OWNER/REPO")
+	fmt.Fprintln(w, "       repoctl posture ci-environment OWNER/REPO")
 	fmt.Fprintln(w, "       repoctl posture commits OWNER/REPO")
 	fmt.Fprintln(w, "       repoctl posture mirrors -f repora.yaml")
 	fmt.Fprintln(w, "       repoctl posture storage --repository OWNER/REPO --path LOCAL_GIT_REPOSITORY")
-	fmt.Fprintln(w, "       repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--commits FILE] [--storage FILE] [--mirrors FILE --repo-uid UID]")
+	fmt.Fprintln(w, "       repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--ci-environment FILE] [--commits FILE] [--storage FILE] [--mirrors FILE --repo-uid UID]")
 	fmt.Fprintln(w, "       repoctl posture report --profile POLICY.json --facts FACTS.json --as-of YYYY-MM-DD [--format markdown|json]")
 }

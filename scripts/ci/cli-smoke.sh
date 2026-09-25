@@ -38,6 +38,7 @@ assert_subcommand_help apply
 "$binary" posture inventory --help >/dev/null
 "$binary" posture docs --help >/dev/null
 "$binary" posture hooks --help >/dev/null
+"$binary" posture ci-environment --help >/dev/null
 "$binary" posture commits --help >/dev/null
 "$binary" posture mirrors --help >/dev/null
 "$binary" posture report --help >/dev/null
