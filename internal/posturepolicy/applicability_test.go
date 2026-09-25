@@ -41,45 +41,45 @@ func conditionalPolicyProfile() Profile {
 
 func TestConditionalApplicabilityStates(t *testing.T) {
 	tests := []struct {
-		name         string
+		name          string
 		applicability *FactInput
-		wantStatus   ResultStatus
-		wantDecision ApplicabilityDecision
-		target       *FactInput
+		wantStatus    ResultStatus
+		wantDecision  ApplicabilityDecision
+		target        *FactInput
 	}{
 		{
-			name: "applicable evaluates target",
+			name:          "applicable evaluates target",
 			applicability: factPtr(observed("applicable", "ci-profile")),
-			target: factPtr(observed(false, "tree")),
-			wantStatus: StatusFail,
-			wantDecision: ApplicabilityApplicable,
+			target:        factPtr(observed(false, "tree")),
+			wantStatus:    StatusFail,
+			wantDecision:  ApplicabilityApplicable,
 		},
 		{
-			name: "explicit not applicable",
+			name:          "explicit not applicable",
 			applicability: factPtr(observed("not-applicable", "ci-profile")),
-			wantStatus: StatusNotApplicable,
-			wantDecision: ApplicabilityNotApplicable,
+			wantStatus:    StatusNotApplicable,
+			wantDecision:  ApplicabilityNotApplicable,
 		},
 		{
-			name: "observed unresolved",
+			name:          "observed unresolved",
 			applicability: factPtr(observed("unresolved", "ci-profile")),
-			wantStatus: StatusUnknown,
-			wantDecision: ApplicabilityUnresolved,
+			wantStatus:    StatusUnknown,
+			wantDecision:  ApplicabilityUnresolved,
 		},
 		{
-			name: "unknown applicability",
+			name:          "unknown applicability",
 			applicability: &FactInput{State: posture.StateUnknown, Evidence: []posture.Evidence{{Source: "test", Reference: "ci-profile"}}},
-			wantStatus: StatusUnknown,
-			wantDecision: ApplicabilityUnknown,
+			wantStatus:   StatusUnknown,
+			wantDecision:  ApplicabilityUnknown,
 		},
 		{
-			name: "unavailable applicability",
+			name:          "unavailable applicability",
 			applicability: &FactInput{State: posture.StateUnavailable, Evidence: []posture.Evidence{{Source: "test", Reference: "ci-profile"}}},
-			wantStatus: StatusUnavailable,
-			wantDecision: ApplicabilityUnavailable,
+			wantStatus:    StatusUnavailable,
+			wantDecision:  ApplicabilityUnavailable,
 		},
 		{
-			name: "missing applicability",
+			name:         "missing applicability",
 			wantStatus: StatusUnknown,
 			wantDecision: ApplicabilityUnknown,
 		},
@@ -156,7 +156,7 @@ func TestV1RejectsConditionalApplicabilityAndRemainsV1(t *testing.T) {
 
 	v1 := Profile{
 		Kind: ProfileKind, Version: ProfileVersion, ID: "v1",
-		Rules: []Rule{{ID: "r", Area: "repository", Fact: "f", Operator: OperatorEquals, Expected: json.RawMessage(`true`), Severity: SeverityLow, Title: "v1", Remediation: []string{}}},
+		Rules:      []Rule{{ID: "r", Area: "repository", Fact: "f", Operator: OperatorEquals, Expected: json.RawMessage(`true`), Severity: SeverityLow, Title: "v1", Remediation: []string{}}},
 		Exceptions: []Exception{},
 	}
 	inputs := NewInputs("acme/project")
