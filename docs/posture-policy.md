@@ -16,17 +16,21 @@ It does not calculate an opaque repository score.
 
 ## Public contracts
 
-Three versioned JSON contracts define the boundary:
+The policy/report boundary is versioned independently from normalized inputs:
 
-- `repora.posture-policy-profile` v1 — external rules, severity, remediation, and exceptions;
+- `repora.posture-policy-profile` v1 — unconditional external rules, severity, remediation, and exceptions;
+- `repora.posture-policy-profile` v2 — v1 semantics plus bounded conditional applicability;
 - `repora.posture-policy-inputs` v1 — normalized facts using the shared `observed`, `unknown`, and `unavailable` evidence states;
-- `repora.posture-report` v1 — deterministic evaluations and report metadata.
+- `repora.posture-report` v1 — deterministic evaluation for v1 profiles;
+- `repora.posture-report` v2 — v1 report semantics plus explicit applicability evidence and `not-applicable`.
 
 Schemas:
 
 - [`../schemas/posture-policy-profile-v1.schema.json`](../schemas/posture-policy-profile-v1.schema.json)
+- [`../schemas/posture-policy-profile-v2.schema.json`](../schemas/posture-policy-profile-v2.schema.json)
 - [`../schemas/posture-policy-inputs-v1.schema.json`](../schemas/posture-policy-inputs-v1.schema.json)
 - [`../schemas/posture-report-v1.schema.json`](../schemas/posture-report-v1.schema.json)
+- [`../schemas/posture-report-v2.schema.json`](../schemas/posture-report-v2.schema.json)
 
 ## CLI
 
@@ -69,7 +73,7 @@ The report command does not use `GITHUB_TOKEN`, contact providers, fetch reposit
 
 ## Policy profile
 
-A policy profile is external policy data. Repora does not automatically load it from the target repository, and repository-owned observation profiles do not become policy authority.
+A policy profile is external policy data. Repora does not automatically load it from the target repository, and repository-owned observation profiles do not become policy authority. Profile v1 remains strictly unconditional; profile v2 adds only the bounded applicability selector described below.
 
 Example:
 
@@ -102,6 +106,48 @@ Supported operators are:
 - `non_empty` — string, array, or object is non-empty and does not take an `expected` value.
 
 Severity is explicit policy data: `critical`, `high`, `medium`, `low`, or `informational`. A mismatch on informational policy is reported as `warning`; other mismatches are `fail`.
+
+## Conditional applicability in policy v2
+
+Policy profile v2 adds an optional bounded `applicability` selector to a rule. It keeps applicability in external policy rather than moving normative decisions into collectors.
+
+```json
+{
+  "id": "flake-required",
+  "area": "ci-environment",
+  "fact": "ci_environment.flake_present",
+  "operator": "equals",
+  "expected": true,
+  "applicability": {
+    "fact": "ci_environment.declared_applicability",
+    "applicable_when": {
+      "operator": "equals",
+      "expected": "applicable"
+    },
+    "not_applicable_when": {
+      "operator": "equals",
+      "expected": "not-applicable"
+    }
+  },
+  "severity": "high",
+  "title": "Applicable CI uses a repository flake",
+  "remediation": ["Move project CI tooling into the repository flake."]
+}
+```
+
+The selector intentionally uses one normalized fact and two explicit conditions rather than an arbitrary expression tree.
+
+Evaluation is fail-closed and three-way:
+
+- an observed fact matching only `applicable_when` evaluates the target rule normally;
+- an observed fact matching only `not_applicable_when` emits `not-applicable`;
+- an observed fact matching neither condition emits `unknown` with applicability decision `unresolved`;
+- matching both conditions is an invalid ambiguous policy evaluation and fails instead of guessing;
+- `unknown`, `unavailable`, or missing applicability evidence remains explicit and the target fact is not evaluated.
+
+A v2 profile always produces a v2 report. V1 profiles remain unconditional and continue to produce v1 reports. Normalized posture inputs remain v1 because their fact/evidence shape does not change.
+
+`not-applicable` is neither pass nor finding. It is excluded from severity finding counts and is shown explicitly in JSON and Markdown. Applicability evidence records the selector fact, observed value when available, both conditions, and the resulting decision.
 
 ## Exceptions
 
