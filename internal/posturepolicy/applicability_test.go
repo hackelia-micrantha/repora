@@ -204,8 +204,8 @@ func TestConditionalApplicabilityMarkdownExplainsNAAAndUnresolvedEvidence(t *tes
 	}
 	markdown := RenderMarkdown(report)
 	for _, want := range []string{
-		"Status: **not\-applicable**",
-		"Applicability decision: **not\-applicable**",
+		"Status: **not\\-applicable**",
+		"Applicability decision: **not\\-applicable**",
 		"Applicability fact: `ci_environment.declared_applicability`",
 		"Applicability observed: `\"not-applicable\"`",
 	} {
