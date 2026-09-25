@@ -12,7 +12,7 @@ import (
 func validCIEnvironmentInventory(fullName string) posture.CIEnvironmentInventory {
 	return posture.CIEnvironmentInventory{
 		Kind:                  posture.CIEnvironmentInventoryKind,
-		Version:               posture.CIEnvironmentInventoryVersion,
+		Version:               posture.CIEnvironmentInventoryVersionV2,
 		Repository:            posture.RepositoryIdentity{Provider: "github", FullName: fullName},
 		DefaultBranch:         posture.Observed("main"),
 		DefaultCommit:         posture.Observed("abc1234"),
@@ -50,7 +50,7 @@ func TestPostureCIEnvironmentCommandEmitsVersionedJSON(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &decoded); err != nil {
 		t.Fatalf("decode output: %v\n%s", err, stdout.String())
 	}
-	if decoded.Kind != posture.CIEnvironmentInventoryKind || decoded.Version != posture.CIEnvironmentInventoryVersion {
+	if decoded.Kind != posture.CIEnvironmentInventoryKind || decoded.Version != posture.CIEnvironmentInventoryVersionV2 {
 		t.Fatalf("CI environment envelope = %#v", decoded)
 	}
 }

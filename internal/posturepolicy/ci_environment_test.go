@@ -78,3 +78,58 @@ func TestConvergeCIEnvironmentArtifact(t *testing.T) {
 		t.Fatalf("applicability state = %q", inputs.Facts["ci_environment.declared_applicability"].State)
 	}
 }
+
+
+func TestAddCIEnvironmentV2ExposesHostAndSetupSignalsWithoutChangingV1(t *testing.T) {
+	host := posture.Observed([]string{"go"})
+	setup := posture.Observed([]string{"actions/setup-go"})
+	inventory := posture.CIEnvironmentInventory{
+		Kind:                  posture.CIEnvironmentInventoryKind,
+		Version:               posture.CIEnvironmentInventoryVersionV2,
+		Repository:            posture.RepositoryIdentity{Provider: "github", FullName: "acme/project"},
+		DefaultBranch:         posture.Observed("main"),
+		DefaultCommit:         posture.Observed("abc1234"),
+		ProfileDeclared:       posture.Observed(true),
+		DeclaredApplicability: posture.Observed("applicable"),
+		FlakePresent:          posture.Observed(true),
+		FlakeLockPresent:      posture.Observed(true),
+		WorkflowsState:        posture.StateObserved,
+		Workflows: []posture.CIEnvironmentWorkflowFact{{
+			Path:                      ".github/workflows/ci.yml",
+			ContentState:              posture.StateObserved,
+			FlakeInvocationSignals:    posture.Observed([]string{}),
+			ImperativeInstallSignals:  posture.Observed([]string{}),
+			HostToolInvocationSignals: &host,
+			ToolSetupActionSignals:    &setup,
+			Evidence:                  []posture.Evidence{},
+		}},
+		ExternalInputs: []posture.CIExternalInputFact{},
+		Evidence:       []posture.Evidence{},
+	}
+	inputs := NewInputs("acme/project")
+	if err := AddCIEnvironment(&inputs, inventory); err != nil {
+		t.Fatal(err)
+	}
+	for fact, want := range map[string]string{
+		"ci_environment.workflows_with_host_tool_signals_count": "1",
+		"ci_environment.workflows_with_tool_setup_action_signals_count": "1",
+		"ci_environment.workflow..github/workflows/ci.yml.host_tool_invocation_signals": "[\"go\"]",
+		"ci_environment.workflow..github/workflows/ci.yml.tool_setup_action_signals": "[\"actions/setup-go\"]",
+	} {
+		if got := string(inputs.Facts[fact].Value); got != want {
+			t.Fatalf("%s = %s, want %s", fact, got, want)
+		}
+	}
+
+	legacy := inventory
+	legacy.Version = posture.CIEnvironmentInventoryVersion
+	legacy.Workflows[0].HostToolInvocationSignals = nil
+	legacy.Workflows[0].ToolSetupActionSignals = nil
+	legacyInputs := NewInputs("acme/project")
+	if err := AddCIEnvironment(&legacyInputs, legacy); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := legacyInputs.Facts["ci_environment.workflows_with_host_tool_signals_count"]; ok {
+		t.Fatal("v1 artifact unexpectedly synthesized v2 host-tool aggregate")
+	}
+}
