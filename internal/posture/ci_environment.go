@@ -428,22 +428,22 @@ type ciWorkflowDocument struct {
 }
 
 var workloadToolNames = map[string]string{
-	"go": "go",
-	"python": "python",
+	"go":      "go",
+	"python":  "python",
 	"python3": "python",
-	"node": "node",
-	"npm": "node",
-	"pnpm": "node",
-	"yarn": "node",
-	"cargo": "rust",
-	"rustc": "rust",
-	"java": "java",
-	"javac": "java",
-	"dotnet": "dotnet",
-	"gradle": "gradle",
-	"mvn": "maven",
-	"cmake": "cmake",
-	"make": "make",
+	"node":    "node",
+	"npm":     "node",
+	"pnpm":    "node",
+	"yarn":    "node",
+	"cargo":   "rust",
+	"rustc":   "rust",
+	"java":    "java",
+	"javac":   "java",
+	"dotnet":  "dotnet",
+	"gradle":  "gradle",
+	"mvn":     "maven",
+	"cmake":   "cmake",
+	"make":    "make",
 }
 
 var setupActionSignals = []struct {
