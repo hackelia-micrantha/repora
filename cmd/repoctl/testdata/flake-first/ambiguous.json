@@ -1,0 +1,110 @@
+{
+  "kind": "repora.posture-ci-environment",
+  "version": 1,
+  "repository": {
+    "provider": "github",
+    "full_name": "acme/fixture"
+  },
+  "default_branch": {
+    "state": "observed",
+    "value": "main",
+    "evidence": [
+      {
+        "source": "fixture",
+        "reference": "branch:main"
+      }
+    ]
+  },
+  "default_commit": {
+    "state": "observed",
+    "value": "abc1234",
+    "evidence": [
+      {
+        "source": "fixture",
+        "reference": "commit:abc1234"
+      }
+    ]
+  },
+  "profile_declared": {
+    "state": "observed",
+    "value": true,
+    "evidence": [
+      {
+        "source": "fixture",
+        "reference": ".repora/posture-ci-environment.yaml"
+      }
+    ]
+  },
+  "declared_applicability": {
+    "state": "observed",
+    "value": "unresolved",
+    "evidence": [
+      {
+        "source": "fixture",
+        "reference": ".repora/posture-ci-environment.yaml"
+      }
+    ]
+  },
+  "flake_present": {
+    "state": "observed",
+    "value": false,
+    "evidence": [
+      {
+        "source": "fixture",
+        "reference": "tree:flake.nix"
+      }
+    ]
+  },
+  "flake_lock_present": {
+    "state": "observed",
+    "value": false,
+    "evidence": [
+      {
+        "source": "fixture",
+        "reference": "tree:flake.lock"
+      }
+    ]
+  },
+  "workflows_state": "observed",
+  "workflows": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "content_state": "observed",
+      "flake_invocation_signals": {
+        "state": "observed",
+        "value": [],
+        "evidence": [
+          {
+            "source": "fixture",
+            "reference": ".github/workflows/ci.yml"
+          }
+        ]
+      },
+      "imperative_install_signals": {
+        "state": "observed",
+        "value": [
+          "go-install"
+        ],
+        "evidence": [
+          {
+            "source": "fixture",
+            "reference": ".github/workflows/ci.yml"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "source": "fixture",
+          "reference": ".github/workflows/ci.yml"
+        }
+      ]
+    }
+  ],
+  "external_inputs": [],
+  "evidence": [
+    {
+      "source": "fixture",
+      "reference": "fixture-root"
+    }
+  ]
+}

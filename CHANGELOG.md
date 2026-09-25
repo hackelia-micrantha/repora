@@ -6,6 +6,7 @@ Repora records user-visible capability, compatibility, security, and release-pro
 
 ### Added
 
+- Micrantha flake-first CI example policy and deterministic CLI conformance fixtures cover compliant, violating, explicit N/A, platform-input evidence, and ambiguous applicability cases without granting collector-owned policy exceptions.
 - Posture policy/report v2 adds bounded conditional applicability with explicit N/A, unresolved/unknown/unavailable preservation, applicability evidence, and strict v1 compatibility.
 - Read-only CI-environment posture records repository flake/lock presence, bounded workflow flake and imperative-install signals, explicit CI applicability/external-input declarations, and offline convergence facts without inferring compliance or executing repository code.
 

@@ -1,0 +1,100 @@
+{
+  "kind": "repora.posture-policy-profile",
+  "version": 2,
+  "id": "micrantha-flake-first-ci-example-v1",
+  "rules": [
+    {
+      "id": "ci-flake-present",
+      "area": "ci-environment",
+      "fact": "ci_environment.flake_present",
+      "operator": "equals",
+      "expected": true,
+      "applicability": {
+        "fact": "ci_environment.declared_applicability",
+        "applicable_when": {
+          "operator": "equals",
+          "expected": "applicable"
+        },
+        "not_applicable_when": {
+          "operator": "equals",
+          "expected": "not-applicable"
+        }
+      },
+      "severity": "high",
+      "title": "Applicable CI has a repository-owned flake declaration",
+      "remediation": [
+        "Add a repository-owned flake that declares the project CI/build/test environment; do not add a meaningless empty flake."
+      ]
+    },
+    {
+      "id": "ci-flake-lock-present",
+      "area": "ci-environment",
+      "fact": "ci_environment.flake_lock_present",
+      "operator": "equals",
+      "expected": true,
+      "applicability": {
+        "fact": "ci_environment.declared_applicability",
+        "applicable_when": {
+          "operator": "equals",
+          "expected": "applicable"
+        },
+        "not_applicable_when": {
+          "operator": "equals",
+          "expected": "not-applicable"
+        }
+      },
+      "severity": "high",
+      "title": "Applicable CI pins external flake inputs",
+      "remediation": [
+        "Commit flake.lock or provide an explicitly reviewed equivalent locking contract before claiming reproducible CI inputs."
+      ]
+    },
+    {
+      "id": "ci-workflow-invokes-current-flake",
+      "area": "ci-environment",
+      "fact": "ci_environment.workflows_with_flake_signals_count",
+      "operator": "at_least",
+      "expected": 1,
+      "applicability": {
+        "fact": "ci_environment.declared_applicability",
+        "applicable_when": {
+          "operator": "equals",
+          "expected": "applicable"
+        },
+        "not_applicable_when": {
+          "operator": "equals",
+          "expected": "not-applicable"
+        }
+      },
+      "severity": "high",
+      "title": "Applicable CI invokes a stable current-flake entry point",
+      "remediation": [
+        "Route CI through a stable repository-flake check, package, app, or bounded CI development shell."
+      ]
+    },
+    {
+      "id": "ci-no-obvious-imperative-project-tool-install",
+      "area": "ci-environment",
+      "fact": "ci_environment.workflows_with_imperative_install_signals_count",
+      "operator": "at_most",
+      "expected": 0,
+      "applicability": {
+        "fact": "ci_environment.declared_applicability",
+        "applicable_when": {
+          "operator": "equals",
+          "expected": "applicable"
+        },
+        "not_applicable_when": {
+          "operator": "equals",
+          "expected": "not-applicable"
+        }
+      },
+      "severity": "medium",
+      "title": "Applicable CI has no obvious imperative project-tool installation",
+      "remediation": [
+        "Move project/workload tooling into the repository flake when it can be evaluated or materialized after checkout; classify irreducible bootstrap/platform inputs explicitly."
+      ]
+    }
+  ],
+  "exceptions": []
+}
