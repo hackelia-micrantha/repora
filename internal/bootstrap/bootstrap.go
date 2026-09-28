@@ -522,14 +522,18 @@ func BuildPlan(root, manifestPath string) (Plan, error) {
 	if err != nil {
 		return Plan{}, err
 	}
-	manifestInfo, err := os.Lstat(manifestPath)
+	absManifestPath, err := filepath.Abs(manifestPath)
+	if err != nil {
+		return Plan{}, fmt.Errorf("resolve bootstrap manifest input: %w", err)
+	}
+	manifestInfo, err := os.Lstat(absManifestPath)
 	if err != nil {
 		return Plan{}, fmt.Errorf("inspect bootstrap manifest input: %w", err)
 	}
 	if manifestInfo.Mode()&os.ModeSymlink != 0 || !manifestInfo.Mode().IsRegular() {
 		return Plan{}, fmt.Errorf("bootstrap manifest input must be a regular non-symlink file")
 	}
-	manifestData, err := os.ReadFile(manifestPath)
+	manifestData, err := os.ReadFile(absManifestPath)
 	if err != nil {
 		return Plan{}, fmt.Errorf("read bootstrap manifest: %w", err)
 	}
@@ -552,7 +556,7 @@ func BuildPlan(root, manifestPath string) (Plan, error) {
 		Contract:        Contract(),
 		Root:            inspection.Root,
 		SnapshotSHA256:  inspection.SnapshotSHA256,
-		ManifestPath:    manifestPath,
+		ManifestPath:    absManifestPath,
 		ManifestSHA256:  digest(manifestData),
 		CIApplicability: CIAplicability(manifest),
 		AuthorityClaims: claims,
@@ -656,6 +660,9 @@ func (p Plan) Validate() error {
 	if strings.TrimSpace(p.Root) == "" || strings.TrimSpace(p.ManifestPath) == "" {
 		return fmt.Errorf("bootstrap plan root and manifest_path are required")
 	}
+	if !filepath.IsAbs(p.Root) || !filepath.IsAbs(p.ManifestPath) {
+		return fmt.Errorf("bootstrap plan root and manifest_path must be absolute")
+	}
 	if !validDigest(p.SnapshotSHA256) || !validDigest(p.ManifestSHA256) {
 		return fmt.Errorf("bootstrap plan requires lowercase SHA-256 identities")
 	}
@@ -670,6 +677,9 @@ func (p Plan) Validate() error {
 	for _, action := range p.Actions {
 		if action.Type != "WRITE_BOOTSTRAP_MANIFEST" || action.Target != DefaultManifestPath || !action.Supported || !validDigest(action.SHA256) {
 			return fmt.Errorf("bootstrap plan contains unsupported executable action")
+		}
+		if action.SHA256 != p.ManifestSHA256 {
+			return fmt.Errorf("bootstrap plan action digest does not match manifest identity")
 		}
 	}
 	return nil
