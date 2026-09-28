@@ -77,6 +77,24 @@ func Discover(ctx context.Context, reader posture.GitHubReader, spec config.Spec
 		entries[entry.Path] = entry
 	}
 
+	baselineEntries := map[string]posture.GitHubTreeEntry{}
+	baselineAvailable := false
+	if strings.HasPrefix(fullName, "hackelia-micrantha/") && fullName != "hackelia-micrantha/.github" {
+		baselineRepo, baselineRepoObs, baselineErr := reader.Repository(ctx, "hackelia-micrantha/.github")
+		if baselineErr == nil && baselineRepoObs.Available {
+			baselineBranch, baselineBranchObs, branchErr := reader.Branch(ctx, "hackelia-micrantha/.github", baselineRepo.DefaultBranch)
+			if branchErr == nil && baselineBranchObs.Available {
+				baselineTree, baselineTreeObs, treeErr := reader.Tree(ctx, "hackelia-micrantha/.github", baselineBranch.TreeSHA)
+				if treeErr == nil && baselineTreeObs.Available && !baselineTree.Truncated {
+					baselineAvailable = true
+					for _, entry := range baselineTree.Entries {
+						baselineEntries[entry.Path] = entry
+					}
+				}
+			}
+		}
+	}
+
 	discovery := Discovery{
 		Kind:              DiscoveryKind,
 		Version:           DiscoveryVersion,
@@ -89,7 +107,7 @@ func Discover(ctx context.Context, reader posture.GitHubReader, spec config.Spec
 		ManifestState:     "absent",
 		CIApplicability:   "unresolved",
 		Observations:      discoveryObservations(entries, tree.Truncated),
-		InheritedBaseline: inheritedBaseline(fullName, entries, tree.Truncated),
+		InheritedBaseline: inheritedBaseline(fullName, entries, tree.Truncated, baselineEntries, baselineAvailable),
 	}
 
 	if entry, ok := entries[DefaultManifestPath]; ok && entry.Type == "blob" {
@@ -114,6 +132,9 @@ func Discover(ctx context.Context, reader posture.GitHubReader, spec config.Spec
 	discovery.FingerprintSHA256 = discoveryFingerprint(discovery)
 	discovery.ScanState = "first-discovery"
 	if previous != nil {
+		if previous.FingerprintSHA256 != discoveryFingerprint(*previous) {
+			return Discovery{}, fmt.Errorf("previous discovery fingerprint does not match its evidence")
+		}
 		if previous.Repository != fullName {
 			return Discovery{}, fmt.Errorf("previous discovery repository %q does not match %q", previous.Repository, fullName)
 		}
@@ -189,9 +210,9 @@ func discoveryObservations(entries map[string]posture.GitHubTreeEntry, truncated
 	return out
 }
 
-func inheritedBaseline(fullName string, entries map[string]posture.GitHubTreeEntry, truncated bool) []BaselineArtifact {
+func inheritedBaseline(fullName string, entries map[string]posture.GitHubTreeEntry, truncated bool, sourceEntries map[string]posture.GitHubTreeEntry, sourceAvailable bool) []BaselineArtifact {
 	parts := strings.Split(fullName, "/")
-	if len(parts) != 2 || parts[0] != "hackelia-micrantha" {
+	if len(parts) != 2 || parts[0] != "hackelia-micrantha" || parts[1] == ".github" {
 		return []BaselineArtifact{}
 	}
 	definitions := []struct {
@@ -206,27 +227,37 @@ func inheritedBaseline(fullName string, entries map[string]posture.GitHubTreeEnt
 	}
 	out := make([]BaselineArtifact, 0, len(definitions)+1)
 	for _, definition := range definitions {
-		state := "provider-inherited"
+		state := "unknown"
 		for _, candidate := range definition.candidates {
 			if entry, ok := entries[candidate]; ok && entry.Type == "blob" {
 				state = "local-override"
 				break
 			}
 		}
-		if truncated && state == "provider-inherited" {
-			state = "unknown"
+		if state != "local-override" && !truncated && sourceAvailable {
+			for _, candidate := range definition.candidates {
+				if entry, ok := sourceEntries[candidate]; ok && entry.Type == "blob" {
+					state = "provider-inherited"
+					break
+				}
+			}
 		}
 		out = append(out, BaselineArtifact{Name: definition.name, State: state, Source: "hackelia-micrantha/.github"})
 	}
-	issueState := "provider-inherited"
+	issueState := "unknown"
 	for path, entry := range entries {
 		if entry.Type == "blob" && strings.HasPrefix(path, ".github/ISSUE_TEMPLATE/") {
 			issueState = "local-override"
 			break
 		}
 	}
-	if truncated && issueState == "provider-inherited" {
-		issueState = "unknown"
+	if issueState != "local-override" && !truncated && sourceAvailable {
+		for path, entry := range sourceEntries {
+			if entry.Type == "blob" && strings.HasPrefix(path, ".github/ISSUE_TEMPLATE/") {
+				issueState = "provider-inherited"
+				break
+			}
+		}
 	}
 	out = append(out, BaselineArtifact{Name: "issue-templates", State: issueState, Source: "hackelia-micrantha/.github"})
 	return out
