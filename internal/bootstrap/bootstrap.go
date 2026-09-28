@@ -876,8 +876,16 @@ func Init(rootPath string) error {
 		return fmt.Errorf("open bootstrap root: %w", err)
 	}
 	defer root.Close()
-	if err := root.MkdirAll(filepath.ToSlash(filepath.Dir(DefaultProposalPath)), 0o755); err != nil {
+	parent := filepath.ToSlash(filepath.Dir(DefaultProposalPath))
+	if err := root.Mkdir(parent, 0o755); err != nil && !errors.Is(err, fs.ErrExist) {
 		return fmt.Errorf("create bootstrap manifest parent: %w", err)
+	}
+	parentInfo, err := root.Stat(parent)
+	if err != nil {
+		return fmt.Errorf("inspect bootstrap manifest parent: %w", err)
+	}
+	if !parentInfo.IsDir() {
+		return fmt.Errorf("bootstrap manifest parent must be a root-confined directory")
 	}
 	file, err := root.OpenFile(DefaultProposalPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
