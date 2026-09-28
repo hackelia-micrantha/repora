@@ -1,0 +1,292 @@
+package bootstrap
+
+import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"repoctl/internal/config"
+	"repoctl/internal/posture"
+)
+
+func TestDefaultManifestIsAssumptionFreeAndPinned(t *testing.T) {
+	manifest := DefaultManifest()
+	if err := manifest.Validate(); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+	if got := CIAplicability(manifest); got != "unresolved" {
+		t.Fatalf("CIApplicability() = %q, want unresolved", got)
+	}
+	claims := VerifyAuthority(manifest)
+	if len(claims) != 1 || claims[0].DecisionKey != "repository.defaultBranch" || !claims[0].Verified {
+		t.Fatalf("VerifyAuthority() = %#v, want verified default branch only", claims)
+	}
+	if manifest.Schema != PinnedSchemaURL() {
+		t.Fatalf("schema = %q, want pinned authoritative schema", manifest.Schema)
+	}
+}
+
+func TestManifestRejectsDuplicateDecisionKeys(t *testing.T) {
+	manifest := DefaultManifest()
+	manifest.Decisions = append(manifest.Decisions, Decision{Key: "repository.visibility", State: "unresolved"})
+	if err := manifest.Validate(); err == nil {
+		t.Fatal("Validate() succeeded for duplicate decision keys")
+	}
+}
+
+func TestManifestRejectsInvalidResolvedValue(t *testing.T) {
+	manifest := DefaultManifest()
+	for i := range manifest.Decisions {
+		if manifest.Decisions[i].Key == "repository.visibility" {
+			manifest.Decisions[i] = Decision{
+				Key:   "repository.visibility",
+				State: "resolved",
+				Value: map[string]interface{}{"private": true},
+				Provenance: &Provenance{
+					Authority: "human",
+					Subject:   "owner",
+					Reference: "test",
+				},
+			}
+		}
+	}
+	if err := manifest.Validate(); err == nil {
+		t.Fatal("Validate() succeeded for invalid repository.visibility value")
+	}
+}
+
+func TestInitIsCreateOnly(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, DefaultProposalPath)
+	if err := Init(path); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+	if err := Init(path); err == nil {
+		t.Fatal("second Init() succeeded, want create-only failure")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ParseManifest(data); err != nil {
+		t.Fatalf("ParseManifest() error = %v", err)
+	}
+}
+
+func TestPlanDoesNotInferCIApplicabilityFromObservedWorkflowOrFlake(t *testing.T) {
+	root := t.TempDir()
+	proposal := filepath.Join(root, DefaultProposalPath)
+	if err := Init(proposal); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "flake.nix"), []byte("{}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	workflowDir := filepath.Join(root, ".github", "workflows")
+	if err := os.MkdirAll(workflowDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(workflowDir, "ci.yml"), []byte("name: ci\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := BuildPlan(root, proposal)
+	if err != nil {
+		t.Fatalf("BuildPlan() error = %v", err)
+	}
+	if plan.CIApplicability != "unresolved" {
+		t.Fatalf("CIApplicability = %q, want unresolved", plan.CIApplicability)
+	}
+	if len(plan.Actions) != 1 || plan.Actions[0].Type != "WRITE_BOOTSTRAP_MANIFEST" {
+		t.Fatalf("Actions = %#v, want create-only manifest action", plan.Actions)
+	}
+}
+
+func TestApplyCreatesOnlyAuthoritativeManifest(t *testing.T) {
+	root := t.TempDir()
+	proposal := filepath.Join(root, DefaultProposalPath)
+	if err := Init(proposal); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := BuildPlan(root, proposal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := Apply(plan)
+	if err != nil {
+		t.Fatalf("Apply() error = %v", err)
+	}
+	if result.Outcome != "created" {
+		t.Fatalf("Outcome = %q, want created", result.Outcome)
+	}
+	data, err := os.ReadFile(filepath.Join(root, DefaultManifestPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if digest(data) != plan.ManifestSHA256 {
+		t.Fatal("written manifest digest does not match reviewed plan")
+	}
+}
+
+func TestApplyFailsStaleWhenObservedStateChanges(t *testing.T) {
+	root := t.TempDir()
+	proposal := filepath.Join(root, DefaultProposalPath)
+	if err := Init(proposal); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := BuildPlan(root, proposal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("changed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err = Apply(plan)
+	if !errors.Is(err, ErrStale) {
+		t.Fatalf("Apply() error = %v, want ErrStale", err)
+	}
+}
+
+func TestResolvedHumanClaimIsRecordedButDoesNotAuthorizeFutureEffects(t *testing.T) {
+	root := t.TempDir()
+	manifest := DefaultManifest()
+	for i := range manifest.Decisions {
+		if manifest.Decisions[i].Key == "repository.visibility" {
+			manifest.Decisions[i] = Decision{
+				Key:   "repository.visibility",
+				State: "resolved",
+				Value: "private",
+				Provenance: &Provenance{
+					Authority: "human",
+					Subject:   "repository-owner",
+					Reference: "decision-1",
+				},
+			}
+		}
+	}
+	data, err := manifest.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposal := filepath.Join(root, DefaultProposalPath)
+	if err := os.MkdirAll(filepath.Dir(proposal), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(proposal, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := BuildPlan(root, proposal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Actions) != 1 {
+		t.Fatalf("manifest persistence unexpectedly blocked: %#v", plan.BlockedActions)
+	}
+	found := false
+	for _, blocked := range plan.BlockedActions {
+		if blocked.Type != "PROVIDER_CREATE" {
+			continue
+		}
+		for _, key := range blocked.DecisionKeys {
+			if key == "repository.visibility" {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("provider action did not remain blocked by unverified visibility claim: %#v", plan.BlockedActions)
+	}
+}
+
+type fakeGitHubReader struct {
+	tree  posture.GitHubTree
+	blobs map[string][]byte
+}
+
+func (f fakeGitHubReader) Repository(context.Context, string) (posture.GitHubRepository, posture.ReadObservation, error) {
+	return posture.GitHubRepository{DefaultBranch: "main"}, available("repo"), nil
+}
+
+func (f fakeGitHubReader) Branch(context.Context, string, string) (posture.GitHubBranch, posture.ReadObservation, error) {
+	return posture.GitHubBranch{Name: "main", CommitSHA: "1111111111111111111111111111111111111111", TreeSHA: "2222222222222222222222222222222222222222"}, available("branch"), nil
+}
+
+func (f fakeGitHubReader) BranchProtection(context.Context, string, string) (posture.GitHubProtection, posture.ReadObservation, error) {
+	return posture.GitHubProtection{}, available("protection"), nil
+}
+
+func (f fakeGitHubReader) Tree(context.Context, string, string) (posture.GitHubTree, posture.ReadObservation, error) {
+	return f.tree, available("tree"), nil
+}
+
+func (f fakeGitHubReader) Blob(_ context.Context, _ string, sha string) ([]byte, posture.ReadObservation, error) {
+	data, ok := f.blobs[sha]
+	if !ok {
+		return nil, posture.ReadObservation{}, errors.New("missing fake blob")
+	}
+	return data, available("blob"), nil
+}
+
+func available(reference string) posture.ReadObservation {
+	return posture.ReadObservation{Available: true, Evidence: posture.Evidence{Source: "test", Reference: reference}}
+}
+
+func TestDiscoveryDoesNotInferCIFromWorkflowAndClassifiesRescans(t *testing.T) {
+	reader := fakeGitHubReader{tree: posture.GitHubTree{Entries: []posture.GitHubTreeEntry{
+		{Path: ".github/workflows/ci.yml", Type: "blob", SHA: "a"},
+		{Path: "flake.nix", Type: "blob", SHA: "b"},
+	}}, blobs: map[string][]byte{}}
+	spec := config.Spec{Repos: []config.Repo{{
+		ID:      "other",
+		Mirrors: []config.Endpoint{{Provider: "github", Path: "hackelia-micrantha/other"}},
+	}}}
+	first, err := Discover(context.Background(), reader, spec, "hackelia-micrantha/new-repo", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Registration != "unregistered" || first.CIApplicability != "unresolved" || first.ScanState != "first-discovery" {
+		t.Fatalf("unexpected first discovery: %#v", first)
+	}
+	if first.InheritedBaseline[0].State != "provider-inherited" {
+		t.Fatalf("inherited baseline = %#v", first.InheritedBaseline)
+	}
+	second, err := Discover(context.Background(), reader, spec, "hackelia-micrantha/new-repo", &first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.ScanState != "unchanged" {
+		t.Fatalf("ScanState = %q, want unchanged", second.ScanState)
+	}
+}
+
+func TestDiscoveryUsesExplicitManifestDecisionForCIApplicability(t *testing.T) {
+	manifest := DefaultManifest()
+	for i := range manifest.Decisions {
+		if manifest.Decisions[i].Key == "delivery.ciProvider" {
+			manifest.Decisions[i] = Decision{
+				Key:        "delivery.ciProvider",
+				State:      "resolved",
+				Value:      "github-actions",
+				Provenance: &Provenance{Authority: "human", Subject: "repository-owner", Reference: "decision-2"},
+			}
+		}
+	}
+	data, err := manifest.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := fakeGitHubReader{
+		tree:  posture.GitHubTree{Entries: []posture.GitHubTreeEntry{{Path: DefaultManifestPath, Type: "blob", SHA: "manifest"}}},
+		blobs: map[string][]byte{"manifest": data},
+	}
+	discovery, err := Discover(context.Background(), reader, config.Spec{}, "hackelia-micrantha/new-repo", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if discovery.ManifestState != "valid" || discovery.CIApplicability != "applicable" {
+		t.Fatalf("discovery = %#v", discovery)
+	}
+}
+
+[executed on device: 76a4bdf5fc1b (a7fd9f41-8002-4c03-ac43-498109dd9775)]

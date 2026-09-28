@@ -6,6 +6,7 @@ Repora records user-visible capability, compatibility, security, and release-pro
 
 ### Added
 
+- Assumption-free repository bootstrap adds create-only proposal initialization, bounded local inspection, exact stale-safe plan/apply for the authoritative bootstrap manifest, and GET-only repository discovery with explicit first/unchanged/changed evidence. Workflow/flake observations never infer CI applicability; the runtime contract is pinned to Micrantha bootstrap merge `af0ec6581e7593b4e5cb8a5ada4294cde86115e8`.
 - CI-environment posture v2 adds bounded workload-tool, setup-action, and conservative ambient runner-tool candidate evidence while retaining v1 artifact compatibility and runtime-attestation boundaries.
 - Micrantha flake-first CI example policy and deterministic CLI conformance fixtures cover compliant, violating, explicit N/A, platform-input evidence, and ambiguous applicability cases without granting collector-owned policy exceptions.
 - Posture policy/report v2 adds bounded conditional applicability with explicit N/A, unresolved/unknown/unavailable preservation, applicability evidence, and strict v1 compatibility.
@@ -107,3 +108,5 @@ Before publishing a version, move the applicable Unreleased entries under a vers
 ```
 
 The release manager reviews GitHub-generated notes against this changelog. The changelog is the curated compatibility and operator-impact record; generated notes provide commit and contributor detail.
+
+[executed on device: 76a4bdf5fc1b (a7fd9f41-8002-4c03-ac43-498109dd9775)]

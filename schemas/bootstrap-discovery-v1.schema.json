@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hackelia-micrantha/repora/blob/main/schemas/bootstrap-discovery-v1.schema.json",
+  "title": "Repora bootstrap discovery v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "version",
+    "contract",
+    "repository",
+    "registration",
+    "default_branch",
+    "commit_sha",
+    "tree_sha",
+    "manifest_state",
+    "ci_applicability",
+    "observations",
+    "inherited_baseline",
+    "fingerprint_sha256",
+    "scan_state"
+  ],
+  "properties": {
+    "kind": {
+      "const": "repora.bootstrap-discovery"
+    },
+    "version": {
+      "const": 1
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "revision",
+        "schema_path",
+        "template_path"
+      ],
+      "properties": {
+        "repository": {
+          "const": "hackelia-micrantha/.github"
+        },
+        "revision": {
+          "const": "af0ec6581e7593b4e5cb8a5ada4294cde86115e8"
+        },
+        "schema_path": {
+          "const": "metadata/repository-bootstrap.schema.json"
+        },
+        "template_path": {
+          "const": "docs/standards/templates/repository-bootstrap.json"
+        }
+      }
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 3
+    },
+    "registration": {
+      "enum": [
+        "registered",
+        "unregistered"
+      ]
+    },
+    "default_branch": {
+      "type": "string",
+      "minLength": 1
+    },
+    "commit_sha": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tree_sha": {
+      "type": "string",
+      "minLength": 1
+    },
+    "manifest_state": {
+      "enum": [
+        "absent",
+        "valid",
+        "invalid",
+        "unavailable"
+      ]
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "ci_applicability": {
+      "enum": [
+        "applicable",
+        "not-applicable",
+        "unresolved"
+      ]
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "state",
+          "evidence"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "state": {
+            "enum": [
+              "observed",
+              "unknown",
+              "unavailable"
+            ]
+          },
+          "value": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "inherited_baseline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "state",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "state": {
+            "enum": [
+              "local-override",
+              "provider-inherited",
+              "unknown"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "fingerprint_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "scan_state": {
+      "enum": [
+        "first-discovery",
+        "unchanged",
+        "changed"
+      ]
+    }
+  }
+}
+
+[executed on device: 76a4bdf5fc1b (a7fd9f41-8002-4c03-ac43-498109dd9775)]

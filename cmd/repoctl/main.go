@@ -85,6 +85,9 @@ func run(args []string) int {
 	if args[0] == "posture" {
 		return runPosture(args[1:])
 	}
+	if args[0] == "bootstrap" {
+		return runBootstrap(args[1:])
+	}
 	if args[0] == "validate-report" {
 		return runValidateReport(args[1:])
 	}
@@ -207,6 +210,7 @@ func run(args []string) int {
 func printUsageError() {
 	fmt.Fprintln(os.Stderr, "usage: repoctl <status|plan|apply|sync> -f repora.yaml [--json|--artifact] [--plan-file FILE] [--parallel N] [--continue-on-error] [--dry-run] [--force] [--debug]")
 	fmt.Fprintln(os.Stderr, "       repoctl posture inventory OWNER/REPO")
+	fmt.Fprintln(os.Stderr, "       repoctl bootstrap <init|inspect|plan|apply|discover> [options]")
 	fmt.Fprintln(os.Stderr, "       repoctl plan-readme -f repora.yaml [--artifact]")
 	fmt.Fprintln(os.Stderr, "       repoctl apply-readme -f repora.yaml --plan-file FILE [--dry-run] [--json]")
 	fmt.Fprintln(os.Stderr, "       repoctl validate-report FILE")
@@ -214,3 +218,5 @@ func printUsageError() {
 	fmt.Fprintln(os.Stderr, "       repoctl generate-scorecard FILE")
 	fmt.Fprintln(os.Stderr, "       repoctl assess FILE")
 }
+
+[executed on device: 76a4bdf5fc1b (a7fd9f41-8002-4c03-ac43-498109dd9775)]

@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hackelia-micrantha/repora/blob/main/schemas/bootstrap-inspection-v1.schema.json",
+  "title": "Repora bootstrap inspection v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "version",
+    "root",
+    "snapshot_sha256",
+    "observations"
+  ],
+  "properties": {
+    "kind": {
+      "const": "repora.bootstrap-inspection"
+    },
+    "version": {
+      "const": 1
+    },
+    "root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "snapshot_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "state",
+          "value",
+          "evidence"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "state": {
+            "enum": [
+              "observed",
+              "unknown",
+              "unavailable"
+            ]
+          },
+          "value": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  }
+}
+
+[executed on device: 76a4bdf5fc1b (a7fd9f41-8002-4c03-ac43-498109dd9775)]

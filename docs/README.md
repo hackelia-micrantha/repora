@@ -17,6 +17,7 @@ Use the smallest authoritative source that answers the question.
 | How do repository assessments and evidence work? | [`assessments.md`](assessments.md) |
 | How does the GitHub repository/CI posture inventory work? | [`posture-inventory.md`](posture-inventory.md) |
 | How does deterministic documentation/README posture work? | [`posture-documentation.md`](posture-documentation.md) |
+| How does assumption-free repository bootstrap/discovery work? | [`bootstrap.md`](bootstrap.md) |
 | How do hooks/local-workflow posture facts work? | [`posture-hooks.md`](posture-hooks.md) |
 | How does flake-first CI environment posture work? | [`posture-ci-environment.md`](posture-ci-environment.md) |
 | How does bounded commit-history posture work? | [`posture-commits.md`](posture-commits.md) |
@@ -109,3 +110,5 @@ Every pull request should answer these questions in its description or checklist
 - Does the active plan need updating?
 
 A concise “not applicable” is sufficient when the change does not affect documentation.
+
+[executed on device: 76a4bdf5fc1b (a7fd9f41-8002-4c03-ac43-498109dd9775)]

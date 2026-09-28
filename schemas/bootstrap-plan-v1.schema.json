@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hackelia-micrantha/repora/blob/main/schemas/bootstrap-plan-v1.schema.json",
+  "title": "Repora bootstrap plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "version",
+    "contract",
+    "root",
+    "snapshot_sha256",
+    "manifest_path",
+    "manifest_sha256",
+    "ci_applicability",
+    "authority_claims",
+    "actions",
+    "blocked_actions",
+    "unresolved_keys"
+  ],
+  "properties": {
+    "kind": {
+      "const": "repora.bootstrap-plan"
+    },
+    "version": {
+      "const": 1
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "revision",
+        "schema_path",
+        "template_path"
+      ],
+      "properties": {
+        "repository": {
+          "const": "hackelia-micrantha/.github"
+        },
+        "revision": {
+          "const": "af0ec6581e7593b4e5cb8a5ada4294cde86115e8"
+        },
+        "schema_path": {
+          "const": "metadata/repository-bootstrap.schema.json"
+        },
+        "template_path": {
+          "const": "docs/standards/templates/repository-bootstrap.json"
+        }
+      }
+    },
+    "root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "snapshot_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "manifest_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "ci_applicability": {
+      "enum": [
+        "applicable",
+        "not-applicable",
+        "unresolved"
+      ]
+    },
+    "authority_claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "decision_key",
+          "provenance",
+          "verified"
+        ],
+        "properties": {
+          "decision_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "basis": {
+            "type": "string"
+          },
+          "provenance": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "authority",
+              "subject",
+              "reference"
+            ],
+            "properties": {
+              "authority": {
+                "enum": [
+                  "human",
+                  "organization-policy",
+                  "project-policy"
+                ]
+              },
+              "subject": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reference": {
+                "type": "string",
+                "minLength": 1
+              },
+              "rationale": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "target",
+          "supported"
+        ],
+        "properties": {
+          "type": {
+            "const": "WRITE_BOOTSTRAP_MANIFEST"
+          },
+          "target": {
+            "const": ".repora/bootstrap.json"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "supported": {
+            "const": true
+          }
+        }
+      }
+    },
+    "blocked_actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "reasons"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target": {
+            "type": "string"
+          },
+          "reasons": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "decision_keys": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "unresolved_keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}
+
+[executed on device: 76a4bdf5fc1b (a7fd9f41-8002-4c03-ac43-498109dd9775)]

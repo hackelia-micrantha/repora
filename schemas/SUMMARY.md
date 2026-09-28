@@ -17,6 +17,10 @@ Use the schema matching the exact artifact kind and version being produced or co
 - `managed-artifact-plan-v1.schema.json`
 - `managed-artifact-execution-record-v1.schema.json`
 - `managed-artifact-apply-result-v1.schema.json`
+- `bootstrap-inspection-v1.schema.json`
+- `bootstrap-plan-v1.schema.json`
+- `bootstrap-apply-result-v1.schema.json`
+- `bootstrap-discovery-v1.schema.json`
 - `execution-record-v*.schema.json`
 - `posture-inventory-v1.schema.json`
 - `posture-documentation-v1.schema.json`
@@ -56,3 +60,5 @@ Load the exact schema whenever validating fields, required properties, enums, co
 ## Exclusions and stale areas
 
 Do not assume a higher version is interchangeable with an older consumer. Historical schemas remain valid evidence for their own version but are not substitutes for the requested contract version. Posture inventories are observed evidence, not findings or risk scores. Documentation observation profiles choose deterministic facts to collect; they do not define severity, suppress policy, or grant remediation authority. Mirror posture v1 remains default-branch scoped: tag and release drift are explicit unknown facts rather than inferred results. Hooks posture profiles select bounded observation expectations only: local hooks are early feedback, CI remains authoritative, and no hook code is installed or executed. CI environment profiles declare applicability and irreducible bootstrap/platform inputs as observation evidence only; they do not grant policy exceptions or establish compliance. Commit posture profiles select bounded history, sensitive paths, and deterministic thresholds only; they do not define severity, infer developer intent, or authorize productivity/identity analytics. Posture policy profiles define explicit expectations, severity, remediation, and time-bounded exceptions over normalized facts only; v2 additionally supports one bounded applicability fact with explicit applicable/not-applicable conditions while preserving unresolved evidence; they are not loaded from target repositories automatically and do not grant provider access or mutation authority. Posture reports preserve unknown/unavailable evidence and decomposable findings instead of creating an opaque numeric score. Assessment scorecards are scoped evidence summaries, not objective whole-project grades unless the report explicitly supports that scope. Managed artifact plan, execution-record, and apply-result schemas define review/evidence contracts; mutation safety is governed by the managed-artifact architecture and exact-plan preflight/lease rules.
+
+[executed on device: 76a4bdf5fc1b (a7fd9f41-8002-4c03-ac43-498109dd9775)]
