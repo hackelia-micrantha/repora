@@ -52,7 +52,19 @@ assert_subcommand_help apply
 "$binary" generate-scorecard ./examples/repository-assessment-v1.json >/dev/null
 
 assessment_tmpdir="$(mktemp -d)"
-trap 'rm -rf "$assessment_tmpdir"' EXIT
 "$binary" assess --help >/dev/null
 "$binary" assess "$assessment_tmpdir/assessment.json" >/dev/null
 "$binary" validate-report "$assessment_tmpdir/assessment.json" >/dev/null
+
+bootstrap_tmpdir="$(mktemp -d)"
+trap 'rm -rf "$assessment_tmpdir" "$bootstrap_tmpdir"' EXIT
+"$binary" bootstrap --help >/dev/null
+"$binary" bootstrap init --root "$bootstrap_tmpdir" >/dev/null
+"$binary" bootstrap inspect --root "$bootstrap_tmpdir" --json >"$bootstrap_tmpdir/inspection.json"
+"$binary" bootstrap plan --root "$bootstrap_tmpdir" --artifact >"$bootstrap_tmpdir/plan.json"
+"$binary" bootstrap apply --plan-file "$bootstrap_tmpdir/plan.json" --json >"$bootstrap_tmpdir/apply.json"
+test -f "$bootstrap_tmpdir/.repora/bootstrap.json"
+grep -q '"kind":"repora.bootstrap-inspection"' "$bootstrap_tmpdir/inspection.json" || grep -q '"kind": "repora.bootstrap-inspection"' "$bootstrap_tmpdir/inspection.json"
+grep -q '"kind": "repora.bootstrap-plan"' "$bootstrap_tmpdir/plan.json"
+grep -q '"outcome":"created"' "$bootstrap_tmpdir/apply.json" || grep -q '"outcome": "created"' "$bootstrap_tmpdir/apply.json"
+
