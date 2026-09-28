@@ -249,7 +249,7 @@ func TestApplyRejectsTamperedManifestDerivedPlanFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan.UnresolvedKeys = nil
+	plan.UnresolvedKeys = []string{}
 	if _, err := Apply(plan); !errors.Is(err, ErrStale) {
 		t.Fatalf("Apply() error = %v, want ErrStale for tampered unresolved keys", err)
 	}
