@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"repoctl/internal/config"
@@ -141,6 +142,47 @@ func TestPlanDoesNotInferCIApplicabilityFromObservedWorkflowOrFlake(t *testing.T
 	}
 	if len(plan.Actions) != 1 || plan.Actions[0].Type != "WRITE_BOOTSTRAP_MANIFEST" {
 		t.Fatalf("Actions = %#v, want create-only manifest action", plan.Actions)
+	}
+}
+
+func TestPlanBindsAbsoluteManifestPath(t *testing.T) {
+	root := t.TempDir()
+	if err := Init(root); err != nil {
+		t.Fatal(err)
+	}
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(root); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldWD)
+
+	plan, err := BuildPlan(".", DefaultProposalPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !filepath.IsAbs(plan.Root) || !filepath.IsAbs(plan.ManifestPath) {
+		t.Fatalf("plan paths must be absolute: root=%q manifest=%q", plan.Root, plan.ManifestPath)
+	}
+}
+
+func TestPlanRejectsActionDigestMismatch(t *testing.T) {
+	root := t.TempDir()
+	if err := Init(root); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := BuildPlan(root, filepath.Join(root, DefaultProposalPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Actions) != 1 {
+		t.Fatalf("Actions = %#v, want one action", plan.Actions)
+	}
+	plan.Actions[0].SHA256 = strings.Repeat("0", 64)
+	if err := plan.Validate(); err == nil {
+		t.Fatal("Validate() succeeded for mismatched action digest")
 	}
 }
 
