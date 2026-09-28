@@ -746,20 +746,24 @@ func Apply(plan Plan) (ApplyResult, error) {
 	if len(plan.Actions) != 1 || plan.Actions[0].Type != "WRITE_BOOTSTRAP_MANIFEST" {
 		return result, fmt.Errorf("bootstrap apply only supports one create-only manifest action")
 	}
-	target := filepath.Join(plan.Root, filepath.FromSlash(DefaultManifestPath))
-	parentInfo, err := os.Stat(filepath.Dir(target))
+	root, err := os.OpenRoot(plan.Root)
+	if err != nil {
+		return result, fmt.Errorf("%w: bootstrap root changed or is unavailable", ErrStale)
+	}
+	defer root.Close()
+	parentInfo, err := root.Stat(filepath.ToSlash(filepath.Dir(DefaultManifestPath)))
 	if err != nil {
 		return result, fmt.Errorf("%w: bootstrap manifest parent changed or is unavailable", ErrStale)
 	}
 	if !parentInfo.IsDir() {
 		return result, fmt.Errorf("%w: bootstrap manifest parent is not a directory", ErrStale)
 	}
-	file, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	file, err := root.OpenFile(DefaultManifestPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		if errors.Is(err, fs.ErrExist) {
 			return result, fmt.Errorf("%w: bootstrap manifest target now exists", ErrStale)
 		}
-		return result, fmt.Errorf("create bootstrap manifest: %w", err)
+		return result, fmt.Errorf("%w: bootstrap manifest path is no longer root-confined: %v", ErrStale, err)
 	}
 	writeErr := func() error {
 		if _, err := file.Write(manifestData); err != nil {
@@ -769,7 +773,7 @@ func Apply(plan Plan) (ApplyResult, error) {
 	}()
 	closeErr := file.Close()
 	if writeErr != nil {
-		_ = os.Remove(target)
+		_ = root.Remove(DefaultManifestPath)
 		return result, fmt.Errorf("write bootstrap manifest: %w", writeErr)
 	}
 	if closeErr != nil {
@@ -791,25 +795,30 @@ func sameClaims(a, b []AuthorityClaim) bool {
 	return true
 }
 
-func Init(path string) error {
+func Init(rootPath string) error {
 	manifest := DefaultManifest()
 	data, err := manifest.Marshal()
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	root, err := os.OpenRoot(rootPath)
+	if err != nil {
+		return fmt.Errorf("open bootstrap root: %w", err)
+	}
+	defer root.Close()
+	if err := root.MkdirAll(filepath.ToSlash(filepath.Dir(DefaultProposalPath)), 0o755); err != nil {
 		return fmt.Errorf("create bootstrap manifest parent: %w", err)
 	}
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	file, err := root.OpenFile(DefaultProposalPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		if errors.Is(err, fs.ErrExist) {
-			return fmt.Errorf("bootstrap manifest already exists: %s", path)
+			return fmt.Errorf("bootstrap manifest already exists: %s", filepath.Join(rootPath, filepath.FromSlash(DefaultProposalPath)))
 		}
 		return fmt.Errorf("create bootstrap manifest: %w", err)
 	}
 	if _, err := file.Write(data); err != nil {
 		_ = file.Close()
-		_ = os.Remove(path)
+		_ = root.Remove(DefaultProposalPath)
 		return fmt.Errorf("write bootstrap manifest: %w", err)
 	}
 	if err := file.Close(); err != nil {
