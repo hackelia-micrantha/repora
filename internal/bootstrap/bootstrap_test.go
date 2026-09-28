@@ -231,6 +231,39 @@ func TestApplyFailsStaleWhenObservedStateChanges(t *testing.T) {
 	}
 }
 
+func TestApplyRejectsTamperedManifestDerivedPlanFields(t *testing.T) {
+	root := t.TempDir()
+	if err := Init(root); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := BuildPlan(root, filepath.Join(root, DefaultProposalPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan.CIApplicability = "applicable"
+	if _, err := Apply(plan); !errors.Is(err, ErrStale) {
+		t.Fatalf("Apply() error = %v, want ErrStale for tampered CI applicability", err)
+	}
+
+	plan, err = BuildPlan(root, filepath.Join(root, DefaultProposalPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan.UnresolvedKeys = nil
+	if _, err := Apply(plan); !errors.Is(err, ErrStale) {
+		t.Fatalf("Apply() error = %v, want ErrStale for tampered unresolved keys", err)
+	}
+
+	plan, err = BuildPlan(root, filepath.Join(root, DefaultProposalPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan.BlockedActions = []BlockedAction{}
+	if _, err := Apply(plan); !errors.Is(err, ErrStale) {
+		t.Fatalf("Apply() error = %v, want ErrStale for tampered blocked actions", err)
+	}
+}
+
 func TestResolvedHumanClaimIsRecordedButDoesNotAuthorizeFutureEffects(t *testing.T) {
 	root := t.TempDir()
 	manifest := DefaultManifest()
@@ -284,6 +317,7 @@ func TestResolvedHumanClaimIsRecordedButDoesNotAuthorizeFutureEffects(t *testing
 
 type fakeGitHubReader struct {
 	tree  posture.GitHubTree
+	trees map[string]posture.GitHubTree
 	blobs map[string][]byte
 }
 
@@ -299,7 +333,12 @@ func (f fakeGitHubReader) BranchProtection(context.Context, string, string) (pos
 	return posture.GitHubProtection{}, available("protection"), nil
 }
 
-func (f fakeGitHubReader) Tree(context.Context, string, string) (posture.GitHubTree, posture.ReadObservation, error) {
+func (f fakeGitHubReader) Tree(_ context.Context, repository string, _ string) (posture.GitHubTree, posture.ReadObservation, error) {
+	if f.trees != nil {
+		if tree, ok := f.trees[repository]; ok {
+			return tree, available("tree"), nil
+		}
+	}
 	return f.tree, available("tree"), nil
 }
 
@@ -316,10 +355,18 @@ func available(reference string) posture.ReadObservation {
 }
 
 func TestDiscoveryDoesNotInferCIFromWorkflowAndClassifiesRescans(t *testing.T) {
-	reader := fakeGitHubReader{tree: posture.GitHubTree{Entries: []posture.GitHubTreeEntry{
-		{Path: ".github/workflows/ci.yml", Type: "blob", SHA: "a"},
-		{Path: "flake.nix", Type: "blob", SHA: "b"},
-	}}, blobs: map[string][]byte{}}
+	reader := fakeGitHubReader{
+		tree: posture.GitHubTree{Entries: []posture.GitHubTreeEntry{
+			{Path: ".github/workflows/ci.yml", Type: "blob", SHA: "a"},
+			{Path: "flake.nix", Type: "blob", SHA: "b"},
+		}},
+		trees: map[string]posture.GitHubTree{
+			"hackelia-micrantha/.github": {Entries: []posture.GitHubTreeEntry{
+				{Path: "SECURITY.md", Type: "blob", SHA: "security"},
+			}},
+		},
+		blobs: map[string][]byte{},
+	}
 	spec := config.Spec{Repos: []config.Repo{{
 		ID:      "other",
 		Mirrors: []config.Endpoint{{Provider: "github", Path: "hackelia-micrantha/other"}},
@@ -340,6 +387,32 @@ func TestDiscoveryDoesNotInferCIFromWorkflowAndClassifiesRescans(t *testing.T) {
 	}
 	if second.ScanState != "unchanged" {
 		t.Fatalf("ScanState = %q, want unchanged", second.ScanState)
+	}
+}
+
+func TestDiscoveryRejectsTamperedPreviousFingerprint(t *testing.T) {
+	reader := fakeGitHubReader{tree: posture.GitHubTree{}, blobs: map[string][]byte{}}
+	first, err := Discover(context.Background(), reader, config.Spec{}, "hackelia-micrantha/new-repo", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first.Registration = "registered"
+	_, err = Discover(context.Background(), reader, config.Spec{}, "hackelia-micrantha/new-repo", &first)
+	if err == nil {
+		t.Fatal("Discover() accepted previous artifact whose evidence no longer matches its fingerprint")
+	}
+}
+
+func TestDiscoveryDoesNotClaimInheritanceWithoutSourceEvidence(t *testing.T) {
+	reader := fakeGitHubReader{tree: posture.GitHubTree{}, trees: map[string]posture.GitHubTree{}, blobs: map[string][]byte{}}
+	discovery, err := Discover(context.Background(), reader, config.Spec{}, "hackelia-micrantha/new-repo", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, artifact := range discovery.InheritedBaseline {
+		if artifact.State == "provider-inherited" {
+			t.Fatalf("unexpected provider-inherited state without source evidence: %#v", artifact)
+		}
 	}
 }
 
