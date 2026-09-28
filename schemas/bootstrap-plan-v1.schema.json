@@ -51,7 +51,8 @@
     },
     "root": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "description": "Absolute repository workspace root bound by the reviewed plan."
     },
     "snapshot_sha256": {
       "type": "string",
@@ -59,7 +60,8 @@
     },
     "manifest_path": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "description": "Absolute manifest input path bound by the reviewed plan."
     },
     "manifest_sha256": {
       "type": "string",
@@ -134,6 +136,7 @@
         "required": [
           "type",
           "target",
+          "sha256",
           "supported"
         ],
         "properties": {
@@ -145,7 +148,8 @@
           },
           "sha256": {
             "type": "string",
-            "pattern": "^[0-9a-f]{64}$"
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "SHA-256 of the exact manifest bytes; must equal manifest_sha256."
           },
           "supported": {
             "const": true
