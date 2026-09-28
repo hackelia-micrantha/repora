@@ -32,7 +32,7 @@ repoctl bootstrap discover -f repora.yaml [--previous FILE] OWNER/REPO
 
 `inspect` is local and read-only. It records bounded file/workflow observations and a deterministic snapshot identity.
 
-`plan` consumes an exact proposal and binds its digest, the local snapshot, the pinned organization contract, authority claims, executable actions, blocked actions, unresolved decision keys, and explicit CI applicability.
+`plan` consumes an exact proposal and binds its absolute input path and digest, the absolute repository root, local snapshot, pinned organization contract, authority claims, executable actions, blocked actions, unresolved decision keys, and explicit CI applicability. Every executable action digest must equal the bound manifest digest.
 
 `apply` accepts only an exact bootstrap-plan v1 artifact. V1 can create only `.repora/bootstrap.json` from the reviewed proposal. It revalidates the proposal digest, snapshot, authority-claim set, parent directory, and create-only target before writing. Proposal and manifest writes use Go's root-confined filesystem API, so symlink/path traversal cannot redirect effects outside the selected repository root. Stale evidence exits with status 2. It does not create providers, licenses, implementation scaffolds, release configuration, or CI.
 
