@@ -6,6 +6,7 @@ Repora records user-visible capability, compatibility, security, and release-pro
 
 ### Added
 
+- Minimum Go version is now 1.24 so bootstrap writes can use the standard-library root-confined filesystem API and reject symlink/path escape from the selected repository root.
 - Assumption-free repository bootstrap adds create-only proposal initialization, bounded local inspection, exact stale-safe plan/apply for the authoritative bootstrap manifest, and GET-only repository discovery with explicit first/unchanged/changed evidence. Workflow/flake observations never infer CI applicability; the runtime contract is pinned to Micrantha bootstrap merge `af0ec6581e7593b4e5cb8a5ada4294cde86115e8`.
 - CI-environment posture v2 adds bounded workload-tool, setup-action, and conservative ambient runner-tool candidate evidence while retaining v1 artifact compatibility and runtime-attestation boundaries.
 - Micrantha flake-first CI example policy and deterministic CLI conformance fixtures cover compliant, violating, explicit N/A, platform-input evidence, and ambiguous applicability cases without granting collector-owned policy exceptions.
