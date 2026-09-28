@@ -60,10 +60,10 @@ func TestManifestRejectsInvalidResolvedValue(t *testing.T) {
 func TestInitIsCreateOnly(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, DefaultProposalPath)
-	if err := Init(path); err != nil {
+	if err := Init(root); err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
-	if err := Init(path); err == nil {
+	if err := Init(root); err == nil {
 		t.Fatal("second Init() succeeded, want create-only failure")
 	}
 	data, err := os.ReadFile(path)
@@ -75,10 +75,51 @@ func TestInitIsCreateOnly(t *testing.T) {
 	}
 }
 
+func TestInitRejectsSymlinkParentEscape(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(root, ".repora")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if err := Init(root); err == nil {
+		t.Fatal("Init() succeeded through symlinked .repora parent")
+	}
+	if _, err := os.Stat(filepath.Join(outside, "bootstrap.proposed.json")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("outside proposal exists or stat failed unexpectedly: %v", err)
+	}
+}
+
+func TestApplyRejectsSymlinkParentSwap(t *testing.T) {
+	root := t.TempDir()
+	if err := Init(root); err != nil {
+		t.Fatal(err)
+	}
+	proposal := filepath.Join(root, DefaultProposalPath)
+	plan, err := BuildPlan(root, proposal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	moved := filepath.Join(outside, "repora")
+	if err := os.Rename(filepath.Join(root, ".repora"), moved); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(moved, filepath.Join(root, ".repora")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	_, err = Apply(plan)
+	if !errors.Is(err, ErrStale) {
+		t.Fatalf("Apply() error = %v, want ErrStale", err)
+	}
+	if _, err := os.Stat(filepath.Join(moved, "bootstrap.json")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("outside bootstrap manifest exists or stat failed unexpectedly: %v", err)
+	}
+}
+
 func TestPlanDoesNotInferCIApplicabilityFromObservedWorkflowOrFlake(t *testing.T) {
 	root := t.TempDir()
 	proposal := filepath.Join(root, DefaultProposalPath)
-	if err := Init(proposal); err != nil {
+	if err := Init(root); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(root, "flake.nix"), []byte("{}\n"), 0o644); err != nil {
@@ -106,7 +147,7 @@ func TestPlanDoesNotInferCIApplicabilityFromObservedWorkflowOrFlake(t *testing.T
 func TestApplyCreatesOnlyAuthoritativeManifest(t *testing.T) {
 	root := t.TempDir()
 	proposal := filepath.Join(root, DefaultProposalPath)
-	if err := Init(proposal); err != nil {
+	if err := Init(root); err != nil {
 		t.Fatal(err)
 	}
 	plan, err := BuildPlan(root, proposal)
@@ -132,7 +173,7 @@ func TestApplyCreatesOnlyAuthoritativeManifest(t *testing.T) {
 func TestApplyFailsStaleWhenObservedStateChanges(t *testing.T) {
 	root := t.TempDir()
 	proposal := filepath.Join(root, DefaultProposalPath)
-	if err := Init(proposal); err != nil {
+	if err := Init(root); err != nil {
 		t.Fatal(err)
 	}
 	plan, err := BuildPlan(root, proposal)
