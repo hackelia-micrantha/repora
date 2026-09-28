@@ -777,7 +777,7 @@ func Apply(plan Plan) (ApplyResult, error) {
 	defer root.Close()
 	inspection, err := inspectRoot(root, plan.Root)
 	if err != nil {
-		return result, err
+		return result, fmt.Errorf("%w: repository root cannot be re-inspected: %v", ErrStale, err)
 	}
 	if inspection.SnapshotSHA256 != plan.SnapshotSHA256 {
 		return result, fmt.Errorf("%w: observed repository state changed", ErrStale)
