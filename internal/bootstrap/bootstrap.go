@@ -400,19 +400,20 @@ func CIAplicability(m Manifest) string {
 	return "unresolved"
 }
 
-func Inspect(root string) (Inspection, error) {
-	absRoot, err := filepath.Abs(root)
+func Inspect(rootPath string) (Inspection, error) {
+	absRoot, err := filepath.Abs(rootPath)
 	if err != nil {
 		return Inspection{}, fmt.Errorf("resolve bootstrap root: %w", err)
 	}
-	info, err := os.Stat(absRoot)
+	root, err := os.OpenRoot(absRoot)
 	if err != nil {
-		return Inspection{}, fmt.Errorf("stat bootstrap root: %w", err)
+		return Inspection{}, fmt.Errorf("open bootstrap root: %w", err)
 	}
-	if !info.IsDir() {
-		return Inspection{}, fmt.Errorf("bootstrap root must be a directory")
-	}
+	defer root.Close()
+	return inspectRoot(root, absRoot)
+}
 
+func inspectRoot(root *os.Root, absRoot string) (Inspection, error) {
 	paths := []struct {
 		key  string
 		path string
@@ -426,13 +427,13 @@ func Inspect(root string) (Inspection, error) {
 	}
 	observations := make([]Observation, 0, len(paths)+1)
 	for _, item := range paths {
-		obs, err := observeFile(absRoot, item.key, item.path)
+		obs, err := observeRootFile(root, item.key, item.path)
 		if err != nil {
 			return Inspection{}, err
 		}
 		observations = append(observations, obs)
 	}
-	workflowObs, err := observeWorkflows(absRoot)
+	workflowObs, err := observeRootWorkflows(root)
 	if err != nil {
 		return Inspection{}, err
 	}
@@ -449,35 +450,47 @@ func Inspect(root string) (Inspection, error) {
 	return inspection, nil
 }
 
-func observeFile(root, key, relative string) (Observation, error) {
-	full := filepath.Join(root, filepath.FromSlash(relative))
-	info, err := os.Lstat(full)
+func observeRootFile(root *os.Root, key, relative string) (Observation, error) {
+	file, err := root.Open(relative)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return Observation{Key: key, State: "observed", Value: false, Evidence: relative}, nil
 		}
 		return Observation{}, fmt.Errorf("inspect %s: %w", relative, err)
 	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return Observation{}, fmt.Errorf("inspect %s: symlink is not accepted at bootstrap boundary", relative)
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return Observation{}, fmt.Errorf("inspect %s: %w", relative, err)
 	}
 	if !info.Mode().IsRegular() {
-		return Observation{}, fmt.Errorf("inspect %s: expected regular file", relative)
+		return Observation{}, fmt.Errorf("inspect %s: expected regular root-confined file", relative)
 	}
-	data, err := os.ReadFile(full)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		return Observation{}, fmt.Errorf("inspect %s: %w", relative, err)
 	}
 	return Observation{Key: key, State: "observed", Value: true, Evidence: relative, SHA256: digest(data)}, nil
 }
 
-func observeWorkflows(root string) (Observation, error) {
-	dir := filepath.Join(root, ".github", "workflows")
-	entries, err := os.ReadDir(dir)
+func observeRootWorkflows(root *os.Root) (Observation, error) {
+	dir, err := root.Open(".github/workflows")
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return Observation{Key: "workflows_present", State: "observed", Value: false, Evidence: ".github/workflows"}, nil
 		}
+		return Observation{}, fmt.Errorf("inspect workflows: %w", err)
+	}
+	defer dir.Close()
+	info, err := dir.Stat()
+	if err != nil {
+		return Observation{}, fmt.Errorf("inspect workflows: %w", err)
+	}
+	if !info.IsDir() {
+		return Observation{}, fmt.Errorf("inspect workflows: expected root-confined directory")
+	}
+	entries, err := dir.ReadDir(-1)
+	if err != nil {
 		return Observation{}, fmt.Errorf("inspect workflows: %w", err)
 	}
 	names := make([]string, 0)
@@ -496,9 +509,17 @@ func observeWorkflows(root string) (Observation, error) {
 	sort.Strings(names)
 	h := sha256.New()
 	for _, name := range names {
-		data, err := os.ReadFile(filepath.Join(dir, name))
+		file, err := root.Open(filepath.ToSlash(filepath.Join(".github", "workflows", name)))
 		if err != nil {
 			return Observation{}, fmt.Errorf("inspect workflow %s: %w", name, err)
+		}
+		data, readErr := io.ReadAll(file)
+		closeErr := file.Close()
+		if readErr != nil {
+			return Observation{}, fmt.Errorf("inspect workflow %s: %w", name, readErr)
+		}
+		if closeErr != nil {
+			return Observation{}, fmt.Errorf("close workflow %s: %w", name, closeErr)
 		}
 		fmt.Fprintf(h, "%s\x00%s\x00", name, digest(data))
 	}
@@ -542,13 +563,7 @@ func BuildPlan(root, manifestPath string) (Plan, error) {
 		return Plan{}, err
 	}
 	claims := VerifyAuthority(manifest)
-	unresolved := make([]string, 0)
-	for _, decision := range manifest.Decisions {
-		if decision.State == "unresolved" {
-			unresolved = append(unresolved, decision.Key)
-		}
-	}
-	sort.Strings(unresolved)
+	unresolved := unresolvedKeys(manifest)
 
 	plan := Plan{
 		Kind:            PlanKind,
@@ -641,6 +656,41 @@ func decisionBlockers(m Manifest, claims []AuthorityClaim) []BlockedAction {
 	return out
 }
 
+func unresolvedKeys(m Manifest) []string {
+	keys := make([]string, 0)
+	for _, decision := range m.Decisions {
+		if decision.State == "unresolved" {
+			keys = append(keys, decision.Key)
+		}
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func sameBlockedActions(a, b []BlockedAction) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Type != b[i].Type || a[i].Target != b[i].Target || !stringSlicesEqual(a[i].Reasons, b[i].Reasons) || !stringSlicesEqual(a[i].DecisionKeys, b[i].DecisionKeys) {
+			return false
+		}
+	}
+	return true
+}
+
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func observationValue(inspection Inspection, key string) bool {
 	for _, observation := range inspection.Observations {
 		if observation.Key == key {
@@ -720,7 +770,12 @@ func Apply(plan Plan) (ApplyResult, error) {
 		Target:         DefaultManifestPath,
 		ManifestSHA256: plan.ManifestSHA256,
 	}
-	inspection, err := Inspect(plan.Root)
+	root, err := os.OpenRoot(plan.Root)
+	if err != nil {
+		return result, fmt.Errorf("%w: bootstrap root changed or is unavailable", ErrStale)
+	}
+	defer root.Close()
+	inspection, err := inspectRoot(root, plan.Root)
 	if err != nil {
 		return result, err
 	}
@@ -749,6 +804,16 @@ func Apply(plan Plan) (ApplyResult, error) {
 	if !sameClaims(plan.AuthorityClaims, claims) {
 		return result, fmt.Errorf("%w: authority evidence changed or cannot be revalidated", ErrStale)
 	}
+	if plan.CIApplicability != CIAplicability(manifest) {
+		return result, fmt.Errorf("%w: CI applicability does not match bound manifest", ErrStale)
+	}
+	if !stringSlicesEqual(plan.UnresolvedKeys, unresolvedKeys(manifest)) {
+		return result, fmt.Errorf("%w: unresolved decision set does not match bound manifest", ErrStale)
+	}
+	expectedBlocked := decisionBlockers(manifest, claims)
+	if !sameBlockedActions(plan.BlockedActions, expectedBlocked) {
+		return result, fmt.Errorf("%w: blocked actions do not match bound manifest and authority evidence", ErrStale)
+	}
 	if len(plan.Actions) == 0 {
 		result.Outcome = "no-op"
 		return result, nil
@@ -756,11 +821,6 @@ func Apply(plan Plan) (ApplyResult, error) {
 	if len(plan.Actions) != 1 || plan.Actions[0].Type != "WRITE_BOOTSTRAP_MANIFEST" {
 		return result, fmt.Errorf("bootstrap apply only supports one create-only manifest action")
 	}
-	root, err := os.OpenRoot(plan.Root)
-	if err != nil {
-		return result, fmt.Errorf("%w: bootstrap root changed or is unavailable", ErrStale)
-	}
-	defer root.Close()
 	parentInfo, err := root.Stat(filepath.ToSlash(filepath.Dir(DefaultManifestPath)))
 	if err != nil {
 		return result, fmt.Errorf("%w: bootstrap manifest parent changed or is unavailable", ErrStale)
