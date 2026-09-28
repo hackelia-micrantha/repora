@@ -416,6 +416,92 @@ func TestDiscoveryDoesNotClaimInheritanceWithoutSourceEvidence(t *testing.T) {
 	}
 }
 
+func TestDiscoveryEmptyRepositoryFixture(t *testing.T) {
+	reader := fakeGitHubReader{
+		tree:  posture.GitHubTree{Entries: []posture.GitHubTreeEntry{}},
+		trees: map[string]posture.GitHubTree{"hackelia-micrantha/.github": {Entries: []posture.GitHubTreeEntry{}}},
+		blobs: map[string][]byte{},
+	}
+	discovery, err := Discover(context.Background(), reader, config.Spec{}, "hackelia-micrantha/empty", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if discovery.ManifestState != "absent" || discovery.CIApplicability != "unresolved" || discovery.Registration != "unregistered" {
+		t.Fatalf("unexpected empty discovery: %#v", discovery)
+	}
+	for _, observation := range discovery.Observations {
+		if observation.State != "observed" || observation.Value == nil || *observation.Value {
+			t.Fatalf("empty repository observation = %#v, want observed false", observation)
+		}
+	}
+}
+
+func TestDiscoveryLocalOverrideFixture(t *testing.T) {
+	reader := fakeGitHubReader{
+		tree: posture.GitHubTree{Entries: []posture.GitHubTreeEntry{
+			{Path: "SECURITY.md", Type: "blob", SHA: "local-security"},
+		}},
+		trees: map[string]posture.GitHubTree{
+			"hackelia-micrantha/.github": {Entries: []posture.GitHubTreeEntry{
+				{Path: "SECURITY.md", Type: "blob", SHA: "org-security"},
+			}},
+		},
+		blobs: map[string][]byte{},
+	}
+	discovery, err := Discover(context.Background(), reader, config.Spec{}, "hackelia-micrantha/override", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, artifact := range discovery.InheritedBaseline {
+		if artifact.Name == "security-guidance" {
+			found = true
+			if artifact.State != "local-override" {
+				t.Fatalf("security guidance = %#v, want local-override", artifact)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("security-guidance baseline artifact not reported")
+	}
+}
+
+func TestDiscoveryPartiallyBootstrappedFixture(t *testing.T) {
+	manifest := DefaultManifest()
+	for i := range manifest.Decisions {
+		if manifest.Decisions[i].Key == "repository.name" {
+			manifest.Decisions[i] = Decision{
+				Key:   "repository.name",
+				State: "resolved",
+				Value: "partial",
+				Provenance: &Provenance{
+					Authority: "human",
+					Subject:   "repository-owner",
+					Reference: "fixture-decision",
+				},
+			}
+		}
+	}
+	data, err := manifest.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := fakeGitHubReader{
+		tree: posture.GitHubTree{Entries: []posture.GitHubTreeEntry{
+			{Path: DefaultManifestPath, Type: "blob", SHA: "partial-manifest"},
+		}},
+		trees: map[string]posture.GitHubTree{"hackelia-micrantha/.github": {Entries: []posture.GitHubTreeEntry{}}},
+		blobs: map[string][]byte{"partial-manifest": data},
+	}
+	discovery, err := Discover(context.Background(), reader, config.Spec{}, "hackelia-micrantha/partial", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if discovery.ManifestState != "valid" || discovery.CIApplicability != "unresolved" {
+		t.Fatalf("partial discovery = %#v", discovery)
+	}
+}
+
 func TestDiscoveryUsesExplicitManifestDecisionForCIApplicability(t *testing.T) {
 	manifest := DefaultManifest()
 	for i := range manifest.Decisions {

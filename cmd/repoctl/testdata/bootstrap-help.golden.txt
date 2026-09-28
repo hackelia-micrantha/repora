@@ -1,0 +1,5 @@
+usage: repoctl bootstrap init [--root DIR]
+       repoctl bootstrap inspect [--root DIR] [--json]
+       repoctl bootstrap plan [--root DIR] [--manifest FILE] [--artifact]
+       repoctl bootstrap apply --plan-file FILE [--json]
+       repoctl bootstrap discover -f repora.yaml [--previous FILE] OWNER/REPO
