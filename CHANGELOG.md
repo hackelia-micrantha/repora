@@ -108,5 +108,3 @@ Before publishing a version, move the applicable Unreleased entries under a vers
 ```
 
 The release manager reviews GitHub-generated notes against this changelog. The changelog is the curated compatibility and operator-impact record; generated notes provide commit and contributor detail.
-
-[executed on device: 76a4bdf5fc1b (a7fd9f41-8002-4c03-ac43-498109dd9775)]

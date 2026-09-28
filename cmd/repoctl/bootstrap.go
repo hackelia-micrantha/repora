@@ -267,5 +267,3 @@ func printBootstrapUsage(w *os.File) {
 	fmt.Fprintln(w, "       repoctl bootstrap apply --plan-file FILE [--json]")
 	fmt.Fprintln(w, "       repoctl bootstrap discover -f repora.yaml [--previous FILE] OWNER/REPO")
 }
-
-[executed on device: 76a4bdf5fc1b (a7fd9f41-8002-4c03-ac43-498109dd9775)]

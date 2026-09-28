@@ -159,5 +159,3 @@ func isHelpRequest(args []string) bool {
 func printHelp(w io.Writer) {
 	fmt.Fprint(w, helpText)
 }
-
-[executed on device: 76a4bdf5fc1b (a7fd9f41-8002-4c03-ac43-498109dd9775)]

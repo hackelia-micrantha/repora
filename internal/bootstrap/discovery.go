@@ -296,5 +296,3 @@ func (d Discovery) Marshal() ([]byte, error) {
 	}
 	return append(data, '\n'), nil
 }
-
-[executed on device: 76a4bdf5fc1b (a7fd9f41-8002-4c03-ac43-498109dd9775)]

@@ -26,5 +26,3 @@ Load deeper documents when the question concerns exact CLI/schema compatibility,
 ## Exclusions and stale areas
 
 Historical RFC material and superseded implementation plans are retained for traceability and are not current implementation authority. Use the authority map in [`README.md`](README.md) before relying on historical documents.
-
-[executed on device: 76a4bdf5fc1b (a7fd9f41-8002-4c03-ac43-498109dd9775)]

@@ -67,5 +67,3 @@ Supplying `--previous` classifies the scan as `first-discovery`, `unchanged`, or
 Persisting a bootstrap manifest stores provenance claims as data. It does not authorize or exercise the decisions inside it. Future mutation capabilities must verify applicable human/project/policy authority independently before using those decisions.
 
 Provider creation remains outside bootstrap v1. Automatic discovery never mutates a repository merely because it is new or non-conformant.
-
-[executed on device: 76a4bdf5fc1b (a7fd9f41-8002-4c03-ac43-498109dd9775)]
