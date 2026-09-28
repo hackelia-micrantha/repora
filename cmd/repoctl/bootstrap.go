@@ -53,7 +53,7 @@ func runBootstrapInit(args []string) int {
 		return 1
 	}
 	path := filepath.Join(*root, filepath.FromSlash(bootstrap.DefaultProposalPath))
-	if err := bootstrap.Init(path); err != nil {
+	if err := bootstrap.Init(*root); err != nil {
 		fmt.Fprintf(os.Stderr, "repoctl: bootstrap init: %v\n", err)
 		return 1
 	}
