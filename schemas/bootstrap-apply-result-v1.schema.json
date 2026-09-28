@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hackelia-micrantha/repora/blob/main/schemas/bootstrap-apply-result-v1.schema.json",
+  "title": "Repora bootstrap apply result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "version",
+    "plan_sha256",
+    "outcome",
+    "target",
+    "manifest_sha256"
+  ],
+  "properties": {
+    "kind": {
+      "const": "repora.bootstrap-apply-result"
+    },
+    "version": {
+      "const": 1
+    },
+    "plan_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "outcome": {
+      "enum": [
+        "created",
+        "no-op",
+        "blocked"
+      ]
+    },
+    "target": {
+      "const": ".repora/bootstrap.json"
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

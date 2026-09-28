@@ -18,6 +18,11 @@ Usage:
   repoctl posture storage --repository OWNER/REPO --path LOCAL_GIT_REPOSITORY
   repoctl posture converge [--inventory FILE] [--docs FILE] [--hooks FILE] [--ci-environment FILE] [--commits FILE] [--storage FILE] [--mirrors FILE --repo-uid UID]
   repoctl posture report --profile POLICY.json --facts FACTS.json --as-of YYYY-MM-DD [--format markdown|json]
+  repoctl bootstrap init [--root DIR]
+  repoctl bootstrap inspect [--root DIR] [--json]
+  repoctl bootstrap plan [--root DIR] [--manifest FILE] [--artifact]
+  repoctl bootstrap apply --plan-file FILE [--json]
+  repoctl bootstrap discover -f repora.yaml [--previous FILE] OWNER/REPO
   repoctl plan-readme -f repora.yaml [--artifact]
   repoctl apply-readme -f repora.yaml --plan-file FILE [--dry-run] [--json]
   repoctl validate-report FILE
@@ -33,6 +38,7 @@ Commands:
   apply    apply current observations or an exact plan artifact
   sync     alias for apply
   posture  collect, converge, and evaluate read-only repository posture evidence
+  bootstrap  initialize, inspect, plan, apply, and discover assumption-free repository bootstrap state
   plan-readme  review managed README changes or export the exact managed-artifact plan
   apply-readme  dry-run or journaled exact-plan managed README apply
   validate-report  validate a repository assessment report without mutation
@@ -107,6 +113,10 @@ Posture mirrors reuses the existing mirror reconciliation cache/status semantics
 Posture converge is offline-only. It strictly validates supplied versioned collector artifacts, rejects duplicate source flags and repository-identity mismatches, preserves observed/unknown/unavailable states through the typed adapters, and emits deterministic repora.posture-policy-inputs v1 JSON. It does not re-scan repositories or contact providers.
 
 Posture report is offline-only. It consumes normalized fact inputs and an external policy profile, preserves unknown/unavailable evidence, evaluates explicit expected-vs-observed rules and exceptions, and emits deterministic Markdown or JSON. Policy v2 may additionally classify a rule as applicable, explicitly not applicable, or unresolved using one normalized applicability fact; target facts are not evaluated until applicability is established. It does not contact providers, re-scan repositories, mutate state, or calculate an opaque numeric score.
+
+Bootstrap consumes the organization-owned repository-bootstrap v1 contract pinned to merge af0ec6581e7593b4e5cb8a5ada4294cde86115e8. init creates only an unresolved proposal; inspect and discover are read-only; plan produces an exact stale-bound local plan; apply v1 can only create the authoritative .repora/bootstrap.json from that reviewed plan. Observations never resolve decisions, and workflow or flake presence never infers CI applicability. When CI is explicitly applicable, the Micrantha flake-first CI standard applies, but bootstrap v1 does not generate CI or provider state.
+
+Bootstrap discover is GET-only with respect to GitHub. It distinguishes registered/unregistered repositories, provider-inherited Micrantha baseline from local overrides, manifest validity, explicit CI applicability, and first/unchanged/changed scans using a deterministic fingerprint. --previous supplies prior discovery evidence; no scheduler or event mechanism is required by the core command.
 
 Options for plan-readme:
   -f string

@@ -44,6 +44,9 @@ Collect, converge, and evaluate repository posture evidence. Collector subcomman
 and
 .BR mirrors .
 .TP
+.B bootstrap
+Initialize, inspect, plan, apply, and discover assumption-free repository bootstrap state. Bootstrap consumes the pinned Micrantha organization contract; observations never become decision authority.
+.TP
 .B plan-readme
 Review managed README changes or emit an exact managed-artifact plan.
 .TP
@@ -118,6 +121,31 @@ reuses Repora's local reconciliation observation path and may refresh local cach
 and
 .B posture report
 are offline-only. They consume versioned artifacts, preserve unknown or unavailable evidence, and do not contact providers or mutate repository state. Policy profile v2 supports bounded conditional applicability over one normalized fact and reports explicit not-applicable results without treating them as passes or findings.
+.SH BOOTSTRAP
+.B bootstrap init
+creates only
+.B .repora/bootstrap.proposed.json
+with create-only semantics. It leaves material project decisions unresolved except for organization-policy decisions carried by the pinned contract.
+.PP
+.B bootstrap inspect
+is local and read-only.
+.B bootstrap discover
+is GET-only with respect to GitHub and reports registered/unregistered status, exact branch/tree identity, manifest state, provider-inherited baseline evidence, and deterministic first/unchanged/changed scan state.
+.PP
+.B bootstrap plan
+binds the proposal digest, repository snapshot, pinned contract, authority claims, explicit CI applicability, executable actions, and blocked actions.
+.B bootstrap apply
+accepts only an exact v1 plan and can create only
+.BR .repora/bootstrap.json .
+It fails stale when the reviewed inputs change and returns exit status 2 for stale evidence.
+.PP
+Workflow presence,
+.B flake.nix ,
+and
+.B flake.lock
+are observations only and never infer CI applicability. When CI is explicitly applicable, the Micrantha flake-first CI standard applies; bootstrap v1 does not generate CI or provider state.
+.PP
+Provider creation, license materialization, implementation scaffolding, release configuration, and CI mutation remain non-executable blocked actions in bootstrap v1.
 .SH ENVIRONMENT
 .TP
 .B GITHUB_TOKEN

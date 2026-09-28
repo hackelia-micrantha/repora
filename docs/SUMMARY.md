@@ -11,6 +11,7 @@ This subtree explains Repora's current architecture, CLI contracts, configuratio
 - [`README.md`](README.md) — documentation authority map and maintenance rules.
 - [`../README.md`](../README.md) — current product capabilities and operator-facing behavior.
 - [`architecture/current-system.md`](architecture/current-system.md) — current implementation structure.
+- [`bootstrap.md`](bootstrap.md) — assumption-free bootstrap lifecycle, discovery evidence, and authority boundaries.
 - [`plans/current.md`](plans/current.md) — active work and explicit deferrals.
 - [`../schemas/`](../schemas/) — machine-readable compatibility contracts.
 

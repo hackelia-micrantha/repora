@@ -17,6 +17,7 @@ Use the smallest authoritative source that answers the question.
 | How do repository assessments and evidence work? | [`assessments.md`](assessments.md) |
 | How does the GitHub repository/CI posture inventory work? | [`posture-inventory.md`](posture-inventory.md) |
 | How does deterministic documentation/README posture work? | [`posture-documentation.md`](posture-documentation.md) |
+| How does assumption-free repository bootstrap/discovery work? | [`bootstrap.md`](bootstrap.md) |
 | How do hooks/local-workflow posture facts work? | [`posture-hooks.md`](posture-hooks.md) |
 | How does flake-first CI environment posture work? | [`posture-ci-environment.md`](posture-ci-environment.md) |
 | How does bounded commit-history posture work? | [`posture-commits.md`](posture-commits.md) |

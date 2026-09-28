@@ -17,6 +17,10 @@ Use the schema matching the exact artifact kind and version being produced or co
 - `managed-artifact-plan-v1.schema.json`
 - `managed-artifact-execution-record-v1.schema.json`
 - `managed-artifact-apply-result-v1.schema.json`
+- `bootstrap-inspection-v1.schema.json`
+- `bootstrap-plan-v1.schema.json`
+- `bootstrap-apply-result-v1.schema.json`
+- `bootstrap-discovery-v1.schema.json`
 - `execution-record-v*.schema.json`
 - `posture-inventory-v1.schema.json`
 - `posture-documentation-v1.schema.json`
