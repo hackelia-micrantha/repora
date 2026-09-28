@@ -16,6 +16,8 @@ The organization-owned contract remains authoritative in `hackelia-micrantha/.gi
 
 Repora does not copy or redefine the authoritative manifest schema. The proposal emitted by `bootstrap init` references the immutable organization schema URL.
 
+Bootstrap write confinement requires Go 1.24 or newer; repository CI and Nix packaging currently use Go 1.25.
+
 ## CLI lifecycle
 
 ```text
@@ -32,7 +34,7 @@ repoctl bootstrap discover -f repora.yaml [--previous FILE] OWNER/REPO
 
 `plan` consumes an exact proposal and binds its digest, the local snapshot, the pinned organization contract, authority claims, executable actions, blocked actions, unresolved decision keys, and explicit CI applicability.
 
-`apply` accepts only an exact bootstrap-plan v1 artifact. V1 can create only `.repora/bootstrap.json` from the reviewed proposal. It revalidates the proposal digest, snapshot, authority-claim set, parent directory, and create-only target before writing. Stale evidence exits with status 2. It does not create providers, licenses, implementation scaffolds, release configuration, or CI.
+`apply` accepts only an exact bootstrap-plan v1 artifact. V1 can create only `.repora/bootstrap.json` from the reviewed proposal. It revalidates the proposal digest, snapshot, authority-claim set, parent directory, and create-only target before writing. Proposal and manifest writes use Go's root-confined filesystem API, so symlink/path traversal cannot redirect effects outside the selected repository root. Stale evidence exits with status 2. It does not create providers, licenses, implementation scaffolds, release configuration, or CI.
 
 ## CI applicability
 
