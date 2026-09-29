@@ -25,6 +25,7 @@ This runs formatting verification, module hygiene, `go vet`, fast race-enabled t
 | `make test` | Run fast tests with `-race -count=1 -short`. |
 | `make coverage` | Run the fast test suite with race detection and write coverage profile and summary files under `artifacts/coverage/`. |
 | `make testule-observation-source` | Run one reviewed planner target as bounded native `go test -json` source material for the Testule pilot; this is not normalized Testule Evidence or a gap result. |
+| `make testule-observation-map` | Run only the six reviewed Go-observable Pilot 2 targets as one bounded race-enabled native JSON stream; built-process E2E remains separate. |
 | `make integration` | Run integration-bearing packages against disposable local Git repositories. |
 | `make contract-test` | Run routing, context-receipt, and repository-assessment contract validation. |
 | `make deep-repeat` | Repeat the fast race-enabled suite, reporting the failing iteration. |
@@ -61,6 +62,12 @@ Coverage profiles contain repository-relative Go source paths and must not be au
 The unit CI job also runs `make testule-observation-source`. This does **not** rerun the full suite: it executes only `repoctl/internal/plan.TestReconcileIsDeterministicAndDoesNotMutateInputs` with `-count=1 -json`, drains the native stream through a one-MiB fail-closed capture, verifies the exact target reached a passing terminal event, and retains the stream plus `git rev-parse HEAD` for seven days.
 
 On pull requests, the recorded revision is GitHub's synthetic merge checkout because that is the code actually tested. On `main`, it is the landed commit. The files under `artifacts/testule/` are native observation source material only: they do not carry a canonical Testule plan fingerprint, semantic annotation, normalized Evidence record, or a `testule gaps` outcome. Those remain separate consumer work under the Testule pilot.
+
+### Reviewed Go observation map
+
+A separate read-only CI job runs `make testule-observation-map`. It selects six exact targets across planner, apply, CLI contract, local-Git integration, scheduling-boundary, and Git path-safety packages with `-race -count=1 -json`. The integration target is intentionally run without `-short`; the exact-target verifier rejects a skip as non-evidence. The job retains `reviewed-go-observation-map.json` and `reviewed-go-map-subject-revision.txt` for seven days.
+
+This job is not a replacement for the normal unit/integration/contract jobs and does not run the full repository suite. Its artifact is native source material for the Testule pilot only. The built `repoctl` E2E smoke remains a separate non-Go process boundary and is not inserted into this stream.
 
 ## Verification binaries and target status
 

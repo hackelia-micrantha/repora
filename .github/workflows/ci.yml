@@ -129,6 +129,31 @@ jobs:
       - name: Run local-repository integration tests
         run: make integration
 
+  testule-observation-map:
+    name: Reviewed native observation map
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Capture reviewed Go observation map
+        run: make testule-observation-map
+
+      - name: Upload reviewed Go observation map
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: testule-reviewed-go-observation-map
+          path: artifacts/testule/
+          if-no-files-found: error
+          retention-days: 7
+
   contract:
     name: Contract tests
     runs-on: ubuntu-latest
