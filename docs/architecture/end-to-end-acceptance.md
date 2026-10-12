@@ -2,7 +2,7 @@
 
 Status: **Proposed** — product acceptance design; current capabilities are identified explicitly.
 Owners: Repora (#211); implementation and operational evidence remain in owning issues.
-Reviewed: 2026-10-11
+Drafted: 2026-10-11
 
 ## Purpose and scope
 
@@ -27,7 +27,7 @@ A source tree, passing test suite, merged PR, policy `allow`, or released archiv
 | Capability Gateway | External Dubnium experimental infrastructure, not an implemented Repora integration | Qualify exact governed mirror effect #212/#213 |
 | Recovery archive | #156 open | Git bundle/ref coverage and isolated restore; forge state explicitly separately scoped |
 
-Do not equate default-branch reconciliation with `git push --mirror`: tags, wildcard refs, deleted refs, LFS, repository settings, issues, PRs, Actions and forge database state are not covered by mirror v1. Expand scope only via a new versioned ref/relationship contract and separate acceptance.
+Do not equate default-branch reconciliation with `git push --mirror`: tags, wildcard refs, deleted refs, LFS, repository settings, issues, PRs, Actions and forge database state are not covered by mirror v1. Expand scope only via a new versioned ref/relationship contract and separate acceptance (#215).
 
 ## Gate A — published standalone mirror controller
 
@@ -91,4 +91,4 @@ Evidence states are **pass, fail, partial, unknown, unavailable, blocked** as ap
 - `docs/architecture/governed-mirror-reconciliation.md`
 - `docs/architecture/anthesis-policy-integration.md` and ADR-0018
 - `docs/architecture/repository-topology-and-trust-domains.md`
-- `docs/plans/current.md`, #138, #149, #160, #211–213
+- `docs/plans/current.md`, #138, #149, #160, #211–213, #215
