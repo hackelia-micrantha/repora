@@ -18,7 +18,9 @@ Use exactly one versioned, typed effect — provisionally `repository.mirror.rec
 
 Repora performs trusted prepare: validate exact reviewed plan bytes/identity and invocation intent, bind deterministic facts to the concrete effect, and reject unsupported/stale/ambiguous state. Gateway binds trustworthy actor context and durable idempotent request identity; Anthesis evaluates the exact prepared facts; only a fresh, persisted explicit `allow` can enter the governed Repora execution boundary. The effector independently rechecks exact decision/actor/manifest binding and mutation-critical state before durable Git INTENT and any push.
 
-A successful policy decision cannot rewrite plans, infer `--force`, broaden refs, replace leased-force semantics, authorize another action, or bypass Repora's local constraints. All provider write credentials remain in a principal unavailable to agents and remote requestors.
+A successful policy decision cannot rewrite plans, infer `--force`, broaden refs, replace leased-force semantics, authorize another action, or bypass Repora's local constraints.
+
+For multi-mirror effects, authorization freshness must hold at each independently consequential push. If that cannot be enforced, the first governed capability is restricted to single-mirror requests; a pre-action-zero check alone is insufficient to prove later-effect authority. Local stale preflight, exact target leases and honest partial-outcome semantics remain mandatory. All provider write credentials remain in a principal unavailable to agents and remote requestors.
 
 Trusted standalone `repoctl` retains its existing behavior when integration is disabled. An environment claiming **governed** execution must enforce complete mediation outside the request JSON and must not offer a direct agent Git/CLI credential bypass.
 
