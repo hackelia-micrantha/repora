@@ -52,6 +52,7 @@ Use one immutable reviewed plan and one sealed effect `repository.mirror.reconci
 - The Gateway binds authenticated transport principal and any separately verified effective actor provenance. A request-body `actor` cannot self-authorize.
 - Anthesis authorizes the exact effect; only valid explicit `allow` is enforcing. Denial, approval-required, unavailable, timeout, malformed or mismatched result fail before Git execution INTENT and **before mutation**.
 - Effect-time local preflight checks required OIDs and authorization-relevant state. Changed dependencies cannot reuse old allow or plan. Leased force push is mandatory when destructive.
+- For a multi-mirror request, revocation/policy dependency freshness is checked before **each** sequential push; if not implementable, qualify only single-mirror governed requests and leave multi-mirror governed acceptance open.
 - Provider effect executes via the **same Repora domain logic** as trusted standalone apply, with no generic Gateway shell or provider proxy.
 - Repora's immutable INTENT/RESULT and target outcome evidence can be correlated to Gateway invocation/decision, plan digest and bounded actor context without serializing credentials.
 - Duplicate request returns an existing operation status, not another write. An interrupted/ambiguous or partial operation does not authorize replay: inspect/re-observe and review a new plan.
