@@ -57,6 +57,7 @@ Use one immutable reviewed plan and one sealed effect `repository.mirror.reconci
 - Repora's immutable INTENT/RESULT and target outcome evidence can be correlated to Gateway invocation/decision, plan digest and bounded actor context without serializing credentials.
 - Duplicate request returns an existing operation status, not another write. An interrupted/ambiguous or partial operation does not authorize replay: inspect/re-observe and review a new plan.
 - A disposable Git integration suite exercises both positive paths and negative failure cases, including evidence persistence failure, unexpected target, forged actor, approval replay, stale branch, target redirect/credential leak, and one failing mirror.
+- A real operator-visible workflow is exercised: Dubnium scheduler (or equivalent external trigger) observes canonical drift, Repora produces a reviewable exact plan, policy/approval admits only that effect, the effector reconciles an eligible target, a fresh observation verifies convergence, and the operator receives a correlated report/receipt. Scheduling and alert delivery remain external service responsibilities. A destructive request requires separate explicit intent; a scheduled read cannot turn into an unattended force push.
 
 A missing production Gateway or actor-binding prerequisite means Gate B is **blocked**, not "passed by fixture". A local no-effect fixture is useful implementation evidence but not operator acceptance.
 
