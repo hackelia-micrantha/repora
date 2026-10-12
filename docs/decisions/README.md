@@ -50,6 +50,7 @@ When an ADR and source disagree, either the source is defective or the ADR is st
 | [ADR-0016](0016-independent-multi-mirror-execution.md) | Independent ordered multi-mirror execution and partial-result evidence | Implemented by PR #80. |
 | [ADR-0017](0017-managed-artifact-domain.md) | Bounded managed artifact mutation domain | Implemented through the README lifecycle in #12. |
 | [ADR-0018](0018-optional-anthesis-policy-gate.md) | Optional deterministic Anthesis policy gate | Accepted design; runtime implementation is explicitly deferred. |
+| [ADR-0019](0019-governed-mirror-effect.md) | Proposed Gateway-governed exact mirror effect | **Proposed** under #212; not runtime authority or deployed support. |
 
 ## Future decision gates
 
