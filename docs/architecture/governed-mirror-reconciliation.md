@@ -1,7 +1,7 @@
 # Gateway-governed mirror reconciliation
 
 Status: **Proposed design** under #212; **not implemented**. The Capability Gateway/Anthesis runtime is external to Repora and must be qualified independently before #213 permits real effects.
-Reviewed: 2026-10-11
+Drafted: 2026-10-11
 
 ## Decision to be reviewed
 
@@ -165,10 +165,10 @@ Test against disposable **real Git** repositories and a fake authenticated Gatew
 ## Implementation slices and review questions
 
 1. #212: accept/adjust this design and ADR-0019; explicitly resolve Gateway pre-authorization domain preparation, contract registry and trust/actor binding dependencies.
-2. #213a (in #213): schema fixtures, deterministic plan/facts digest and strict request validation, transport-free evaluator fake; **no effect change**.
-3. #213b: reuse Repora core through an internal trusted effector with exact prepare/apply, evidence and negative tests; **no external credentials**.
-4. #213c: sealed client and Gateway provider registration in Dubnium, Anthesis enforce decision, idempotency/receipts and production principal custody; **no production activation by merge**.
-5. #213d: full disposable Git E2E plus independent security review; only later explicitly authorize a controlled live pilot with evidence of complete mediation.
+2. Phase 1 (within #213): schema fixtures, deterministic plan/facts digest and strict request validation, transport-free evaluator fake; **no effect change**.
+3. Phase 2: reuse Repora core through an internal trusted effector with exact prepare/apply, evidence and negative tests; **no external credentials**.
+4. Phase 3: sealed client and Gateway provider registration in Dubnium, Anthesis enforce decision, idempotency/receipts and production principal custody; **no production activation by merge**.
+5. Phase 4: full disposable Git E2E plus independent security review; only later explicitly authorize a controlled live pilot with evidence of complete mediation.
 
 **Open dependencies:** the production Gateway effect-admission/dispatch contract, trusted-intermediary actor binding, effect-time Anthesis state freshness, credential-bound provider/instance configuration and operation receipt schemas must be verified against their authoritative owners. This document must not fabricate those capabilities.
 
