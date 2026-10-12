@@ -153,7 +153,9 @@ Gateway admission-evidence failure or Anthesis evaluation/policy-evidence persis
 | Same idempotency key returns / gateway restarts mid-operation | Existing status or ambiguous, never second push |
 | Caller uses direct provider write credentials outside gateway | Governed deployment qualification fails (bypass), regardless of test-green Gateway API |
 
-Test against disposable **real Git** repositories and a fake authenticated Gateway/Anthesis boundary first, then an independently qualified full deployment. Inject runtime faults before/after each durable boundary; test exact serialization stability and no secret content in captured traces. Explicitly verify the no-effect Gateway fixture does **not** qualify as a production effect.
+Test against disposable **real Git** repositories and a fake authenticated Gateway/Anthesis boundary first, then an independently qualified full deployment.
+A reference acceptance walk-through should include an **external scheduled observer** detecting one canonical default-branch change, generating an exact plan, routing a reviewed effect through the sealed client, obtaining fresh Anthesis authority, applying only the eligible mirror update, re-observing convergence, and exposing the correlated result/receipt to an operator. The scheduler and notification service are external; they never receive canonical write credentials. A failed/blocked or destructive case must produce operator-visible evidence without auto-force or hidden retries.
+ Inject runtime faults before/after each durable boundary; test exact serialization stability and no secret content in captured traces. Explicitly verify the no-effect Gateway fixture does **not** qualify as a production effect.
 
 ## Alternatives and consequences
 
