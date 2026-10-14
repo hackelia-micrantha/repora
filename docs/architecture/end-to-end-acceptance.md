@@ -61,9 +61,9 @@ Use one immutable reviewed plan and one sealed effect `repository.mirror.reconci
 
 A missing production Gateway or actor-binding prerequisite means Gate B is **blocked**, not "passed by fixture". A local no-effect fixture is useful implementation evidence but not operator acceptance.
 
-## Gate C — governed multi-provider lifecycle
+## Gate C — controlled multi-provider lifecycle (independent workstream)
 
-This gate is explicitly **not** a blocker for Gate A or B.
+This gate is **independent of and not a blocker for** Gate A or B. Relationship-specific deployment may reuse verified Gateway governance but must not inherit mirror authorization.
 
 - #149/#150: project/repository/endpoint/relationship model, compatibility and negative trust-role tests.
 - #151/#152: provider-neutral canonical and generic Forgejo instances.
