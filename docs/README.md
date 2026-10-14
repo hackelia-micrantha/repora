@@ -46,6 +46,8 @@ Use the smallest authoritative source that answers the question.
 | What are the mirror-controller semantics? | [`architecture/mirror-workflow-semantics.md`](architecture/mirror-workflow-semantics.md) |
 | How does deterministic document routing work? | [`routing/document-routing.md`](routing/document-routing.md) |
 | What optional Anthesis policy boundary is accepted? | [`architecture/anthesis-policy-integration.md`](architecture/anthesis-policy-integration.md) and [ADR-0018](decisions/0018-optional-anthesis-policy-gate.md) |
+| What does end-to-end product acceptance mean for each released or governed capability? | [`architecture/end-to-end-acceptance.md`](architecture/end-to-end-acceptance.md) — **Proposed** milestone-specific acceptance, tracked in #211 |
+| What is the proposed Capability Gateway boundary for governed mirroring? | [`architecture/governed-mirror-reconciliation.md`](architecture/governed-mirror-reconciliation.md) and [proposed ADR-0019](decisions/0019-governed-mirror-effect.md), tracked in #212/#213 |
 
 Source code and tests remain the final authority when documentation and implementation disagree. A disagreement is a documentation defect and should be fixed rather than treated as an alternative interpretation.
 
