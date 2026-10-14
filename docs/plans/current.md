@@ -1,113 +1,44 @@
 # Current implementation plan
 
 Status: Active
+Reviewed: 2026-10-13
+Authority: detailed acceptance and evidence live in GitHub issues; this page is a current sequence, not a substitute for exact-head verification.
 
-## Current objective
+## Released and implemented boundary
 
-Repora's v0.1 mirror-controller baseline is published, and current `main` contains a coherent post-v0.1 capability set: managed README mutation, routing and assessment foundations, standalone Nix packaging, repository posture collectors, offline posture convergence/policy/reporting, and Bitbucket Cloud mirror transport.
+- **Published:** `v0.2.0` (2026-09-02). Release assets were verified in the release workflow; downloaded Linux checksum/version verified independently. Remaining installed-binary mirror and posture acceptance is tracked by #138; do not equate publication with complete operator acceptance.
+- **Never published:** the historical `v0.2.1` candidate at `6fe22ee2c7accb36e60d2df78fbe3ac59ba48616`. #183 was superseded rather than retargeting or publishing this immutable candidate.
+- **Current main, not yet released:** complete Nix/Unix support files; assumption-free local bootstrap lifecycle and read-only discovery; local-only Git storage posture; CI-environment posture v1/v2; flake-first evidence; offline posture-policy conditional applicability v2; bounded native Testule source capture. These are not evidence that the future control plane is deployed.
+- **Security remediation merged:** #216 / PR #217 merged as `79c510bdeea463d22c92f0928fc20b1e0b18bc1e`, aligning actual build, release, CI, Nix and mise compiler outputs to patched Go 1.26.9. Exact-head PR checks passed; main-head requalification and compiler proof remain required before the release gate can close. Previously published archives are not retroactively patched.
 
-Project-truth reconciliation and representative operator acceptance are complete. The immediate milestone is to publish and independently verify the `v0.2.0` pre-alpha capability baseline before selecting additional product scope.
+The supported mirror contract remains a **GitLab canonical**, one or more **GitHub, GitLab, or Bitbucket Cloud mirrors**, **default branch only**, exact-plan/OID preflight and honest partial results. Managed README mutation and read-only posture/reporting are separate bounded domains.
 
-## Completed foundation
+## Immediate release path — #218, v0.3.0 pre-alpha
 
-| Area | State | Notes |
-| --- | --- | --- |
-| Durable `uid` identity | Complete | Cache and durable artifacts use logical identity. |
-| Provider/path topology | Complete | Multiple mirrors use stable provider/path identity. |
-| Ref policy v1 | Complete | Default branch only; destructive mirror actions require explicit authorization. |
-| Multi-mirror status/planning | Complete | Exact artifact v2 is provider/path-bound and deterministic. |
-| Stale-safe mirror execution | Complete | Complete OID preflight, exact leases, partial-result evidence, and no implicit rollback. |
-| Execution evidence | Complete | Immutable Git-ref INTENT/RESULT journals preserve reviewed intent and outcomes. |
-| v0.1 release | Complete | `v0.1.0` tag and published assets were independently verified. |
-| Managed README lifecycle | Complete | Deterministic config/template/render/plan/dry-run/apply with exact stale preflight, leased canonical push, and durable evidence. Mirror propagation is a separate fresh reconciliation cycle. |
-| Managed README example | Complete | Repository-contained configuration/template example is regression-tested for deterministic rendering. |
-| Document routing foundation | Complete | Deterministic routes, trust tiers, manifests, context receipts, hierarchical summaries, and bounded Go AST routing. |
-| Repository assessment | Complete | Evidence-backed assessment schemas, validation, skeleton creation, finding projection, and scorecard projection are implemented. |
-| Managed-artifact Go contract consolidation | Complete | `internal/managedartifact` is the single authoritative plan-v1 implementation. |
-| Optional Anthesis integration design | Complete | ADR-0018 selects additive `pre_apply`; runtime evaluator/transport remains deferred. |
-| Standalone Nix packaging | Complete | Repository-owned package/app/check/dev-shell/formatter outputs reuse canonical validation and require no Dubnium access. |
-| Test pyramid/static analysis | Complete | Fast/unit, integration, contract, CLI E2E, race/deep validation, Go vet, and Staticcheck are explicit repository/CI boundaries. |
-| GitHub posture inventory v1 | Complete | GET-only normalized repository/CI facts preserve observed, unknown, and unavailable evidence; no mutation-capable provider boundary is exposed. |
-| Documentation posture v1 | Complete | Profile-driven document/README/link/content-marker facts reuse the posture evidence model and preserve routing trust tiers without prose scoring or remediation authority. |
-| Mirror posture v1 | Complete | Declared canonical/mirror identities, default-branch names, existing reconciliation drift, and bounded provider metadata facts reuse topology/status semantics without provider mutation or expanded ref scope. |
-| Hooks/local-workflow posture v1 | Complete | Common/custom hook signals, declared local checks, CI-coverage evidence, bootstrap/bypass documentation, and static network-load signals are normalized without installing or executing repository hook code. |
-| Bounded commit-history posture v1 | Complete | A capped default-branch history window exposes signature, merge-shape, size/file-scope, sensitive-path, and commit/PR-association evidence without identity analytics, productivity scoring, blame, or intent inference. |
-| Posture convergence/policy/reporting v1 | Complete | Captured collector artifacts converge offline into normalized inputs; external versioned policy evaluates them with explicit severity, remediation, time-bounded exceptions, warning/failure states, preserved unknown/unavailable evidence, an explicit `as_of` date, and deterministic Markdown/JSON reports without provider re-scan or opaque scoring. |
-| Project-truth reconciliation | Complete | #139 reconciled current architecture, documentation, and active backlog with merged behavior. |
-| Representative operator acceptance | Complete | #137 exercised mirror/read-only/dry-run paths, exposed/fixed #141 and #143, and recorded deterministic convergence/report evidence. |
+1. Requalify main after the reviewed #217 merge, with security, CI, Nix, release-package and compiled Go version evidence; distinguish already-passed PR-head checks from post-merge checks.
+2. Reconcile historical #138 operator acceptance and #183 supersession without rewriting published version history.
+3. Prepare an exact `v0.3.0` release candidate: curate changelog (including formerly intended 0.2.1 changes), README, support/version metadata, release/checklist docs and public claims. Use a reviewed PR and avoid hidden scope expansion.
+4. Run exact-head format/static/unit/integration/contract/built-CLI E2E/deep/race, security/CodeQL/secrets/dependency-license, native Nix and release-package validations. Compiler proof must inspect the **produced binaries**, not merely the scanner.
+5. Independently exercise an installed package: correct `repoctl status -f`, `repoctl plan -f`, `repoctl apply -f ... --dry-run` against actual accessible topology without remote mutation; offline `posture converge` / `posture report` with explicit unknown/unavailable; disposable bootstrap lifecycle; package members, tag/SHA and checksums.
+6. Qualify a **specific reviewed main-ancestor SHA**, create an immutable tag without force using release-tag workflow, publish the existing supported platform archives, and independently download/check the Linux package. Capture workflow and operator evidence on #218 before closing.
 
-## Active sequence
+Do not tag or publish on documentation-only evidence. Do not interpret a successful Git push as a cross-remote transaction. Retain issue-based acceptance records and known unsupported states.
 
-### 1. Publish the v0.2.0 capability baseline (#138)
+## Next milestones (not v0.3.0 blockers)
 
-Perform release readiness, curate the changelog, reconcile README/current architecture/current plan claims, validate the exact release commit, publish through the documented immutable tag workflow, and independently download and verify the resulting assets.
+1. **Governed default-branch reconcile:** #211 Gate B, #212 design, #213 runtime. Gateway actor identity/freshness, Anthesis authorization, sealed effector credentials and proof of no direct bypass must be resolved before any real governed write; proposed ADR-0019 is not runtime authority.
+2. **Provider-neutral CI/CD control plane:** #160 and #184–190, starting with topology-aware attachments and read-only inventory; provider workflow engines remain execution authority.
+3. **Repository topology and trust domains:** #149–156, including Forgejo, projections, promotions, proposals, and archive/restore. Each relationship has its own trust boundary; do not infer reverse sync or private history publication.
+4. **Additional Git scope and local workflows:** #215 multi-ref policy design; #147 workspace bootstrap; #166 local storage hygiene. No unreviewed destructive ref or history rewrite.
+5. **Evidence improvements:** #178/#180/#195 Testule pilot, #182 release posture, and provenance/signing #157. Never treat staged native output as complete normalized Testule evidence.
 
-Exit condition:
+P0/P1 labels within a long-range product workstream must not implicitly make that work a `v0.3.0` release blocker.
 
-- the supported `v0.2.0` capability set and known limitations are explicit;
-- CI, security, Nix, deep validation, and release-package gates pass at the release commit;
-- published checksums and installed Linux binary are independently verified;
-- the release reports its exact tag and source commit;
-- a safe representative path for newly released posture convergence/reporting succeeds from the published binary.
+## Execution and simplicity constraints
 
-### 2. Reassess the next concrete operator need
-
-After the release, prioritize new work from observed operator friction, security/reliability evidence, and dependency leverage. Do not automatically broaden posture, provider mutation, ref scope, or Anthesis integration.
-
-## Completed release-preparation sequence
-
-### Reconcile post-v0.1 project truth (#139)
-
-Completed before release acceptance. Current documentation/backlog distinguishes the published v0.1 surface from the post-v0.1 implementation and keeps provider/authority claims bounded.
-
-### Exercise representative operator workflows (#137)
-
-Completed on 2026-08-24. Live mirror/status/plan/dry-run and posture collector paths were exercised without remote mutation. Acceptance exposed the read-only-home cache defect (#141/#142) and missing convergence CLI (#143/#145); both were fixed. The final offline convergence/report path produced byte-identical repeated outputs for an explicit `--as-of` date.
-
-## Explicit deferrals
-
-- tags, non-default branches, wildcard refspecs, and deleted-ref reconciliation;
-- tag/release mirror-drift observation beyond explicit `unknown` v1 facts;
-- tag-signature/release-boundary commit posture beyond explicit `unknown` v1 facts;
-- provider-derived direct-push/unreviewed commit conclusions until evidence can prove them;
-- concurrent mirror mutation;
-- automatic rollback or cross-repository/cross-remote transactions;
-- Anthesis runtime transport/authentication and approval workflows;
-- provider provisioning or hosted control-plane behavior;
-- automatic provider-setting remediation from posture findings;
-- automatic PR remediation from posture findings;
-- scanner integration into posture policy;
-- opaque numeric posture scoring;
-- automatic managed-artifact mirror propagation;
-- arbitrary managed file generation;
-- package-manager publication beyond the repository-owned Nix flake unless separately prioritized;
-- containers, release signing, and full provenance attestation;
-- repository-wide performance gates without a stable workload and useful threshold.
-
-Deferred tracks must reuse current identity, plan, policy, execution, result, evidence, test, and static-analysis substrates rather than create parallel paths.
-
-## Simplicity constraints
-
-- Preserve Repora as a standalone local-first controller.
-- Prefer vertical capabilities over disconnected internal models.
-- Keep Git-ref reconciliation, managed artifacts, routing, assessments, posture fact collection, posture policy, and optional external authorization policy as separate bounded domain contracts.
-- Reuse durable `uid`, `provider:path`, shared posture fact states, and evidence concepts across posture work.
-- Repository-owned observation profiles select facts only; external posture policy owns severity, expectations, remediation, and exceptions.
-- External policy may add authorization but may never rewrite or weaken reviewed Repora intent.
-- Keep ref-policy v1 closed and mirrors sequential until a separate decision expands them.
-- Do not imply cross-remote atomicity, rollback, provider remediation, or approval semantics that are not implemented.
-- Packaging may expose capability; it must not silently grant mutation authority.
-- CI/Nix/posture must inspect or reuse canonical validation rather than redefine it independently.
-- Hooks posture may inspect repository-owned configuration only as bounded data; it must never install, source, execute, or bootstrap target-repository hook code.
-- Commit posture remains repository/process evidence only; author/committer identities, productivity metrics, blame, and intent inference are outside its contract.
-- Posture convergence/policy/reporting consumes captured normalized evidence offline; it does not call providers, run scanners, or collapse findings into a numeric grade.
-
-## Definition of done
-
-A slice is complete only when observable behavior, appropriate failure/security tests, versioned contracts where applicable, documentation, issue acceptance criteria, independent review, and exact-head CI/security validation are complete.
-
-For design-only slices, source behavior must remain unchanged and the implementation boundary/deferred work must be explicit.
-
-## Maintenance
-
-Update this plan when a capability completes, implementation order changes, or deferred work is explicitly reprioritized. GitHub issues remain authoritative for detailed acceptance criteria and live work state.
+- Preserve durable UID and provider/path mirror target identity, exact stale-safe plans, bounded policy and immutable INTENT/RESULT evidence.
+- Keep the standalone trusted CLI distinct from a future Gateway-governed deployment; packaging or a policy report does not grant mutation authority.
+- Preserve observed, unknown and unavailable facts. Repository-owned observation profiles do not assign policy severity or authorize changes.
+- No arbitrary shell/proxy Gateway, runtime credential leakage, implicit force push, cross-remote atomicity or automatic rollback claim.
+- Reuse repo-owned flake/toolchain quality gates and existing collectors rather than parallel policy/testing engines.
+- A completed slice requires independent review, current-head checks, negative tests where applicable, updated contracts/docs and operator evidence suitable to the actual authority boundary.
