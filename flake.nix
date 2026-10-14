@@ -18,6 +18,20 @@
           inherit system;
           config.allowUnfreePredicate = pkg: nixpkgs.lib.getName pkg == "repora";
         };
+      # Pin the patched official Go source without changing the locked Nixpkgs
+      # snapshot. The original Nixpkgs compiler is vulnerable (Go 1.26.5).
+      patchedGoFor = pkgs:
+        pkgs.go_1_26.overrideAttrs (_: {
+          version = "1.26.9";
+          src = pkgs.fetchurl {
+            url = "https://go.dev/dl/go1.26.9.src.tar.gz";
+            hash = "sha256-lzXX3Ntls10/pXfwQGRzfAO4nPGitx5uaf4vPG+f1Mo=";
+          };
+        });
+      patchedGoModuleFor = pkgs:
+        pkgs.callPackage (nixpkgs + "/pkgs/build-support/go/module.nix") {
+          go = patchedGoFor pkgs;
+        };
       version = "0.2.1";
       vendorHash = "sha256-g+yaVIx4jxpAQ/+WrGKxhVeliYx7nLQe/zsGpxV4Fn4=";
       commit =
@@ -29,7 +43,7 @@
       packages = forAllSystems (system:
         let
           pkgs = pkgsFor system;
-          repora = pkgs.buildGo125Module {
+          repora = (patchedGoModuleFor pkgs) {
             pname = "repora";
             inherit version;
             src = self;
@@ -107,7 +121,7 @@
             '';
           };
           mkGoCheck = name: command:
-            pkgs.buildGo125Module (common // {
+            (patchedGoModuleFor pkgs) (common // {
               pname = "repora-${name}";
               checkPhase = ''
                 runHook preCheck
@@ -126,11 +140,13 @@
           e2e = mkGoCheck "e2e" "make e2e";
           staticAnalysis = mkGoCheck "static-analysis" "make static-analysis STATICCHECK=staticcheck";
           smoke = pkgs.runCommand "repora-smoke" {
-            nativeBuildInputs = [ self.packages.${system}.repora ];
+            nativeBuildInputs = [ self.packages.${system}.repora (patchedGoFor pkgs) ];
           } ''
             mkdir -p "$out"
             repoctl --help > "$out/help.txt"
             repoctl --version > "$out/version.txt"
+            go version -m "$(command -v repoctl)" > "$out/compiler.txt"
+            grep -F "go1.26.9" "$out/compiler.txt"
             test -f "${self.packages.${system}.repora}/share/man/man1/repoctl.1.gz"
             test -f "${self.packages.${system}.repora}/share/repora/examples/repora.yaml"
             test -n "$(find "${self.packages.${system}.repora}/share/repora/schemas" -type f -name '*.schema.json' -print -quit)"
@@ -158,7 +174,7 @@
         {
           default = pkgs.mkShell {
             packages = [
-              pkgs.go_1_25
+              (patchedGoFor pkgs)
               pkgs.git
               pkgs.gnumake
               pkgs.python3
