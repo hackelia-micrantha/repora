@@ -55,6 +55,13 @@ for target in "${targets[@]}"; do
     go build -trimpath -buildvcs=false \
       -ldflags "-s -w -X main.version=$VERSION -X main.commit=$COMMIT" \
       -o "$stage/$binary" ./cmd/repoctl
+  # All release targets must embed the actual patched Go toolchain, not only
+  # report it in workflow setup. go version -m can inspect cross-built binaries.
+  build_info="$(go version -m "$stage/$binary")"
+  if ! grep -Fq 'go1.26.9' <<<"$build_info"; then
+    printf 'release target %s/%s was not compiled with Go 1.26.9\n' "$goos" "$goarch" >&2
+    exit 1
+  fi
   cp LICENSE README.md "$stage/"
   cp man/repoctl.1 "$stage/share/man/man1/repoctl.1"
   cp examples/repora.yaml "$stage/share/repora/examples/repora.yaml"
