@@ -1,6 +1,6 @@
 # Gateway-governed mirror reconciliation
 
-Status: **Proposed design** under #212; **not implemented**. The Capability Gateway/Anthesis runtime is external to Repora and must be qualified independently before #213 permits real effects.
+Status: **Proposed design** under #212; **not implemented**. Runtime Gateway/Anthesis mediation is external to Repora and must be qualified independently before #213 permits real effects.
 Drafted: 2026-10-11
 
 ## Decision to be reviewed
@@ -112,7 +112,7 @@ A runtime that grants the proposer general Git push ability cannot claim governe
 4. Immediately before action zero, the effector checks authorization validity and **all** selected repositories' mutation-critical OIDs, including every mirror in a multi-target action. A changed ref, policy/topology/identity/approval dependency or expired authority invalidates the operation. Re-observe and re-plan; never silently reauthorize the old artifact.
 5. A multi-mirror operation contains multiple externally consequential pushes. **Immediately before each subsequent target push**, verify authorization freshness/revocation-relevant dependencies and the target's exact expected ref/lease remain valid, without weakening the complete preflight required before action zero. If a policy dependency changes after the first successful push, stop remaining effects, persist honest partial outcomes and require a new plan. If the Gateway/Anthesis integration cannot prove per-target effect-time freshness, the first **governed** pilot must be explicitly limited to a reviewed **single-mirror plan**; existing standalone multi-mirror behavior must not be described as governed-authorized end to end.
 6. Persist Git execution INTENT before any push. Then use Repora's existing independent sequential target semantics with exact leased force updates where reviewed. Record each target's before/desired/after/outcome and final RESULT.
-6. Re-observe targets where possible and distinguish verified convergence from accepted-but-unverified mutation, stale state, partial execution and evidence failure. A provider push acknowledgement alone is not whole-repository completion.
+7. Re-observe targets where possible and distinguish verified convergence from accepted-but-unverified mutation, stale state, partial execution and evidence failure. A provider push acknowledgement alone is not whole-repository completion.
 
 Preflight before action zero prevents a known stale plan from partially executing. External concurrent writers can still race an otherwise valid non-forced push; the Git push's native ancestry/expected ref behavior remains another safety boundary. There is **no cross-remote transaction**, and a post-first-target failure does not retroactively cancel already completed pushes.
 
