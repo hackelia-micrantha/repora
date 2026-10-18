@@ -373,6 +373,15 @@ mise run build
 
 Direct Go tooling and the standalone Nix development shell are also supported. CI reuses the repository's canonical validation boundaries rather than maintaining a separate Nix-only policy.
 
+After completing builds/tests **and retaining required artifacts and logs**, use the repository-native cleanup entry point in the *same task worktree*:
+
+```sh
+make clean
+```
+
+The cleanup action removes only the known root-level or `bin/` `repoctl` verification binaries; it is idempotent and refuses symlinked or unexpected output paths. It does **not** remove `artifacts/coverage/`, `artifacts/testule/`, `artifacts/security/`, `dist/`, shared `GOCACHE`, Go module downloads, or another agent's worktree. CI runs cleanup after coverage and binary evidence uploads. Native `go test` generally cleans its own temporary test executables; project-generated binary outputs are the only additional files eligible for this cleanup. If a local build/test fails, attempt cleanup in a `finally`/`EXIT` finalizer and report its result separately without concealing the original failure.
+
+
 ## Security model
 
 Current controls include:
