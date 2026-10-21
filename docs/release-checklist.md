@@ -29,7 +29,7 @@ A capability being merged on `main` is not by itself a release decision. The rel
 - [ ] Workflow policy confirms immutable action pins, explicit permissions, timeouts, and no unsafe `pull_request_target` execution.
 - [ ] Release publication retains job-scoped `contents: write`; pull-request validation remains read-only.
 - [ ] Automated tag creation retains job-scoped `contents: write` and `actions: write`; other jobs remain read-only by default.
-- [ ] The actual compiled Linux/macOS/Windows release binaries and installed Nix package report patched Go 1.26.9 through build metadata; a green vulnerability scan under a different compiler does not satisfy this check.
+- [ ] The actual compiled Linux/macOS/Windows release binaries and installed Nix package report patched Go 1.26.10 through build metadata; a green vulnerability scan under a different compiler does not satisfy this check.
 - [ ] If Nix packaging changed, `nix flake check` and the packaged app/support-file smoke boundary pass on the reviewed revision.
 - [ ] Packaged example configuration contains no credentials, tokens, private keys, or host-specific repository inventory.
 - [ ] Runtime credentials and private operator configuration remain outside derivations and release assets.
@@ -98,7 +98,7 @@ The tag workflow must fail if the version is malformed, an explicit commit is no
 
 A manually created external `v*` tag push remains a supported fallback and triggers the same release publication job. Never substitute a branch ref for a release tag.
 
-## 6. Independent post-publication verification
+## 7. Independent post-publication verification
 
 Download the published assets rather than using local `dist/` files.
 
@@ -110,7 +110,7 @@ Download the published assets rather than using local `dist/` files.
 - [ ] Exercise any newly released CLI surface with its safest representative read/dry-run path.
 - [ ] Record the release URL, workflow run, tag, commit, and verification result in the release issue.
 
-## 7. Failure handling
+## 8. Failure handling
 
 If publication is wrong or verification fails:
 
