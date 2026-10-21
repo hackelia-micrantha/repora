@@ -112,7 +112,7 @@ An externally created trusted `v*` tag push remains supported and also starts `.
 
 1. checks out the tagged source with full history;
 2. validates the semantic-version tag and refuses publication unless the checked-out tag commit is an ancestor of `main`;
-3. uses the repository's pinned Go 1.26.9 toolchain and verifies compiler build metadata for each released target;
+3. uses the repository's pinned Go 1.26.10 toolchain and verifies compiler build metadata for each released target;
 4. derives the source timestamp from the tagged commit;
 5. cross-compiles with `CGO_ENABLED=0`, `-trimpath`, and VCS auto-stamping disabled;
 6. injects the tag and exact tagged source commit through linker flags;
