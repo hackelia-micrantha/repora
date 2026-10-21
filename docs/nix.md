@@ -27,7 +27,7 @@ devShells.<system>.default
 formatter.<system>
 ```
 
-The default package and application run the canonical `repoctl` Go CLI. Package and check derivations use the repository's pinned, patched Go 1.26.9 compiler source, overriding the Go 1.26.5 compiler of the locked Nixpkgs input without unlocking or floating that input.
+The default package and application run the canonical `repoctl` Go CLI. Package and check derivations use the repository's pinned, patched Go 1.26.10 compiler source, overriding the Go 1.26.5 compiler of the locked Nixpkgs input without unlocking or floating that input.
 
 The package is a complete public Unix distribution surface rather than a bare executable. A successful Nix build contains:
 
@@ -88,7 +88,7 @@ The flake does not define a second validation policy. Its checks reuse Repora's 
 | `static-analysis` | `make static-analysis` |
 | `smoke` | packaged `repoctl --help`, `repoctl --version`, compressed man page, safe example config, and public schema presence |
 
-Nix package smoke verifies `go version -m` reports Go 1.26.9 for the built `repoctl` binary. Compiler provenance is checked on installed output; `govulncheck` independently checks reachable vulnerabilities under the CI compiler.
+Nix package smoke verifies `go version -m` reports Go 1.26.10 for the built `repoctl` binary. Compiler provenance is checked on installed output; `govulncheck` independently checks reachable vulnerabilities under the CI compiler.
 
 The static-analysis check uses Staticcheck `2026.1`, matching the version declared by the Makefile, but consumes the package from the pinned Nixpkgs input so the Nix sandbox does not need to fetch analyzer source at check time.
 
@@ -102,7 +102,7 @@ Enter the repository development environment with:
 nix develop
 ```
 
-The shell includes the same pinned patched Go 1.26.9 compiler as the package, Git, Make, Python, Staticcheck, and the Nix formatter.
+The shell includes the same pinned patched Go 1.26.10 compiler as the package, Git, Make, Python, Staticcheck, and the Nix formatter.
 
 Format the flake with:
 
