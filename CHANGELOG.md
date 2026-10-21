@@ -21,8 +21,6 @@ No changes currently queued beyond the v0.3.0 release candidate.
 
 ### Distribution and CI
 
-### Changed
-
 - Nix package metadata now reports `v0.3.0` through `repoctl --version` for a tagged v0.3.0 consumer, aligning the package with release archive identity.
 - Release archives and the standalone Nix package now ship a complete public support surface: `repoctl(1)`, a safe non-secret `repora.yaml` example, and the checked-in public JSON schemas alongside the CLI.
 - Release tag creation now accepts an exact reviewed commit reachable from current `main` rather than requiring it to remain the tip, while validating the changelog from that exact target.
@@ -34,8 +32,10 @@ No changes currently queued beyond the v0.3.0 release candidate.
 - Release targeting remains fail-closed: explicit targets must be exact 40-character commit SHAs, reachable from `main`, carry the matching dated changelog section, and never move an existing tag.
 - Shared workflow pilots use immutable SHA pins, least-privilege read permissions, bounded timeouts, and retain native CI, security, and release workflows as authority.
 - Packaged configuration remains intentionally non-secret; credentials, private topology, host-specific authority, and sensitive operator state stay outside release artifacts and Nix derivations.
-
 - Release builds, CI, mise and the pinned Nix compiler use Go 1.26.9 to remediate ten reachable vulnerabilities in the prior Go 1.25.13 standard library; Nix package smoke and all four release targets inspect actual binary compiler metadata, while the module's minimum Go 1.24 contract is exercised separately.
+
+### Scope boundaries
+
 - Preserve default-branch-only, GitLab-canonical mirroring and no automatic provider mutation beyond the explicitly supported bounded operations.
 - Local-only storage posture reports evidence and completeness boundaries; it does not perform Git garbage collection or history rewriting.
 - Native Testule source capture and reviewed test plan are not a qualified full normalized Testule gap/evidence gate.
