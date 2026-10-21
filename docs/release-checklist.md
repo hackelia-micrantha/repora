@@ -2,7 +2,7 @@
 
 Status: Current
 
-Use this checklist for Repora GitHub Releases until the distribution model changes. `v0.1.0` established the released mirror-controller baseline; later releases must explicitly identify which post-v0.1 capabilities are included. The current publication mechanism remains GitHub Releases with versioned archives and SHA-256 checksums. Each archive is expected to carry the executable plus the public man page, safe example configuration, public JSON schemas, README, and license.
+Use this checklist for Repora GitHub Releases until the distribution model changes. For the next candidate, the controlling acceptance issue is [#218](https://github.com/hackelia-micrantha/repora/issues/218) (`v0.3.0`, pre-alpha), not the superseded, unpublished `v0.2.1` promotion #183. `v0.1.0` established the released mirror-controller baseline; later releases must explicitly identify which post-v0.1 capabilities are included. The current publication mechanism remains GitHub Releases with versioned archives and SHA-256 checksums. Each archive is expected to carry the executable plus the public man page, safe example configuration, public JSON schemas, README, and license.
 
 ## 1. Scope and authority
 
@@ -29,6 +29,7 @@ A capability being merged on `main` is not by itself a release decision. The rel
 - [ ] Workflow policy confirms immutable action pins, explicit permissions, timeouts, and no unsafe `pull_request_target` execution.
 - [ ] Release publication retains job-scoped `contents: write`; pull-request validation remains read-only.
 - [ ] Automated tag creation retains job-scoped `contents: write` and `actions: write`; other jobs remain read-only by default.
+- [ ] The actual compiled Linux/macOS/Windows release binaries and installed Nix package report patched Go 1.26.9 through build metadata; a green vulnerability scan under a different compiler does not satisfy this check.
 - [ ] If Nix packaging changed, `nix flake check` and the packaged app/support-file smoke boundary pass on the reviewed revision.
 - [ ] Packaged example configuration contains no credentials, tokens, private keys, or host-specific repository inventory.
 - [ ] Runtime credentials and private operator configuration remain outside derivations and release assets.
@@ -69,7 +70,15 @@ make release-verify
 - [ ] The embedded version and commit match the intended tag and release commit.
 - [ ] Nix package output contains `bin/repoctl`, the Nix-compressed `share/man/man1/repoctl.1.gz`, `share/repora/examples/repora.yaml`, and public schemas when Nix is part of the release scope.
 
-## 5. Publication
+## 5. Installed-binary operator acceptance
+
+- [ ] Independently verify a downloaded artifact's SHA-256 checksum and `repoctl --version` against the exact intended tag/commit.
+- [ ] Using a real accessible non-secret canonical topology and no remote write, record `repoctl status -f`, `repoctl plan -f`, and `repoctl apply -f ... --dry-run` exit codes/results.
+- [ ] Using packaged versioned fact/profile fixtures, record successful `repoctl posture converge` and `repoctl posture report --profile ... --facts ... --as-of YYYY-MM-DD`; explicit unknown/unavailable facts must remain visible.
+- [ ] Using an isolated disposable directory, record `repoctl bootstrap init`, `inspect`, `plan`, and `apply` results. Local bootstrap fixture writes are not remote repository mutation.
+- [ ] Preserve outcomes, exact package identity, fixture provenance and unsupported behavior on #218. Do not turn a partial or unavailable provider observation into a pass.
+
+## 6. Publication
 
 Preferred operator path:
 
