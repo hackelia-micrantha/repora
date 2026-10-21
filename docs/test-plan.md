@@ -4,7 +4,7 @@ The repository-owned `testplan.yaml` declares Repora's **intended required and o
 
 ## Native validation remains authoritative
 
-`Makefile`, `docs/ci.md`, `.github/workflows/ci.yml`, the separate security workflow, and the release checklist define current validation. Preserve the distinct native fast/race, integration, routing/receipt/assessment contract, built-CLI E2E, workflow policy, CodeQL, dependency, license, release packaging, and Nix package checks. Repora's current CI compiler is Go 1.26.10 after security remediation #216. The minimum Go 1.24 language compatibility line remains separately tested; this security upgrade does not imply that Testule evidence import or a native Testule consumer is now qualified. The first executable consumer slice must select a pinned, reviewable toolchain or verified artifact without requiring default PR jobs to obtain private GitHub credentials.
+`Makefile`, `docs/ci.md`, `.github/workflows/ci.yml`, the separate security workflow, and the release checklist define current validation. Preserve the distinct native fast/race, integration, routing/receipt/assessment contract, built-CLI E2E, workflow policy, CodeQL, dependency, license, release packaging, and Nix package checks. Repora's current CI compiler is Go 1.26.10 after the independently tracked security remediations #216 and #223. The minimum Go 1.24 language compatibility line remains separately tested; this security upgrade does not imply that Testule evidence import or a native Testule consumer is now qualified. The first executable consumer slice must select a pinned, reviewable toolchain or verified artifact without requiring default PR jobs to obtain private GitHub credentials.
 
 ## Evidence candidates to review, not passing Evidence
 
