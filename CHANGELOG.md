@@ -4,11 +4,11 @@ Repora records user-visible capability, compatibility, security, and release-pro
 
 ## [Unreleased]
 
-No changes currently queued beyond the v0.3.0 release candidate.
+No changes yet.
 
 ## [0.3.0] - 2026-10-21
 
-> Pre-alpha candidate. The previously prepared `v0.2.1` commit was never tagged or published; its qualified distribution improvements are included here rather than rewriting the historical commit or releasing an unpatched compiler.
+> Pre-alpha. The previously prepared `v0.2.1` commit was never tagged or published; its qualified distribution improvements are included here rather than rewriting the historical commit or releasing an unpatched compiler.
 
 ### Added
 
@@ -32,7 +32,7 @@ No changes currently queued beyond the v0.3.0 release candidate.
 - Release targeting remains fail-closed: explicit targets must be exact 40-character commit SHAs, reachable from `main`, carry the matching dated changelog section, and never move an existing tag.
 - Shared workflow pilots use immutable SHA pins, least-privilege read permissions, bounded timeouts, and retain native CI, security, and release workflows as authority.
 - Packaged configuration remains intentionally non-secret; credentials, private topology, host-specific authority, and sensitive operator state stay outside release artifacts and Nix derivations.
-- Release builds, CI, mise and the pinned Nix compiler use Go 1.26.9 to remediate ten reachable vulnerabilities in the prior Go 1.25.13 standard library; Nix package smoke and all four release targets inspect actual binary compiler metadata, while the module's minimum Go 1.24 contract is exercised separately.
+- Release builds, CI, mise and the pinned Nix compiler use Go 1.26.10 to remediate the earlier ten reachable Go 1.25.13 standard-library findings and GO-2026-6809 in Go 1.26.9. Nix smoke and all four release targets check actual compiler build metadata; minimum Go 1.24 compatibility is exercised separately.
 
 ### Scope boundaries
 
