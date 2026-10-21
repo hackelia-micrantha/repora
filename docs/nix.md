@@ -114,11 +114,11 @@ Normal repository development commands remain available through `mise` and `make
 
 ## Composing Repora from another flake
 
-A consumer can pin Repora as an ordinary flake input and reference the exported package or application without importing any private Micrantha infrastructure. Long-lived consumers should pin an immutable release tag or exact revision rather than floating on `main`:
+A consumer can pin Repora as an ordinary flake input and reference the exported package or application without importing any private Micrantha infrastructure. Long-lived consumers should pin an immutable **existing** release tag or exact revision rather than floating on `main`. The following v0.3.0 reference becomes valid only after its reviewed tag is published:
 
 ```nix
 {
-  inputs.repora.url = "github:hackelia-micrantha/repora/v0.2.1";
+  inputs.repora.url = "github:hackelia-micrantha/repora/v0.3.0";
 
   outputs = { self, repora, ... }: {
     packages.x86_64-linux.repora = repora.packages.x86_64-linux.repora;
