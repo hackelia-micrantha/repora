@@ -4,6 +4,12 @@ Repora records user-visible capability, compatibility, security, and release-pro
 
 ## [Unreleased]
 
+No changes currently queued beyond the v0.3.0 release candidate.
+
+## [0.3.0] - 2026-10-21
+
+> Pre-alpha candidate. The previously prepared `v0.2.1` commit was never tagged or published; its qualified distribution improvements are included here rather than rewriting the historical commit or releasing an unpatched compiler.
+
 ### Added
 
 - Minimum Go version is now 1.24 so bootstrap writes can use the standard-library root-confined filesystem API and reject symlink/path escape from the selected repository root.
@@ -13,11 +19,11 @@ Repora records user-visible capability, compatibility, security, and release-pro
 - Posture policy/report v2 adds bounded conditional applicability with explicit N/A, unresolved/unknown/unavailable preservation, applicability evidence, and strict v1 compatibility.
 - Read-only CI-environment posture records repository flake/lock presence, bounded workflow flake and imperative-install signals, explicit CI applicability/external-input declarations, and offline convergence facts without inferring compliance or executing repository code.
 
-## [0.2.1] - 2026-09-09
+### Distribution and CI
 
 ### Changed
 
-- Nix package metadata now reports `v0.2.1` through `repoctl --version`, aligning flake consumers with tagged release binaries.
+- Nix package metadata now reports `v0.3.0` through `repoctl --version` for a tagged v0.3.0 consumer, aligning the package with release archive identity.
 - Release archives and the standalone Nix package now ship a complete public support surface: `repoctl(1)`, a safe non-secret `repora.yaml` example, and the checked-in public JSON schemas alongside the CLI.
 - Release tag creation now accepts an exact reviewed commit reachable from current `main` rather than requiring it to remain the tip, while validating the changelog from that exact target.
 - CI now pilots immutable shared Micrantha Nix and Mise workflows as additive repeatability checks without replacing Repora-owned validation.
@@ -28,6 +34,11 @@ Repora records user-visible capability, compatibility, security, and release-pro
 - Release targeting remains fail-closed: explicit targets must be exact 40-character commit SHAs, reachable from `main`, carry the matching dated changelog section, and never move an existing tag.
 - Shared workflow pilots use immutable SHA pins, least-privilege read permissions, bounded timeouts, and retain native CI, security, and release workflows as authority.
 - Packaged configuration remains intentionally non-secret; credentials, private topology, host-specific authority, and sensitive operator state stay outside release artifacts and Nix derivations.
+
+- Release builds, CI, mise and the pinned Nix compiler use Go 1.26.9 to remediate ten reachable vulnerabilities in the prior Go 1.25.13 standard library; Nix package smoke and all four release targets inspect actual binary compiler metadata, while the module's minimum Go 1.24 contract is exercised separately.
+- Preserve default-branch-only, GitLab-canonical mirroring and no automatic provider mutation beyond the explicitly supported bounded operations.
+- Local-only storage posture reports evidence and completeness boundaries; it does not perform Git garbage collection or history rewriting.
+- Native Testule source capture and reviewed test plan are not a qualified full normalized Testule gap/evidence gate.
 
 ## [0.2.0] - 2026-08-24
 
