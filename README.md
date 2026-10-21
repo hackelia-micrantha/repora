@@ -174,7 +174,7 @@ See [Bootstrap](docs/bootstrap.md). Bootstrap does **not** provision hosted repo
 - standalone Nix package/app/check/dev-shell/formatter outputs for Linux x86_64 and macOS x86_64/aarch64;
 - explicit fast/unit, integration, contract, CLI end-to-end, and cross-platform build gates;
 - Go vet + Staticcheck, vulnerability scanning, CodeQL, Git-history secret detection, dependency-license validation, and workflow-policy validation;
-- Go 1.26.9 patched compiler used for CI, Nix and release builds; produced binary build metadata is validated.
+- Go 1.26.10 patched compiler used for CI, Nix and release builds; produced binary build metadata is validated.
 
 ## Current limitations
 
