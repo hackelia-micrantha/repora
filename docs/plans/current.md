@@ -1,7 +1,7 @@
 # Current implementation plan
 
 Status: Active
-Reviewed: 2026-10-13
+Reviewed: 2026-10-21
 Authority: detailed acceptance and evidence live in GitHub issues; this page is a current sequence, not a substitute for exact-head verification.
 
 ## Released and implemented boundary
@@ -9,13 +9,13 @@ Authority: detailed acceptance and evidence live in GitHub issues; this page is 
 - **Published:** `v0.2.0` (2026-09-02). Release assets were verified in the release workflow; downloaded Linux checksum/version verified independently. Remaining installed-binary mirror and posture acceptance is tracked by #138; do not equate publication with complete operator acceptance.
 - **Never published:** the historical `v0.2.1` candidate at `6fe22ee2c7accb36e60d2df78fbe3ac59ba48616`. #183 was superseded rather than retargeting or publishing this immutable candidate.
 - **Current main, not yet released:** complete Nix/Unix support files; assumption-free local bootstrap lifecycle and read-only discovery; local-only Git storage posture; CI-environment posture v1/v2; flake-first evidence; offline posture-policy conditional applicability v2; bounded native Testule source capture. These are not evidence that the future control plane is deployed.
-- **Security remediation merged:** #216 / PR #217 merged as `79c510bdeea463d22c92f0928fc20b1e0b18bc1e`, aligning actual build, release, CI, Nix and mise compiler outputs to patched Go 1.26.9. Exact-head PR checks passed; main-head requalification and compiler proof remain required before the release gate can close. Previously published archives are not retroactively patched.
+- **Security remediation merged:** #216 / PR #217 merged as `79c510bdeea463d22c92f0928fc20b1e0b18bc1e`, aligning actual build, release, CI, Nix and mise compiler outputs to patched Go 1.26.9. Exact-head PR checks and post-merge main CI/security/shared Nix/shared Mise checks passed. Release-package compiler proof from the qualified PR tree remains available; main-head release-specific confirmation remains a release gate. Previously published archives are not retroactively patched.
 
 The supported mirror contract remains a **GitLab canonical**, one or more **GitHub, GitLab, or Bitbucket Cloud mirrors**, **default branch only**, exact-plan/OID preflight and honest partial results. Managed README mutation and read-only posture/reporting are separate bounded domains.
 
 ## Immediate release path — #218, v0.3.0 pre-alpha
 
-1. Requalify main after the reviewed #217 merge, with security, CI, Nix, release-package and compiled Go version evidence; distinguish already-passed PR-head checks from post-merge checks.
+1. Complete remaining main-head release-package/compiler verification after #217: CI/security/Nix have recorded post-merge success; ensure release-specific evidence matches the candidate actually tagged.
 2. Reconcile historical #138 operator acceptance and #183 supersession without rewriting published version history.
 3. Prepare an exact `v0.3.0` release candidate: curate changelog (including formerly intended 0.2.1 changes), README, support/version metadata, release/checklist docs and public claims. Use a reviewed PR and avoid hidden scope expansion.
 4. Run exact-head format/static/unit/integration/contract/built-CLI E2E/deep/race, security/CodeQL/secrets/dependency-license, native Nix and release-package validations. Compiler proof must inspect the **produced binaries**, not merely the scanner.
