@@ -22,10 +22,10 @@
       # snapshot. The original Nixpkgs compiler is vulnerable (Go 1.26.5).
       patchedGoFor = pkgs:
         pkgs.go_1_26.overrideAttrs (_: {
-          version = "1.26.9";
+          version = "1.26.10";
           src = pkgs.fetchurl {
-            url = "https://go.dev/dl/go1.26.9.src.tar.gz";
-            hash = "sha256-lzXX3Ntls10/pXfwQGRzfAO4nPGitx5uaf4vPG+f1Mo=";
+            url = "https://go.dev/dl/go1.26.10.src.tar.gz";
+            hash = "sha256-/WPog7ovK/ypPBZGsx6+9j4rHk0rMXyXidl2po2B828=";
           };
         });
       patchedGoModuleFor = pkgs:
@@ -146,7 +146,7 @@
             repoctl --help > "$out/help.txt"
             repoctl --version > "$out/version.txt"
             go version -m "$(command -v repoctl)" > "$out/compiler.txt"
-            grep -F "go1.26.9" "$out/compiler.txt"
+            grep -F "go1.26.10" "$out/compiler.txt"
             test -f "${self.packages.${system}.repora}/share/man/man1/repoctl.1.gz"
             test -f "${self.packages.${system}.repora}/share/repora/examples/repora.yaml"
             test -n "$(find "${self.packages.${system}.repora}/share/repora/schemas" -type f -name '*.schema.json' -print -quit)"
