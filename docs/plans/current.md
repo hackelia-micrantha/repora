@@ -4,9 +4,9 @@ Status: Active
 
 ## Current objective
 
-Repora's v0.1 mirror-controller baseline is published, and current `main` contains a coherent post-v0.1 capability set: managed README mutation, routing and assessment foundations, standalone Nix packaging, repository posture collectors, offline posture convergence/policy/reporting, and Bitbucket Cloud mirror transport.
+Repora's `v0.1.0` and `v0.2.0` pre-alpha releases are published; `v0.2.0` publication and downloaded Linux archive verification are evidenced in #138. The remaining **installed-binary operator smoke workflows** (real mirror status/plan/dry-run and posture converge/report) remain unqualified. Issue #138 is closed despite those unchecked criteria; the current read-only mirror pilot is #221, with product acceptance tracked in #211. Publication does not imply complete installed-binary operator acceptance or production maturity.
 
-Project-truth reconciliation and representative operator acceptance are complete. The immediate milestone is to publish and independently verify the `v0.2.0` pre-alpha capability baseline before selecting additional product scope.
+The immediate milestone is to complete the remaining Gate A operator evidence under #221/#211 without live provider mutation; #138's closed state is not proof of those tests. #211 now records the separate end-to-end product acceptance gates. After release acceptance, #212 may refine a proposed narrow Gateway/Anthesis mirror-effect design; actual governed runtime integration (#213) depends on qualified Gateway/actor-binding infrastructure and must not automatically displace existing release/operator work.
 
 ## Completed foundation
 
@@ -38,21 +38,25 @@ Project-truth reconciliation and representative operator acceptance are complete
 
 ## Active sequence
 
-### 1. Publish the v0.2.0 capability baseline (#138)
+### 1. Complete v0.2.0 operator acceptance evidence (#221/#211; historical #138)
 
-Perform release readiness, curate the changelog, reconcile README/current architecture/current plan claims, validate the exact release commit, publish through the documented immutable tag workflow, and independently download and verify the resulting assets.
+Publication is complete (2026-09-02). Independently exercise the **released** Linux binary using a real accessible configured GitLab canonical and at least one supported mirror for non-mutating status/plan/dry-run, plus representative offline posture convergence/report inputs. Preserve actual exit codes and redacted evidence; do **not** substitute unverified files, incorrect command usage, fixture-only Gateway behavior, or destructive pushes.
 
 Exit condition:
 
-- the supported `v0.2.0` capability set and known limitations are explicit;
-- CI, security, Nix, deep validation, and release-package gates pass at the release commit;
-- published checksums and installed Linux binary are independently verified;
-- the release reports its exact tag and source commit;
-- a safe representative path for newly released posture convergence/reporting succeeds from the published binary.
+- the existing #138 publication/checksum/version evidence remains valid;
+- the remaining installed-binary mirror and posture smoke checks are recorded, independently reviewable, and reconciled in #211/#221;
+- `v0.2.0` capability limitations remain explicit; close Gate A only on evidence, irrespective of #138's administrative state.
 
-### 2. Reassess the next concrete operator need
+### 2. Resolve scoped product acceptance and governable effects (#211/#212)
 
-After the release, prioritize new work from observed operator friction, security/reliability evidence, and dependency leverage. Do not automatically broaden posture, provider mutation, ref scope, or Anthesis integration.
+#211 separates Gate A standalone mirror acceptance, Gate B governed mirror operation, and Gate C broader topology/CI/recovery work. Review #212's proposed Gateway/Anthesis design independently of the outstanding Gate A operator evidence; design-only work does not grant execution authority. ADR-0018 remains accepted for optional `pre_apply` policy; proposed ADR-0019 is **not** authority to add a production effect.
+
+Exit condition for design: actor/transport distinction, exact prepared effect/facts, force and OID binding, idempotency, credential isolation, effect-time authorization, failure/recovery and negative test contract have a reviewed owner and explicit open dependencies. #213 runtime implementation follows only when the external Gateway/actor-binding prerequisites are genuinely ready.
+
+### 3. Reassess concrete operator needs
+
+After the outstanding Gate A operator checks, prioritize independently among #149 controlled topology, #160 CI/CD management, #166 storage, #210 provisioning, and #213 governed mirroring using observed operator friction and dependency leverage. New mutation domains require separate exact plans, capability identities, and authorization; do not automatically broaden default-branch mirroring.
 
 ## Completed release-preparation sequence
 
