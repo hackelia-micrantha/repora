@@ -18,7 +18,7 @@ A source tree, passing test suite, merged PR, policy `allow`, or released archiv
 
 | Area | Current verified implementation scope | Product acceptance expansion |
 | --- | --- | --- |
-| Mirror v1 | GitLab canonical; GitHub/GitLab/Bitbucket Cloud mirrors; default branch; multi-target exact plan, force-with-lease, stale preflight, INTENT/RESULT and partial outcomes | Installed release smoke #138; governed execution #212/#213 |
+| Mirror v1 | GitLab canonical; GitHub/GitLab/Bitbucket Cloud mirrors; default branch; multi-target exact plan, force-with-lease, stale preflight, INTENT/RESULT and partial outcomes | Outstanding installed-release operator qualification #221 (historical release issue #138); governed execution #212/#213 |
 | Managed README | Opt-in root README, deterministic exact plan and leased canonical push; mirror propagation is separate fresh plan | Keep separate authorization domain; do not silently gain authority from mirror allow |
 | Posture | Read-only facts, explicit observed/unknown/unavailable, deterministic offline reporting | Operator evidence and remediation planning never imply mutation |
 | Rich topology | #149/#150 proposal: roles, trust domains, projections, promotions, archives | Runtime acceptance is per relationship type, not "one generic sync" |
@@ -31,7 +31,7 @@ Do not equate default-branch reconciliation with `git push --mirror`: tags, wild
 
 ## Gate A — published standalone mirror controller
 
-Depends on #138; close Gate A when both remaining installed-binary checks are recorded against the published `v0.2.0` Linux binary:
+The v0.2.0 publication and download verification are recorded in #138 (which is closed, despite remaining unchecked operator-smoke criteria). **Gate A remains unqualified** until the remaining read-only operator checks are evidenced under #221 and reconciled into #211. The tests must exercise the published `v0.2.0` Linux binary, not only current source or a different installed toolchain:
 
 1. Verify archive checksum, embedded release tag and exact commit (already evidenced in #138).
 2. Against an accessible real GitLab canonical plus supported mirror(s), run `repoctl status -f CONFIG`, `repoctl plan -f CONFIG` and `repoctl apply -f CONFIG --dry-run`. Record actual exit status, identity topology, auth limitations and redacted output. **No live provider mutation is required or authorized for release smoke.**
@@ -82,7 +82,7 @@ Evidence states are **pass, fail, partial, unknown, unavailable, blocked** as ap
 
 ## Milestone validation and closure
 
-- Gate A: close #138 with recorded installed-binary smoke; #211 tracks acceptance references.
+- Gate A: record complete installed-binary operator smoke under #221 and reconcile #211, including the historical unchecked acceptance criteria in closed #138. A closed release issue is not evidence that the smoke passed.
 - Gate B: close #212 with a reviewed proposed/accepted architecture contract; close #213 only after exact-head tests, independent review, actual governed-domain qualification and bypass analysis.
 - Gate C: close each separate workstream only on its own contracts/evidence. Do not close #149 or #160 because an umbrella checklist exists.
 - No host deployment, provider mutation or credential exposure is implied by documentation, issue closure, a merge, or a Gateway `allow`.
@@ -92,4 +92,4 @@ Evidence states are **pass, fail, partial, unknown, unavailable, blocked** as ap
 - `docs/architecture/governed-mirror-reconciliation.md`
 - `docs/architecture/anthesis-policy-integration.md` and ADR-0018
 - `docs/architecture/repository-topology-and-trust-domains.md`
-- `docs/plans/current.md`, #138, #149, #160, #211–213, #215
+- `docs/plans/current.md`, #138, #149, #160, #211–213, #215, #221
