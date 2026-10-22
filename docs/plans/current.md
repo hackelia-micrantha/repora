@@ -1,7 +1,7 @@
 # Current implementation plan
 
 Status: Active
-Reviewed: 2026-10-21
+Reviewed: 2026-10-22
 Authority: detailed acceptance and evidence live in GitHub issues; this page is a current sequence, not a substitute for exact-head verification.
 
 ## Released and implemented boundary
@@ -12,6 +12,18 @@ Authority: detailed acceptance and evidence live in GitHub issues; this page is 
 - **Security chain:** #216 / PR #217 first patched the compiler to Go 1.26.9; the new GO-2026-6809 advisory required Go 1.26.10, delivered by #223 / merged PR #224 at `f0f092226d4344cf1f9a0eeb27ff770409cda551`. Receiving-main CI, security, shared Nix and Mise checks passed. Candidate-specific release packaging, patched binary provenance and installed acceptance remain release gates. Previously published archives are not retroactively patched.
 
 The supported mirror contract remains a **GitLab canonical**, one or more **GitHub, GitLab, or Bitbucket Cloud mirrors**, **default branch only**, exact-plan/OID preflight and honest partial results. Managed README mutation and read-only posture/reporting are separate bounded domains.
+
+
+## Repository bootstrap and template boundary
+
+Repository bootstrap is implemented, but policy, transport, and execution authority remain deliberately separated:
+
+1. **`hackelia-micrantha/.github` owns organization policy and the bootstrap schema.** Resolution semantics, decision provenance, default-branch policy, CI/security/release standards, and other organization requirements originate there.
+2. **`hackelia-micrantha/repository-template` is a thin optional creation transport.** Its generic materialized state is limited to bootstrap instructions plus `.repora/bootstrap.proposed.json`; only the organization-authorized `main` default branch is pre-resolved. It must not add a license, language/runtime, package manager, placeholder flake, CI/release workflow, product scaffold, project CODEOWNERS, or copied organization-inherited community files merely because a repository is being created.
+3. **Repora owns the bootstrap lifecycle and later reconciliation.** `repoctl bootstrap init → inspect → plan → apply` consumes explicit decisions, binds exact reviewed artifacts, revalidates stale state, and applies only bounded supported local effects. `bootstrap discover` observes existing/new repositories without turning evidence into decisions or mutation authority.
+4. **Template provenance is evidence, not policy.** A template-derived repository must still pass normal Repora inspection/convergence. Template updates do not automatically propagate, and template freshness is not itself a compliance requirement unless an applicable policy explicitly requires convergence.
+
+Provider-side repository creation remains a separate future capability. If implemented, it must consume resolved bootstrap decisions, bind the exact template/revision when used, pass visibility and branch semantics explicitly, and continue through normal Repora verification after creation.
 
 ## Immediate release path — #218, v0.3.0 pre-alpha
 
