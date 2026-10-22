@@ -164,6 +164,12 @@ Inject runtime faults before/after each durable boundary; test exact serializati
 - **Gateway owns provider Git engine:** duplicates tested Repora reconciliation and confuses admission with domain execution. Reject.
 - **Typed Gateway effect + shared Repora domain effector (proposed):** additional adapter/deployment boundary, but preserves exact planning and deterministic domain safety; independently qualified runtime prerequisite.
 
+## Preliminary read-only plan validation slice (#213)
+
+The transport-independent Go helper in `internal/governedmirror` is deliberately **non-authorizing**. It accepts bounded exact serialized plan bytes, rejects duplicate JSON keys at any depth (including escaped-key aliases), disallows unknown plan fields via the existing plan-artifact parser, enforces plan v2 and a **single repository / single mirror action**, checks an explicit extra destructive-intent flag for reviewed force actions, and returns a SHA-256 digest over the **unchanged input bytes**.
+
+It does **not** authenticate an actor, bind a Gateway request, fetch current OIDs, perform a provider operation, enforce Anthesis, persist policy evidence, or make any existing CLI safer until deliberately integrated. The helper intentionally returns **only the reviewed-byte digest and force classification**, not a mutable in-memory artifact tied to that digest. The digest is **not execution authority**. Any later trusted effector must separately verify the exact reviewed bytes against the supplied digest, construct an immutable bound manifest, and revalidate before effect-time execution. The parser is a preparatory building block and does not close #212/#213 or change ADR-0019 from Proposed.
+
 ## Implementation slices and review questions
 
 1. #212: accept/adjust this design and ADR-0019; explicitly resolve Gateway pre-authorization domain preparation, contract registry and trust/actor binding dependencies.
