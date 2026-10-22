@@ -39,7 +39,7 @@ Do not tag or publish on documentation-only evidence. Do not interpret a success
 
 ## Next milestones (not v0.3.0 blockers)
 
-1. **Governed default-branch reconcile:** #211 Gate B, #212 design, #213 runtime. The merged architecture material (ADR-0019 remains proposed) specifies actor/transport distinction, exact prepared effect and observed facts, force/OID binding, idempotency, credential isolation, effect-time authorization, and negative/recovery tests. Gateway actor identity/freshness, Anthesis authorization, sealed effector credentials and proof of no direct bypass must be resolved before any real governed write; the design does not confer runtime authority.
+1. **Governed default-branch reconcile:** #211 Gate B, #212 design, #213 runtime. Gateway actor identity/freshness, Anthesis authorization, sealed effector credentials and proof of no direct bypass must be resolved before any real governed write; proposed ADR-0019 is not runtime authority.
 2. **Provider-neutral CI/CD control plane:** #160 and #184–190, starting with topology-aware attachments and read-only inventory; provider workflow engines remain execution authority.
 3. **Repository topology and trust domains:** #149–156, including Forgejo, projections, promotions, proposals, and archive/restore. Each relationship has its own trust boundary; do not infer reverse sync or private history publication.
 4. **Additional Git scope and local workflows:** #215 multi-ref policy design; #147 workspace bootstrap; #166 local storage hygiene. No unreviewed destructive ref or history rewrite.
