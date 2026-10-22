@@ -86,6 +86,17 @@ func TestReviewedPlanRejectsAmbiguity(t *testing.T) {
 	}
 }
 
+func TestDuplicateKeyErrorDoesNotEchoUntrustedData(t *testing.T) {
+	candidate := []byte("{\"SENSITIVE_MARKER\":0,\"SENSITIVE_MARKER\":1}")
+	_, err := ParseReviewedPlan(candidate, false)
+	if err == nil {
+		t.Fatal("expected rejection of duplicate object key")
+	}
+	if strings.Contains(err.Error(), "SENSITIVE_MARKER") {
+		t.Fatal("duplicate key error leaked caller-controlled field contents")
+	}
+}
+
 func TestReviewedPlanScopeAndForceIntent(t *testing.T) {
 	base := samplePlan(t)
 	artifact, err := planartifact.Parse(base)
