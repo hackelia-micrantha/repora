@@ -64,15 +64,15 @@ func TestReviewedPlanRejectsAmbiguity(t *testing.T) {
 	raw := string(samplePlan(t))
 	cases := map[string][]byte{
 		"duplicate-top-level": []byte(strings.Replace(raw, "\"version\": 2", "\"version\": 2, \"version\": 2", 1)),
-		"duplicate-nested":      []byte(strings.Replace(raw, "\"force\": false", "\"force\": false, \"force\": true", 1)),
-		"escaped-duplicate":     []byte(strings.Replace(raw, "\"force\": false", "\"force\": false, \"fo\\u0072ce\": true", 1)),
-		"multiple-values":       []byte(raw + " {}"),
-		"unknown-actor":         []byte(strings.Replace(raw, "\"version\": 2", "\"version\": 2, \"actor\": \"admin\"", 1)),
-		"legacy-version":        []byte(strings.Replace(raw, "\"version\": 2", "\"version\": 1", 1)),
-		"malformed":             []byte("{"),
-		"invalid-utf8":          {0xff, 0xfe},
-		"empty":                 {},
-		"too-large":             []byte(strings.Repeat(" ", MaxArtifactBytes+1)),
+		"duplicate-nested":    []byte(strings.Replace(raw, "\"force\": false", "\"force\": false, \"force\": true", 1)),
+		"escaped-duplicate":   []byte(strings.Replace(raw, "\"force\": false", "\"force\": false, \"fo\\u0072ce\": true", 1)),
+		"multiple-values":     []byte(raw + " {}"),
+		"unknown-actor":       []byte(strings.Replace(raw, "\"version\": 2", "\"version\": 2, \"actor\": \"admin\"", 1)),
+		"legacy-version":      []byte(strings.Replace(raw, "\"version\": 2", "\"version\": 1", 1)),
+		"malformed":           []byte("{"),
+		"invalid-utf8":        {0xff, 0xfe},
+		"empty":               {},
+		"too-large":           []byte(strings.Repeat(" ", MaxArtifactBytes+1)),
 	}
 	for name, candidate := range cases {
 		t.Run(name, func(t *testing.T) {
