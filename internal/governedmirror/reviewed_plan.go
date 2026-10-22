@@ -103,7 +103,7 @@ func rejectDuplicateKeys(dec *json.Decoder, depth int) error {
 				return fmt.Errorf("invalid object key")
 			}
 			if _, exists := seen[key]; exists {
-				return fmt.Errorf("duplicate object key %q", key)
+				return fmt.Errorf("duplicate JSON object key")
 			}
 			seen[key] = struct{}{}
 			if err := rejectDuplicateKeys(dec, depth+1); err != nil {
