@@ -26,7 +26,7 @@ const (
 // digest: changing a parsed action without changing the digest would break
 // the reviewed-bytes-to-effect binding required by any future effector.
 type ReviewedPlan struct {
-	Digest       string
+	Digest        string
 	RequiresForce bool
 }
 
