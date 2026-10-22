@@ -46,6 +46,9 @@ func TestReviewedPlanExactBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := sha256.Sum256(raw)
+	if got.RequiresForce {
+		t.Fatal("non-destructive plan was classified as requiring force")
+	}
 	if got.Digest != hex.EncodeToString(want[:]) {
 		t.Fatalf("digest %q does not bind exact plan bytes", got.Digest)
 	}
@@ -97,8 +100,12 @@ func TestReviewedPlanScopeAndForceIntent(t *testing.T) {
 	if _, err := ParseReviewedPlan(forced, false); err == nil {
 		t.Fatal("forced action accepted without explicit destructive intent")
 	}
-	if _, err := ParseReviewedPlan(forced, true); err != nil {
+	reviewedForce, err := ParseReviewedPlan(forced, true)
+	if err != nil {
 		t.Fatalf("reviewed force plus explicit intent should permit read-only preparation: %v", err)
+	}
+	if !reviewedForce.RequiresForce {
+		t.Fatal("force classification lost after review")
 	}
 	artifact.Repositories[0].Actions = append(artifact.Repositories[0].Actions, artifact.Repositories[0].Actions[0])
 	twoActions, err := artifact.Marshal()
