@@ -21,11 +21,13 @@ const (
 	maxJSONDepth     = 64
 )
 
-// ReviewedPlan binds exact caller-reviewed bytes to an already-validated
-// single-mirror v2 action. Digest is evidence identity, never authority.
+// ReviewedPlan exposes only non-authorizing metadata from the validated
+// bytes. Deliberately do not expose a mutable parsed action alongside the
+// digest: changing a parsed action without changing the digest would break
+// the reviewed-bytes-to-effect binding required by any future effector.
 type ReviewedPlan struct {
-	Artifact planartifact.Artifact
-	Digest   string
+	Digest       string
+	RequiresForce bool
 }
 
 // ParseReviewedPlan is a transport-neutral, non-authorizing preparation
@@ -69,7 +71,7 @@ func ParseReviewedPlan(data []byte, destructiveIntent bool) (ReviewedPlan, error
 	}
 
 	digest := sha256.Sum256(data)
-	return ReviewedPlan{Artifact: artifact, Digest: hex.EncodeToString(digest[:])}, nil
+	return ReviewedPlan{Digest: hex.EncodeToString(digest[:]), RequiresForce: artifact.Repositories[0].Actions[0].Force}, nil
 }
 
 // rejectDuplicateKeys walks the complete JSON token stream. encoding/json's
