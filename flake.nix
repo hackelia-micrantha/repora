@@ -32,7 +32,7 @@
         pkgs.callPackage (nixpkgs + "/pkgs/build-support/go/module.nix") {
           go = patchedGoFor pkgs;
         };
-      version = "0.2.1";
+      version = "0.3.0";
       vendorHash = "sha256-g+yaVIx4jxpAQ/+WrGKxhVeliYx7nLQe/zsGpxV4Fn4=";
       commit =
         if self ? shortRev then self.shortRev

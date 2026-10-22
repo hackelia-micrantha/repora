@@ -80,10 +80,10 @@ Windows:
 3. Keep or copy the `share/repora` reference files wherever local tooling expects documentation/schema assets.
 4. Run `repoctl.exe --version`.
 
-The command reports both the release tag and exact source commit, for example:
+After the v0.3.0 tag is published, its installed binary must report the tag and exact source commit, for example:
 
 ```text
-repoctl v0.2.1 (<commit>)
+repoctl v0.3.0 (<exact-40-character-commit>)
 ```
 
 ## Configuration ownership
@@ -112,7 +112,7 @@ An externally created trusted `v*` tag push remains supported and also starts `.
 
 1. checks out the tagged source with full history;
 2. validates the semantic-version tag and refuses publication unless the checked-out tag commit is an ancestor of `main`;
-3. uses the repository's pinned Go toolchain;
+3. uses the repository's pinned Go 1.26.10 toolchain and verifies compiler build metadata for each released target;
 4. derives the source timestamp from the tagged commit;
 5. cross-compiles with `CGO_ENABLED=0`, `-trimpath`, and VCS auto-stamping disabled;
 6. injects the tag and exact tagged source commit through linker flags;
