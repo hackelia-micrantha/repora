@@ -4,7 +4,7 @@ The repository-owned `testplan.yaml` declares Repora's **intended required and o
 
 ## Native validation remains authoritative
 
-`Makefile`, `docs/ci.md`, `.github/workflows/ci.yml`, the separate security workflow, and the release checklist define current validation. Preserve the distinct native fast/race, integration, routing/receipt/assessment contract, built-CLI E2E, workflow policy, CodeQL, dependency, license, release packaging, and Nix package checks. Repora's current CI compiler is Go 1.26.9 after security remediation #216. The minimum Go 1.24 language compatibility line remains separately tested; this security upgrade does not imply that Testule evidence import or a native Testule consumer is now qualified. The first executable consumer slice must select a pinned, reviewable toolchain or verified artifact without requiring default PR jobs to obtain private GitHub credentials.
+`Makefile`, `docs/ci.md`, `.github/workflows/ci.yml`, the separate security workflow, and the release checklist define current validation. Preserve the distinct native fast/race, integration, routing/receipt/assessment contract, built-CLI E2E, workflow policy, CodeQL, dependency, license, release packaging, and Nix package checks. Repora's current CI compiler is Go 1.26.10 after the independently tracked security remediations #216 and #223. The minimum Go 1.24 language compatibility line remains separately tested; this security upgrade does not imply that Testule evidence import or a native Testule consumer is now qualified. The first executable consumer slice must select a pinned, reviewable toolchain or verified artifact without requiring default PR jobs to obtain private GitHub credentials.
 
 ## Evidence candidates to review, not passing Evidence
 
@@ -44,6 +44,6 @@ PR Linux verification binaries execute the CLI smoke; Windows/macOS binaries are
 
 1. The checked-in plan has already passed an actual pinned Testule `v1alpha1` validation; invalidate that proof if the plan bytes change and revalidate before claiming conformance.
 2. Review the exact assertions and native events for each candidate. Record missing dimensions rather than attaching invented annotations.
-3. Choose and independently verify a pinned Testule consumer artifact or Go 1.26.9 build, without silently raising Repora's minimum supported Go version or adding an untrusted artifact source.
+3. Choose and independently verify a pinned Testule consumer artifact or Go 1.26.10 build, without silently raising Repora's minimum supported Go version or adding an untrusted artifact source.
 4. Preserve native correctness checks and run a representative intentionally incomplete Evidence smoke before a complete, exact-revision gap gate.
 5. Qualify Nix/build outputs and released assets separately; update #178 and organization rollout #36 only with actual validation and merge evidence.

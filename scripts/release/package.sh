@@ -58,8 +58,8 @@ for target in "${targets[@]}"; do
   # All release targets must embed the actual patched Go toolchain, not only
   # report it in workflow setup. go version -m can inspect cross-built binaries.
   build_info="$(go version -m "$stage/$binary")"
-  if ! grep -Fq 'go1.26.9' <<<"$build_info"; then
-    printf 'release target %s/%s was not compiled with Go 1.26.9\n' "$goos" "$goarch" >&2
+  if ! grep -Fq 'go1.26.10' <<<"$build_info"; then
+    printf 'release target %s/%s was not compiled with Go 1.26.10\n' "$goos" "$goarch" >&2
     exit 1
   fi
   cp LICENSE README.md "$stage/"
