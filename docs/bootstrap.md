@@ -16,7 +16,7 @@ The organization-owned contract remains authoritative in `hackelia-micrantha/.gi
 
 Repora does not copy or redefine the authoritative manifest schema. The proposal emitted by `bootstrap init` references the immutable organization schema URL.
 
-Bootstrap write confinement requires Go 1.24 or newer; repository CI and Nix packaging currently use Go 1.25.
+Bootstrap write confinement requires Go 1.24 or newer; repository CI and Nix packaging currently use Go 1.26.10.
 
 ## CLI lifecycle
 

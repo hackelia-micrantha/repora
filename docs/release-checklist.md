@@ -70,6 +70,18 @@ make release-verify
 - [ ] The embedded version and commit match the intended tag and release commit.
 - [ ] Nix package output contains `bin/repoctl`, the Nix-compressed `share/man/man1/repoctl.1.gz`, `share/repora/examples/repora.yaml`, and public schemas when Nix is part of the release scope.
 
+For **manual validation-only** workflow dispatches on an explicitly selected, pinned
+candidate commit, `.github/workflows/release.yml` retains a short-lived
+`repoctl-validation-packages-<commit>` Actions artifact **after**
+`make release-verify` passes. Download that artifact from the workflow run,
+verify the downloaded `checksums.txt` manifest, inspect bundled support files
+and execute the Linux binary in an isolated environment. This is not publication
+and does not create a tag. Validation packages embed
+`v0.0.0-validation`, **not** `v0.3.0`; matching final version/tag identity and
+independently downloading the published archives remain mandatory **after**
+explicit release authorization and tag publication. Artifacts are retained for
+three days and contain only the public distribution packages and checksum manifest.
+
 ## 5. Installed-binary operator acceptance
 
 - [ ] Independently verify a downloaded artifact's SHA-256 checksum and `repoctl --version` against the exact intended tag/commit.
