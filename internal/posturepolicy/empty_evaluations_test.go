@@ -65,12 +65,11 @@ func TestZeroRuleProfilesProduceValidEmptyReports(t *testing.T) {
 
 			for _, raw := range [][]byte{
 				bytes.Replace(data, []byte(`"evaluations": []`), []byte(`"evaluations": null`), 1),
-				bytes.Replace(data, []byte(`  "evaluations": []\n`), nil, 1),
+				bytes.Replace(data, []byte(",\n  \"evaluations\": []"), nil, 1),
 			} {
 				var invalid Report
 				if err := json.Unmarshal(raw, &invalid); err != nil {
-					// An unparseable missing-field fixture is also invalid; this path must not weaken validation.
-					continue
+					t.Fatalf("test fixture must remain valid JSON: %v: %s", err, raw)
 				}
 				if _, err := invalid.Marshal(); err == nil {
 					t.Fatalf("missing/null evaluations were accepted: %s", raw)
