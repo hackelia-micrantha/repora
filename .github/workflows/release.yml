@@ -47,6 +47,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
@@ -73,6 +75,23 @@ jobs:
 
       - name: Verify release packages
         run: make release-verify
+
+      # Exercise the already-verified packaged Linux binary, never provider writes.
+      - name: Public GitLab-to-GitHub status, plan and dry-run
+        if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.publish_tag == '') }}
+        run: |
+          bash scripts/release/public-mirror-smoke.sh \
+            dist/repoctl_0.0.0-validation_linux_amd64.tar.gz \
+            artifacts/release/public-mirror-smoke
+
+      - name: Retain non-secret public mirror acceptance evidence
+        if: ${{ always() && (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.publish_tag == '')) }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: repoctl-public-mirror-smoke-${{ github.sha }}
+          path: artifacts/release/public-mirror-smoke/
+          if-no-files-found: warn
+          retention-days: 3
 
       # Keep manually dispatched validation output reviewable without creating a GitHub Release.
       - name: Upload validation-only distribution packages
