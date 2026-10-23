@@ -74,7 +74,7 @@ For **manual validation-only** workflow dispatches on an explicitly selected, pi
 candidate commit, `.github/workflows/release.yml` retains a short-lived
 `repoctl-validation-packages-<commit>` Actions artifact **after**
 `make release-verify` passes. Download that artifact from the workflow run,
-verify the contained `dist/checksums.txt` manifest, inspect bundled support files
+verify the downloaded `checksums.txt` manifest, inspect bundled support files
 and execute the Linux binary in an isolated environment. This is not publication
 and does not create a tag. Validation packages embed
 `v0.0.0-validation`, **not** `v0.3.0`; matching final version/tag identity and
