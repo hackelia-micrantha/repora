@@ -90,6 +90,23 @@ three days and contain only the public distribution packages and checksum manife
 - [ ] Using an isolated disposable directory, record `repoctl bootstrap init`, `inspect`, `plan`, and `apply` results. Local bootstrap fixture writes are not remote repository mutation.
 - [ ] Preserve outcomes, exact package identity, fixture provenance and unsupported behavior on #218. Do not turn a partial or unavailable provider observation into a pass.
 
+A release-validation run on a pull request, or a manually dispatched
+**validation-only** run with blank `publish_tag`, also executes the Linux
+archive after `make release-verify` against one *fixed public* GitLab
+canonical (`gitlab-org/gitlab-shell`) and GitHub mirror
+(`gitlabhq/gitlab-shell`). The test performs only
+`status --json`, `plan --artifact` and exact-plan
+`apply --plan-file ... --dry-run --json`, using an isolated ephemeral
+cache/home, HTTPS-only Git transport, no injected provider tokens or persisted
+checkout credentials, and no `--force` or push. It records full command
+output, stderr, exit codes and fixture/archive digests in the short-lived
+`repoctl-public-mirror-smoke-<commit>` Actions artifact. Preserve those
+results when reporting #218; the external repository pair can change between
+runs. A transient GitLab/GitHub transport failure or behind/diverged state
+must be reported honestly, never reclassified as a pass. This public
+read-only test does not qualify the separate private/private pilot #221 or
+prove the existence of a final published `v0.3.0` archive.
+
 ## 6. Publication
 
 Preferred operator path:
