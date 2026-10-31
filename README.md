@@ -198,7 +198,7 @@ See [Bootstrap](docs/bootstrap.md). Bootstrap does **not** provision hosted repo
 
 ### Release archives
 
-GitHub Releases publish versioned archives for Linux amd64, macOS amd64/arm64, and Windows amd64. Each release includes `checksums.txt`; packaged binaries report the embedded tag and source commit through `repoctl --version`. `v0.2.0` is the most recently published baseline at this candidate's preparation time. The historical `v0.2.1` candidate was never published. The proposed `v0.3.0` release remains unshipped until immutable tagging, publication and independent verification; the tagged changelog and GitHub Release define the supported surface of each version.
+GitHub Releases publish versioned archives for Linux amd64, macOS amd64/arm64, and Windows amd64. Each release includes `checksums.txt`; packaged binaries report the embedded tag and source commit through `repoctl --version`. `v0.3.0` was published on 2026-10-24 from the reviewed commit `2213693597e5fe3915f685840fb75f8103a5191f` and independently verified under [release #218](https://github.com/hackelia-micrantha/repora/issues/218). The historical `v0.2.1` candidate was never published; `v0.2.0` remains a prior released baseline. The tagged changelog and [GitHub Release](https://github.com/hackelia-micrantha/repora/releases/tag/v0.3.0) define the supported surface of each version.
 
 See [release installation and verification](docs/release.md) for target support, checksum commands, local reproduction, and rollback guidance.
 
@@ -421,9 +421,9 @@ ADR-0018 defines an optional future Anthesis `pre_apply` authorization seam. Run
 
 ## Roadmap
 
-The `v0.1.0` mirror-controller release is published and independently verified. The `v0.2.0` release candidate adds managed README mutation, routing and assessment foundations, standalone Nix packaging, GitHub repository/CI, documentation, hooks, bounded commit-history, and mirror posture, offline posture convergence/policy/reporting, and Bitbucket Cloud mirror transport.
+The published pre-alpha baselines are `v0.1.0`, `v0.2.0`, and [`v0.3.0`](https://github.com/hackelia-micrantha/repora/releases/tag/v0.3.0). Release #218 independently verified the published v0.3.0 distribution and a real public GitLab canonical → GitHub mirror `status → plan → dry-run` with no remote writes. Current standalone mirroring remains GitLab-canonical, default-branch-only; a mirror is not a complete repository archive.
 
-Project-truth reconciliation (#139) and representative operator acceptance (#137) are complete. Publication of the next pre-alpha capability baseline (#138) is the active release gate. Provider mutation, Anthesis runtime coupling, expanded ref scope, concurrent mirror mutation, signing, full provenance, and hosted control-plane behavior remain explicitly deferred.
+The next operational gate is [#221](https://github.com/hackelia-micrantha/repora/issues/221): qualify a private/private GitLab↔GitHub pilot with separately approved, narrowly scoped noninteractive Git credentials. Provider-API equality is already observed, but this is **not** yet an installed `repoctl` private transport acceptance. Gateway/Anthesis governed execution (#212/#213), provider-neutral CI/CD management (#160), full topology, multi-ref safety, and archives remain separate post-v0.3.0 work.
 
 The authoritative order is maintained in [`docs/plans/current.md`](docs/plans/current.md) and GitHub issues.
 
