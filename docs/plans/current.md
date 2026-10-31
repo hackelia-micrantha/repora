@@ -1,14 +1,14 @@
 # Current implementation plan
 
 Status: Active
-Reviewed: 2026-10-22
+Reviewed: 2026-10-30
 Authority: detailed acceptance and evidence live in GitHub issues; this page is a current sequence, not a substitute for exact-head verification.
 
 ## Released and implemented boundary
 
-- **Published:** `v0.2.0` (2026-09-02). Release assets were verified in the release workflow, and #138 is complete with independent downloaded Linux checksum/version verification plus installed-binary mirror status/plan/apply --dry-run and posture collect/converge/report acceptance.
+- **Published:** `v0.2.0` (2026-09-02) remains the earlier standalone acceptance baseline; `v0.3.0` was published on **2026-10-24** from exact commit `2213693597e5fe3915f685840fb75f8103a5191f`. Independent published-asset checks (all four archives/checksums), packaged Linux CLI version/commit smoke, and real public GitLab→GitHub status/plan/dry-run with no provider write are recorded in completed #218.
 - **Never published:** the historical `v0.2.1` candidate at `6fe22ee2c7accb36e60d2df78fbe3ac59ba48616`. #183 was superseded rather than retargeting or publishing this immutable candidate.
-- **Current main, not yet released:** complete Nix/Unix support files; assumption-free local bootstrap lifecycle and read-only discovery; local-only Git storage posture; CI-environment posture v1/v2; flake-first evidence; offline posture-policy conditional applicability v2; and the bounded six-target native Testule observation-map source merged by #196. That source is not normalized Testule Evidence, does not satisfy built-process E2E ingestion, and is not complete Testule qualification. These capabilities are not evidence that the future control plane is deployed.
+- **Published v0.3.0 feature surface:** complete Nix/Unix support files; assumption-free local bootstrap lifecycle and read-only discovery; local-only Git storage posture; CI-environment posture v1/v2; flake-first evidence; offline posture-policy conditional applicability v2; and the bounded six-target native Testule observation-map source merged by #196. That source is not normalized Testule Evidence, does not satisfy built-process E2E ingestion, and is not complete Testule qualification. Publication is not evidence that the future control plane is deployed.
 - **Security chain:** #216 / PR #217 first patched the compiler to Go 1.26.9; the new GO-2026-6809 advisory required Go 1.26.10, delivered by #223 / merged PR #224 at `f0f092226d4344cf1f9a0eeb27ff770409cda551`. Receiving-main CI, security, shared Nix and Mise checks passed. Candidate-specific release packaging, patched binary provenance and installed acceptance remain release gates. Previously published archives are not retroactively patched.
 - **End-to-end acceptance:** #211 Gate A is complete from #138 published-binary acceptance plus preserved regression evidence. #221 remains a separate P1 private/private credentialed pilot, not a v0.3 blocker. Gate B governed effects and Gate C broader estate support remain independent future milestones; ADR-0019 is proposed, not runtime authority.
 
@@ -26,16 +26,19 @@ Repository bootstrap is implemented, but policy, transport, and execution author
 
 Provider-side repository creation remains a separate future capability. If implemented, it must consume resolved bootstrap decisions, bind the exact template/revision when used, pass visibility and branch semantics explicitly, and continue through normal Repora verification after creation.
 
-## Immediate release path — #218, v0.3.0 pre-alpha
+## Completed release — #218, v0.3.0
 
-1. Reconfirm the merged Go 1.26.10 remediation at the exact release candidate: receiving-main CI/security/Nix passed, but inspect the produced release binaries and compiler metadata under candidate-specific validation before tagging.
-2. Preserve completed historical #138 operator acceptance and #183 supersession without rewriting published version history.
-3. Prepare an exact `v0.3.0` release candidate: curate changelog (including formerly intended 0.2.1 changes), README, support/version metadata, release/checklist docs and public claims. Use a reviewed PR and avoid hidden scope expansion.
-4. Run exact-head format/static/unit/integration/contract/built-CLI E2E/deep/race, security/CodeQL/secrets/dependency-license, native Nix and release-package validations. Compiler proof must inspect the **produced binaries**, not merely the scanner.
-5. Independently exercise an installed package: correct `repoctl status -f`, `repoctl plan -f`, `repoctl apply -f ... --dry-run` against actual accessible topology without remote mutation; offline `posture converge` / `posture report` with explicit unknown/unavailable; disposable bootstrap lifecycle; package members, tag/SHA and checksums.
-6. Qualify a **specific reviewed main-ancestor SHA**, create an immutable tag without force using release-tag workflow, publish the existing supported platform archives, and independently download/check the Linux package. Capture workflow and operator evidence on #218 before closing.
+- `v0.3.0` was tagged and [published](https://github.com/hackelia-micrantha/repora/releases/tag/v0.3.0) from the exact reviewed receiving-main commit `2213693597e5fe3915f685840fb75f8103a5191f`.
+- Required exact-commit CI/security/Nix/Mise, deep validation, and pre-tag repeat packaging were qualified before publication. The published four-platform archives independently matched their checksum manifest; each contains the supported distribution files and patched Go 1.26.10 binary version marker. Linux amd64 was actually executed; macOS and Windows were cross-built/inspected, not natively executed.
+- The published Linux `repoctl` reported the exact tag/source commit and completed live public GitLab→GitHub status/plan/exact-plan dry-run without remote mutation. A public-provider smoke is **not** the private/private pilot.
+- #218 is **closed as shipped and verified**; P0 release priorities were reconciled before publication. The archive checksum manifest is an integrity check, not signed publisher provenance.
 
-Do not tag or publish on documentation-only evidence. Do not interpret a successful Git push as a cross-remote transaction. Retain issue-based acceptance records and known unsupported states.
+## Immediate next operator gate — #221, private/private real mirroring
+
+1. Reuse the previously selected verified private/private pair, not an inferred same-name match. Provider API `main` equality is a point-in-time observation, not native Git transport acceptance.
+2. In an approved isolated operator/service context, provision narrow noninteractive read-only GitLab/GitHub transport principals, with secrets kept outside agent/Desktop Commander, `repora.yaml`, Nix store and public logs.
+3. Run independently authenticated `git ls-remote` against both fixed endpoints, then the installed `v0.3.0` `repoctl status → exact plan → apply --dry-run`. Retain binary/config hashes, OIDs, exit codes and sanitized evidence; independently re-observe target heads.
+4. Close #221 only when the native private/private pilot evidence and negative-path coverage are qualified. Any real provider push, canonical-direction decision, or native mirror-setting change is separately authorized; no automatic whole-ref sync is implied.
 
 ## Next milestones (not v0.3.0 blockers)
 
