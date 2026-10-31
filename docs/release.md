@@ -80,10 +80,10 @@ Windows:
 3. Keep or copy the `share/repora` reference files wherever local tooling expects documentation/schema assets.
 4. Run `repoctl.exe --version`.
 
-After the v0.3.0 tag is published, its installed binary must report the tag and exact source commit, for example:
+For the published v0.3.0 tag, its installed binary reports the tag and exact source commit:
 
 ```text
-repoctl v0.3.0 (<exact-40-character-commit>)
+repoctl v0.3.0 (2213693597e5fe3915f685840fb75f8103a5191f)
 ```
 
 ## Configuration ownership
