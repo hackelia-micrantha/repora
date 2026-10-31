@@ -2,7 +2,7 @@
 
 Status: Current
 
-Use this checklist for Repora GitHub Releases until the distribution model changes. For the next candidate, the controlling acceptance issue is [#218](https://github.com/hackelia-micrantha/repora/issues/218) (`v0.3.0`, pre-alpha), not the superseded, unpublished `v0.2.1` promotion #183. `v0.1.0` established the released mirror-controller baseline; later releases must explicitly identify which post-v0.1 capabilities are included. The current publication mechanism remains GitHub Releases with versioned archives and SHA-256 checksums. Each archive is expected to carry the executable plus the public man page, safe example configuration, public JSON schemas, README, and license.
+Use this checklist for Repora GitHub Releases until the distribution model changes. For the published `v0.3.0` baseline, completed acceptance and independent verification are recorded in [#218](https://github.com/hackelia-micrantha/repora/issues/218). Future releases must nominate their own controlling acceptance issue; the historical `v0.2.1` promotion #183 was superseded without publication. `v0.1.0` established the released mirror-controller baseline; later releases must explicitly identify which post-v0.1 capabilities are included. The current publication mechanism remains GitHub Releases with versioned archives and SHA-256 checksums. Each archive is expected to carry the executable plus the public man page, safe example configuration, public JSON schemas, README, and license.
 
 ## 1. Scope and authority
 
