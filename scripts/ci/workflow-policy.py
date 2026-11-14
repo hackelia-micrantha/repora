@@ -28,9 +28,16 @@ def contains_pull_request_target(lines: list[str]) -> bool:
             # A flow-style sequence or mapping can continue on later lines.
             if value.startswith(('[', '{')) and not any(ch in value for ch in ']}'):
                 for entry in lines[index + 1:]:
+                    stripped = entry.strip()
+                    if not stripped or stripped.startswith('#'):
+                        continue
+                    # Stop at a new root key or the flow collection terminator,
+                    # not at a nested [types] list inside the trigger mapping.
+                    if not entry[0].isspace() and not stripped.startswith((']', '}')):
+                        break
                     if FORBIDDEN_EVENT.search(entry.split(' #', 1)[0]):
                         return True
-                    if any(ch in entry for ch in ']}'):
+                    if stripped in (']', '}', '],', '},'):
                         break
             return False
 
