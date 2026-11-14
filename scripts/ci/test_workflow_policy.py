@@ -128,6 +128,7 @@ class WorkflowPolicyTest(unittest.TestCase):
             'on: [push, pull_request_target]',
             'on: [\n  push,\n  pull_request_target\n]',
             'on: {pull_request_target: {types: [opened]}}',
+            'on: {\n  push: {types: [opened]},\n  pull_request_target: {types: [opened]}\n}',
             'on:\n  pull_request:\n  pull_request_target:',
             'on:\n  - push\n  - pull_request_target',
             '"on": "pull_request_target"',
