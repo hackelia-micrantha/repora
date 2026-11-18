@@ -170,6 +170,10 @@ The transport-independent Go helper in `internal/governedmirror` is deliberately
 
 It does **not** authenticate an actor, bind a Gateway request, fetch current OIDs, perform a provider operation, enforce Anthesis, persist policy evidence, or make any existing CLI safer until deliberately integrated. The helper intentionally returns **only the reviewed-byte digest and force classification**, not a mutable in-memory artifact tied to that digest. The digest is **not execution authority**. Any later trusted effector must separately verify the exact reviewed bytes against the supplied digest, construct an immutable bound manifest, and revalidate before effect-time execution. The parser is a preparatory building block and does not close #212/#213 or change ADR-0019 from Proposed.
 
+### Research qualification: interpreted effect and invocation binding
+
+[Context-to-Execution Integrity (arXiv:2607.06000)](https://arxiv.org/abs/2607.06000) distinguishes authority over argument selection, sink-interpreted effect and the particular invocation. The existing read-only parser qualifies input structure and identifies reviewed bytes, not the effect Git will interpret in a later process environment. Under #212/#213, reuse the existing remote-redirection/configuration negative case with identical reviewed plan bytes and a changed effective destination or ref interpretation, paired with the unchanged permitted destination. The future trusted preparation/effector must reject the changed interpretation before contacting the unreviewed sink and bind the canonical prepared effect to the particular authorized dispatch. Verify the actual destination/ref independently in the disposable Git positive control. This is a qualification refinement, not an assertion that the parser implements effect binding or that the source-only paper establishes Repora safety. No new schema, credential grant, provider registration or effect is authorized.
+
 ## Implementation slices and review questions
 
 1. #212: accept/adjust this design and ADR-0019; explicitly resolve Gateway pre-authorization domain preparation, contract registry and trust/actor binding dependencies.
