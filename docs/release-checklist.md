@@ -2,7 +2,7 @@
 
 Status: Current
 
-Use this checklist for Repora GitHub Releases until the distribution model changes. `v0.1.0` established the released mirror-controller baseline; later releases must explicitly identify which post-v0.1 capabilities are included. The current publication mechanism remains GitHub Releases with versioned archives and SHA-256 checksums. Each archive is expected to carry the executable plus the public man page, safe example configuration, public JSON schemas, README, and license.
+Use this checklist for Repora GitHub Releases until the distribution model changes. For the published `v0.3.0` baseline, completed acceptance and independent verification are recorded in [#218](https://github.com/hackelia-micrantha/repora/issues/218). Future releases must nominate their own controlling acceptance issue; the historical `v0.2.1` promotion #183 was superseded without publication. `v0.1.0` established the released mirror-controller baseline; later releases must explicitly identify which post-v0.1 capabilities are included. The current publication mechanism remains GitHub Releases with versioned archives and SHA-256 checksums. Each archive is expected to carry the executable plus the public man page, safe example configuration, public JSON schemas, README, and license.
 
 ## 1. Scope and authority
 
@@ -29,6 +29,7 @@ A capability being merged on `main` is not by itself a release decision. The rel
 - [ ] Workflow policy confirms immutable action pins, explicit permissions, timeouts, and no unsafe `pull_request_target` execution.
 - [ ] Release publication retains job-scoped `contents: write`; pull-request validation remains read-only.
 - [ ] Automated tag creation retains job-scoped `contents: write` and `actions: write`; other jobs remain read-only by default.
+- [ ] The actual compiled Linux/macOS/Windows release binaries and installed Nix package report patched Go 1.26.11 through build metadata; a green vulnerability scan under a different compiler does not satisfy this check.
 - [ ] If Nix packaging changed, `nix flake check` and the packaged app/support-file smoke boundary pass on the reviewed revision.
 - [ ] Packaged example configuration contains no credentials, tokens, private keys, or host-specific repository inventory.
 - [ ] Runtime credentials and private operator configuration remain outside derivations and release assets.
@@ -69,7 +70,44 @@ make release-verify
 - [ ] The embedded version and commit match the intended tag and release commit.
 - [ ] Nix package output contains `bin/repoctl`, the Nix-compressed `share/man/man1/repoctl.1.gz`, `share/repora/examples/repora.yaml`, and public schemas when Nix is part of the release scope.
 
-## 5. Publication
+For **manual validation-only** workflow dispatches on an explicitly selected, pinned
+candidate commit, `.github/workflows/release.yml` retains a short-lived
+`repoctl-validation-packages-<commit>` Actions artifact **after**
+`make release-verify` passes. Download that artifact from the workflow run,
+verify the downloaded `checksums.txt` manifest, inspect bundled support files
+and execute the Linux binary in an isolated environment. This is not publication
+and does not create a tag. Validation packages embed
+`v0.0.0-validation`, **not** `v0.3.0`; matching final version/tag identity and
+independently downloading the published archives remain mandatory **after**
+explicit release authorization and tag publication. Artifacts are retained for
+three days and contain only the public distribution packages and checksum manifest.
+
+## 5. Installed-binary operator acceptance
+
+- [ ] Independently verify a downloaded artifact's SHA-256 checksum and `repoctl --version` against the exact intended tag/commit.
+- [ ] Using a real accessible non-secret canonical topology and no remote write, record `repoctl status -f`, `repoctl plan -f`, and `repoctl apply -f ... --dry-run` exit codes/results.
+- [ ] Using packaged versioned fact/profile fixtures, record successful `repoctl posture converge` and `repoctl posture report --profile ... --facts ... --as-of YYYY-MM-DD`; explicit unknown/unavailable facts must remain visible.
+- [ ] Using an isolated disposable directory, record `repoctl bootstrap init`, `inspect`, `plan`, and `apply` results. Local bootstrap fixture writes are not remote repository mutation.
+- [ ] Preserve outcomes, exact package identity, fixture provenance and unsupported behavior on #218. Do not turn a partial or unavailable provider observation into a pass.
+
+A release-validation run on a pull request, or a manually dispatched
+**validation-only** run with blank `publish_tag`, also executes the Linux
+archive after `make release-verify` against one *fixed public* GitLab
+canonical (`gitlab-org/gitlab-shell`) and GitHub mirror
+(`gitlabhq/gitlab-shell`). The test performs only
+`status --json`, `plan --artifact` and exact-plan
+`apply --plan-file ... --dry-run --json`, using an isolated ephemeral
+cache/home, HTTPS-only Git transport, no injected provider tokens or persisted
+checkout credentials, and no `--force` or push. It records full command
+output, stderr, exit codes and fixture/archive digests in the short-lived
+`repoctl-public-mirror-smoke-<commit>` Actions artifact. Preserve those
+results when reporting #218; the external repository pair can change between
+runs. A transient GitLab/GitHub transport failure or behind/diverged state
+must be reported honestly, never reclassified as a pass. This public
+read-only test does not qualify the separate private/private pilot #221 or
+prove the existence of a final published `v0.3.0` archive.
+
+## 6. Publication
 
 Preferred operator path:
 
@@ -89,7 +127,7 @@ The tag workflow must fail if the version is malformed, an explicit commit is no
 
 A manually created external `v*` tag push remains a supported fallback and triggers the same release publication job. Never substitute a branch ref for a release tag.
 
-## 6. Independent post-publication verification
+## 7. Independent post-publication verification
 
 Download the published assets rather than using local `dist/` files.
 
@@ -101,7 +139,7 @@ Download the published assets rather than using local `dist/` files.
 - [ ] Exercise any newly released CLI surface with its safest representative read/dry-run path.
 - [ ] Record the release URL, workflow run, tag, commit, and verification result in the release issue.
 
-## 7. Failure handling
+## 8. Failure handling
 
 If publication is wrong or verification fails:
 

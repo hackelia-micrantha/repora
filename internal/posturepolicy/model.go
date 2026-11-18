@@ -252,7 +252,8 @@ func validateCondition(condition Condition) error {
 }
 
 func sortedEvaluations(values []Evaluation) []Evaluation {
-	out := append([]Evaluation(nil), values...)
+	out := make([]Evaluation, len(values))
+	copy(out, values)
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Area != out[j].Area {
 			return out[i].Area < out[j].Area

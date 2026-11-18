@@ -9,7 +9,7 @@
 
 **Repora** manages repository state through explicit topology, observation, policy, exact planning, stale-safe execution, honest partial results, and durable evidence.
 
-**repoctl** is the current Go CLI. Its primary runtime is a local-first Git mirror controller: each repository has one GitLab canonical and one or more GitHub, GitLab, or Bitbucket Cloud mirrors. Repora also has a separate bounded managed-README plan/apply domain, local repository-assessment commands, deterministic document-routing contracts, repository/CI, documentation, hooks/local-workflow, bounded commit-history, mirror, and local-only Git storage posture collectors, plus an offline convergence and posture-policy/reporting path.
+**repoctl** is the current Go CLI. Its primary runtime is a local-first Git mirror controller: each repository has one GitLab canonical and one or more GitHub, GitLab, or Bitbucket Cloud mirrors. Repora also has a separate bounded managed-README plan/apply domain, local repository-assessment commands, deterministic document-routing contracts, repository/CI, documentation, hooks/local-workflow, bounded commit-history, mirror, and local-only Git storage posture collectors, bounded CI-environment v2 evidence, and assumption-free repository bootstrap, plus an offline convergence and posture-policy/reporting path with conditional applicability.
 
 Repora remains pre-alpha. The broader repository-control-plane model is product direction, not a claim that provider provisioning, hosted orchestration, automatic posture remediation, or arbitrary repository mutation exists today.
 
@@ -123,7 +123,9 @@ See [Hooks/local-workflow posture v1](docs/posture-hooks.md).
 - external-input declarations are evidence only and do not grant policy exceptions;
 - normalized `ci_environment.*` facts integrate with existing offline convergence and posture reports.
 
-See [CI environment posture v1](docs/posture-ci-environment.md).
+The v2 collector additionally records bounded direct workload-tool invocation and setup-action signals; conservative ambient-tool candidates are observations, not proof of runner configuration. Policy applicability v2 retains explicit not-applicable/unresolved/unknown/unavailable states with v1 compatibility.
+
+See [CI environment posture](docs/posture-ci-environment.md).
 
 ### Bounded commit-history posture
 
@@ -151,19 +153,28 @@ See [Mirror posture v1](docs/posture-mirrors.md).
 - `repoctl posture converge` strictly consumes captured versioned collector artifacts and emits `repora.posture-policy-inputs` v1 JSON;
 - malformed/unsupported artifacts, duplicate sources, ambiguous mirror identity, and cross-repository fact mixing fail atomically;
 - convergence preserves observed/unknown/unavailable state and evidence without provider re-scan;
-- `repoctl posture report` consumes normalized facts plus an external `repora.posture-policy-profile` v1;
+- `repoctl posture report` consumes normalized facts plus an external `repora.posture-policy-profile` v1 or v2;
 - evaluation uses explicit severity, remediation, exceptions, and required `--as-of YYYY-MM-DD` input;
 - Markdown and JSON reports are deterministic for the same captured artifacts, policy, and `as-of` date;
 - the offline policy/report layer has no provider access, scanner execution, remediation, or mutation authority.
 
 See [Posture policy and deterministic reports](docs/posture-policy.md).
 
+### Assumption-free repository bootstrap
+
+- `repoctl bootstrap init / inspect / plan / apply` implements bounded local manifest creation, observation, exact stale-safe planning and create-only application;
+- `repoctl bootstrap discover` performs GET-only provider observation, retaining unresolved CI applicability and inheritance claims rather than guessing from workflow or flake files;
+- strict bootstrap plan/inspection/discovery JSON schemas and disposable built-CLI acceptance fixtures are included.
+
+See [Bootstrap](docs/bootstrap.md). Bootstrap does **not** provision hosted repositories or authorize provider mutations.
+
 ### Build, release, and assurance
 
 - `v0.1.0` established the first published archive baseline with Linux amd64, macOS amd64/arm64, and Windows amd64 archives plus SHA-256 checksums;
 - standalone Nix package/app/check/dev-shell/formatter outputs for Linux x86_64 and macOS x86_64/aarch64;
 - explicit fast/unit, integration, contract, CLI end-to-end, and cross-platform build gates;
-- Go vet + Staticcheck, vulnerability scanning, CodeQL, Git-history secret detection, dependency-license validation, and workflow-policy validation.
+- Go vet + Staticcheck, vulnerability scanning, CodeQL, Git-history secret detection, dependency-license validation, and workflow-policy validation;
+- Go 1.26.11 patched compiler used for CI, Nix and release builds; produced binary build metadata is validated.
 
 ## Current limitations
 
@@ -187,7 +198,7 @@ See [Posture policy and deterministic reports](docs/posture-policy.md).
 
 ### Release archives
 
-GitHub Releases publish versioned archives for Linux amd64, macOS amd64/arm64, and Windows amd64. Each release includes `checksums.txt`; packaged binaries report the embedded tag and source commit through `repoctl --version`. `v0.1.0` established the first released baseline; the tagged changelog and GitHub Release define the supported surface for each later version.
+GitHub Releases publish versioned archives for Linux amd64, macOS amd64/arm64, and Windows amd64. Each release includes `checksums.txt`; packaged binaries report the embedded tag and source commit through `repoctl --version`. `v0.3.0` was published on 2026-10-24 from the reviewed commit `2213693597e5fe3915f685840fb75f8103a5191f` and independently verified under [release #218](https://github.com/hackelia-micrantha/repora/issues/218). The historical `v0.2.1` candidate was never published; `v0.2.0` remains a prior released baseline. The tagged changelog and [GitHub Release](https://github.com/hackelia-micrantha/repora/releases/tag/v0.3.0) define the supported surface of each version.
 
 See [release installation and verification](docs/release.md) for target support, checksum commands, local reproduction, and rollback guidance.
 
@@ -410,9 +421,9 @@ ADR-0018 defines an optional future Anthesis `pre_apply` authorization seam. Run
 
 ## Roadmap
 
-The `v0.1.0` mirror-controller release is published and independently verified. The `v0.2.0` release candidate adds managed README mutation, routing and assessment foundations, standalone Nix packaging, GitHub repository/CI, documentation, hooks, bounded commit-history, and mirror posture, offline posture convergence/policy/reporting, and Bitbucket Cloud mirror transport.
+The published pre-alpha baselines are `v0.1.0`, `v0.2.0`, and [`v0.3.0`](https://github.com/hackelia-micrantha/repora/releases/tag/v0.3.0). Release #218 independently verified the published v0.3.0 distribution and a real public GitLab canonical → GitHub mirror `status → plan → dry-run` with no remote writes. Current standalone mirroring remains GitLab-canonical, default-branch-only; a mirror is not a complete repository archive.
 
-Project-truth reconciliation (#139) and representative operator acceptance (#137) are complete. Publication of the next pre-alpha capability baseline (#138) is the active release gate. Provider mutation, Anthesis runtime coupling, expanded ref scope, concurrent mirror mutation, signing, full provenance, and hosted control-plane behavior remain explicitly deferred.
+The next operational gate is [#221](https://github.com/hackelia-micrantha/repora/issues/221): qualify a private/private GitLab↔GitHub pilot with separately approved, narrowly scoped noninteractive Git credentials. Provider-API equality is already observed, but this is **not** yet an installed `repoctl` private transport acceptance. Gateway/Anthesis governed execution (#212/#213), provider-neutral CI/CD management (#160), full topology, multi-ref safety, and archives remain separate post-v0.3.0 work.
 
 The authoritative order is maintained in [`docs/plans/current.md`](docs/plans/current.md) and GitHub issues.
 
