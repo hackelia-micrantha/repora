@@ -122,5 +122,55 @@ class WorkflowPolicyTest(unittest.TestCase):
         self.assertIn('lacks timeout-minutes', result.stderr)
 
 
+    def test_rejects_pull_request_target_trigger_forms(self) -> None:
+        triggers = (
+            'on: pull_request_target',
+            'on: [push, pull_request_target]',
+            'on: [\n  push,\n  pull_request_target\n]',
+            'on: {pull_request_target: {types: [opened]}}',
+            'on: {\n  push: {types: [opened]},\n  pull_request_target: {types: [opened]}\n}',
+            'on:\n  pull_request:\n  pull_request_target:',
+            'on:\n  - push\n  - pull_request_target',
+            '"on": "pull_request_target"',
+        )
+        for trigger in triggers:
+            with self.subTest(trigger=trigger):
+                result = self.run_policy(
+                    'name: test\n' + trigger + '\n'
+                    'permissions:\n  contents: read\n'
+                    'jobs:\n  verify:\n    runs-on: ubuntu-latest\n'
+                    '    timeout-minutes: 5\n    steps:\n'
+                    '      - run: echo ok\n'
+                )
+                self.assertNotEqual(result.returncode, 0, result.stderr)
+                self.assertIn('pull_request_target is prohibited', result.stderr)
+
+    def test_does_not_treat_comments_or_job_text_as_triggers(self) -> None:
+        for trigger in ('on: push # pull_request_target is prohibited',
+                        'on: workflow_dispatch'):
+            with self.subTest(trigger=trigger):
+                result = self.run_policy(
+                    'name: test\n' + trigger + '\n'
+                    'permissions:\n  contents: read\n'
+                    'jobs:\n  verify:\n    runs-on: ubuntu-latest\n'
+                    '    timeout-minutes: 5\n    steps:\n'
+                    '      - run: echo pull_request_target\n'
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_nested_workflow_call_input_description_does_not_trigger(self) -> None:
+        result = self.run_policy(
+            'name: test\non:\n  workflow_call:\n    inputs:\n'
+            '      label:\n        description: pull_request_target\n'
+            '        required: false\n        type: string\n'
+            'permissions:\n  contents: read\n'
+            'jobs:\n  verify:\n    runs-on: ubuntu-latest\n'
+            '    timeout-minutes: 5\n    steps:\n'
+            '      - run: echo ok\n'
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+
+
 if __name__ == '__main__':
     unittest.main()
