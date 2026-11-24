@@ -1,10 +1,8 @@
 name: Shared Mise CI pilot
 
+# Historical qualification is complete; retain explicit wrapper requalification.
 on:
-  pull_request:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
